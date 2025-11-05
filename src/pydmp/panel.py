@@ -7,7 +7,6 @@ from .area import Area
 from .connection import DMPConnection
 from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
-from .const.states import AreaState, ZoneState
 from .exceptions import DMPConnectionError
 from .output import Output
 from .protocol import StatusResponse
@@ -33,6 +32,8 @@ class DMPPanel:
         self._areas: dict[int, Area] = {}
         self._zones: dict[int, Zone] = {}
         self._outputs: dict[int, Output] = {}
+        self._keepalive_task: Any | None = None
+        self._keepalive_interval: float = 10.0
 
         _LOGGER.debug("Panel initialized")
 
@@ -72,6 +73,8 @@ class DMPPanel:
             return
 
         _LOGGER.info("Disconnecting from panel")
+        # Stop keep-alive loop if running
+        await self.stop_keepalive()
         await self._connection.disconnect()
         self._connection = None
 
@@ -249,6 +252,94 @@ class DMPPanel:
             self._outputs[number] = Output(self, number, f"Output {number}")
 
         return self._outputs[number]
+
+    async def start_keepalive(self, interval: float = 10.0) -> None:
+        """Start periodic keep-alive (!H) while connected.
+
+        Args:
+            interval: Seconds between keep-alive messages (default: 10)
+        """
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        await self.stop_keepalive()
+        self._keepalive_interval = max(1.0, float(interval))
+
+        async def _loop() -> None:
+            _LOGGER.debug("Keep-alive loop started (%.1fs)", self._keepalive_interval)
+            try:
+                while self.is_connected and self._connection:
+                    try:
+                        await self._connection.keep_alive()
+                    except Exception as e:
+                        _LOGGER.debug("Keep-alive send failed: %s", e)
+                    await asyncio.sleep(self._keepalive_interval)
+            finally:
+                _LOGGER.debug("Keep-alive loop stopped")
+
+        # Create background task
+        self._keepalive_task = asyncio.create_task(_loop())
+
+    async def stop_keepalive(self) -> None:
+        """Stop periodic keep-alive if running."""
+        task = self._keepalive_task
+        self._keepalive_task = None
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except Exception:
+                pass
+
+    async def arm_areas(
+        self,
+        area_numbers: list[int] | tuple[int, ...],
+        bypass_faulted: bool = False,
+        force_arm: bool = False,
+        instant: bool | None = None,
+    ) -> None:
+        """Arm one or more areas in a single command.
+
+        Concatenates two-digit area numbers per DMP format and sends
+        !C{areas},{bypass}{force}.
+        """
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+        if not area_numbers:
+            raise ValueError("area_numbers must not be empty")
+        for n in area_numbers:
+            if not 0 <= int(n) <= 99:
+                raise ValueError(f"Invalid area number: {n}")
+
+        areas_concat = "".join(f"{int(n):02d}" for n in area_numbers)
+        bypass = "Y" if bypass_faulted else "N"
+        force = "Y" if force_arm else "N"
+        instant_flag = "Y" if instant is True else ("N" if instant is False else "")
+
+        resp = await self._connection.send_command(
+            DMPCommand.ARM.value,
+            area=areas_concat,
+            bypass=bypass,
+            force=force,
+            instant=instant_flag,
+        )
+        if resp == "NAK":
+            raise DMPConnectionError("Panel rejected arm command")
+
+    async def disarm_areas(self, area_numbers: list[int] | tuple[int, ...]) -> None:
+        """Disarm one or more areas in a single command: !O{areas}."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+        if not area_numbers:
+            raise ValueError("area_numbers must not be empty")
+        for n in area_numbers:
+            if not 0 <= int(n) <= 99:
+                raise ValueError(f"Invalid area number: {n}")
+
+        areas_concat = "".join(f"{int(n):02d}" for n in area_numbers)
+        resp = await self._connection.send_command(DMPCommand.DISARM.value, area=areas_concat)
+        if resp == "NAK":
+            raise DMPConnectionError("Panel rejected disarm command")
 
     async def __aenter__(self) -> "DMPPanel":
         """Async context manager entry."""

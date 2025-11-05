@@ -3,7 +3,6 @@
 import pytest
 
 from pydmp.const.commands import DMPCommand
-from pydmp.const.states import AreaState, ZoneState
 from pydmp.exceptions import DMPProtocolError
 from pydmp.protocol import DMPProtocol, StatusResponse
 
@@ -41,7 +40,9 @@ class TestDMPProtocol:
     def test_encode_arm(self):
         """Test arm command encoding."""
         protocol = DMPProtocol("1", "")
-        encoded = protocol.encode_command(DMPCommand.ARM.value, area="01", bypass="N", force="N")
+        encoded = protocol.encode_command(
+            DMPCommand.ARM.value, area="01", bypass="N", force="N", instant=""
+        )
         assert b"@    1!C01,NN\r" == encoded
 
     def test_encode_bypass_zone(self):
@@ -89,7 +90,7 @@ class TestDMPProtocol:
 
         assert isinstance(result, StatusResponse)
         assert "1" in result.areas
-        assert result.areas["1"].state == AreaState.DISARMED
+        assert result.areas["1"].state == "D"
         assert result.areas["1"].name == "Main Floor"
 
     def test_decode_status_zone(self):
@@ -101,7 +102,7 @@ class TestDMPProtocol:
 
         assert isinstance(result, StatusResponse)
         assert "001" in result.zones
-        assert result.zones["001"].state == ZoneState.NORMAL
+        assert result.zones["001"].state == "N"
         assert result.zones["001"].name == "Front Door"
 
     def test_decode_status_multiple(self):
@@ -113,8 +114,8 @@ class TestDMPProtocol:
         assert isinstance(result, StatusResponse)
         assert len(result.areas) == 1
         assert len(result.zones) == 2
-        assert result.zones["001"].state == ZoneState.NORMAL
-        assert result.zones["002"].state == ZoneState.OPEN
+        assert result.zones["001"].state == "N"
+        assert result.zones["002"].state == "O"
 
     def test_decode_empty_response(self):
         """Test empty response."""

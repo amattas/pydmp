@@ -6,13 +6,17 @@ exposes English strings. A future enhancement could expose
 per‑locale mappings and a simple selection mechanism.
 """
 
-# Status text shown for area/zone status characters
-# Areas: A/D; Zones: N/O/S/X/L/M
-STATUS_TEXT: dict[str, str] = {
-    # Areas
-    "A": "Armed",
+# Status text, split by entity to avoid ambiguity (e.g., 'S')
+
+# Areas: A/D/S
+AREA_STATUS: dict[str, str] = {
+    "A": "Armed (Away)",
     "D": "Disarmed",
-    # Zones
+    "S": "Armed (Stay)",
+}
+
+# Zones: N/O/S/X/L/M
+ZONE_STATUS: dict[str, str] = {
     "N": "Normal",
     "O": "Open",
     "S": "Short",
@@ -94,4 +98,3 @@ SYSTEM_MESSAGES: dict[str, str] = {
     "121": "Excessive Cellular Communication",
     "122": "Cell Communication Suppressed: Excessive Data",
 }
-

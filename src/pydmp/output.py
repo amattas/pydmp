@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .const.states import OutputState
+from .const.events import DMPRealTimeStatusEvent
 from .exceptions import DMPInvalidParameterError, DMPOutputError
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ class Output:
         panel: "DMPPanel",
         number: int,
         name: str = "",
-        state: OutputState = OutputState.UNKNOWN,
+        state: str = "unknown",
     ):
         """Initialize output.
 
@@ -43,11 +43,11 @@ class Output:
         _LOGGER.debug(f"Output {number} initialized: {name}")
 
     @property
-    def state(self) -> OutputState:
+    def state(self) -> str:
         """Get current state."""
         return self._state
 
-    def update_state(self, state: OutputState, name: str | None = None) -> None:
+    def update_state(self, state: str, name: str | None = None) -> None:
         """Update output state.
 
         Args:
@@ -65,12 +65,12 @@ class Output:
     @property
     def is_on(self) -> bool:
         """Check if output is on."""
-        return self._state == OutputState.ON
+        return self._state == DMPRealTimeStatusEvent.OUTPUT_ON.value
 
     @property
     def is_off(self) -> bool:
         """Check if output is off."""
-        return self._state == OutputState.OFF
+        return self._state == DMPRealTimeStatusEvent.OUTPUT_OFF.value
 
     @property
     def formatted_number(self) -> str:
@@ -100,13 +100,13 @@ class Output:
 
             # Update state based on mode
             if mode == "O":
-                self._state = OutputState.OFF
+                self._state = DMPRealTimeStatusEvent.OUTPUT_OFF.value
             elif mode == "P":
-                self._state = OutputState.PULSE
+                self._state = DMPRealTimeStatusEvent.OUTPUT_PULSE.value
             elif mode == "S":
-                self._state = OutputState.ON
+                self._state = DMPRealTimeStatusEvent.OUTPUT_ON.value
             elif mode == "M":
-                self._state = OutputState.ON
+                self._state = DMPRealTimeStatusEvent.OUTPUT_ON.value
 
             _LOGGER.info(f"Output {self.number} set to mode {mode} successfully")
 
@@ -144,7 +144,7 @@ class Output:
             DMPOutputError: If command fails
         """
         # Toggle between steady and off
-        if self._state == OutputState.ON:
+        if self._state == DMPRealTimeStatusEvent.OUTPUT_ON.value:
             await self.turn_off()
         else:
             await self.turn_on()
@@ -178,7 +178,7 @@ class OutputSync:
         return self._output.name
 
     @property
-    def state(self) -> OutputState:
+    def state(self) -> str:
         """Get current state."""
         return self._output.state
 

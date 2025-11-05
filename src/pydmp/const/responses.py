@@ -7,7 +7,7 @@ Includes:
 """
 
 from enum import Enum
-from .strings import STATUS_TEXT as STATUS_TEXT  # re-export for convenience
+# Human-readable status strings live in const.strings (AREA_STATUS, ZONE_STATUS)
 
 
 class DMPResponse(str, Enum):
@@ -18,6 +18,7 @@ class DMPResponse(str, Enum):
     ZONE_STATUS = "*WB"
     OUTPUT_STATUS = "*WQ"
     SYSTEM_STATUS = "*WS"
+    KEEP_ALIVE = "*H"
     MAC_SERIAL = "*ZX1"
     SOFTWARE_VERSION = "* "
 
@@ -28,6 +29,20 @@ class DMPResponse(str, Enum):
     # Command acknowledgments
     ACK = "+"
     NAK = "-"
+
+
+# Area status codes (from status replies A[AAA][state])
+AREA_STATUS_ARMED_AWAY: str = "A"
+AREA_STATUS_DISARMED: str = "D"
+AREA_STATUS_ARMED_STAY: str = "S"
+
+# Zone status codes (from status replies L[ZZZ][state])
+ZONE_STATUS_NORMAL: str = "N"
+ZONE_STATUS_OPEN: str = "O"
+ZONE_STATUS_SHORT: str = "S"
+ZONE_STATUS_BYPASSED: str = "X"
+ZONE_STATUS_LOW_BATTERY: str = "L"
+ZONE_STATUS_MISSING: str = "M"
 
 
 # STATUS_TEXT is provided by const.strings to allow i18n later

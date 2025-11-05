@@ -166,6 +166,17 @@ class DMPConnection:
             self._connected = False
             raise DMPAuthenticationError(f"Authentication failed: {e}") from e
 
+    async def keep_alive(self) -> None:
+        """Send a keep-alive command (!H).
+
+        Raises:
+            DMPConnectionError: If not connected or send fails
+        """
+        if not self.is_connected:
+            raise DMPConnectionError("Not connected to panel")
+
+        await self.send_command(DMPCommand.KEEP_ALIVE.value)
+
     async def _send_raw(self, data: bytes) -> None:
         """Send raw bytes to panel.
 

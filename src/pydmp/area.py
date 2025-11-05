@@ -4,8 +4,12 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .const.states import AreaState
 from .exceptions import DMPAreaError, DMPInvalidParameterError
+from .const.responses import (
+    AREA_STATUS_ARMED_AWAY,
+    AREA_STATUS_ARMED_STAY,
+    AREA_STATUS_DISARMED,
+)
 
 if TYPE_CHECKING:
     from .panel import DMPPanel
@@ -22,7 +26,7 @@ class Area:
         panel: "DMPPanel",
         number: int,
         name: str = "",
-        state: AreaState = AreaState.UNKNOWN,
+        state: str = "unknown",
     ):
         """Initialize area.
 
@@ -43,11 +47,11 @@ class Area:
         _LOGGER.debug(f"Area {number} initialized: {name}")
 
     @property
-    def state(self) -> AreaState:
+    def state(self) -> str:
         """Get current state."""
         return self._state
 
-    def update_state(self, state: AreaState, name: str | None = None) -> None:
+    def update_state(self, state: str, name: str | None = None) -> None:
         """Update area state from status response.
 
         Args:
@@ -65,24 +69,25 @@ class Area:
     @property
     def is_armed(self) -> bool:
         """Check if area is armed (any armed state)."""
-        return self._state in (
-            AreaState.ARMED_AWAY,
-            AreaState.ARMED_STAY,
-            AreaState.ARMED_NIGHT,
-            AreaState.ARMED_INSTANT,
-        )
+        return self._state in (AREA_STATUS_ARMED_AWAY, AREA_STATUS_ARMED_STAY)
 
     @property
     def is_disarmed(self) -> bool:
         """Check if area is disarmed."""
-        return self._state == AreaState.DISARMED
+        return self._state == AREA_STATUS_DISARMED
 
-    async def arm_away(self, bypass_faulted: bool = False, force_arm: bool = False) -> None:
+    async def arm_away(
+        self,
+        bypass_faulted: bool = False,
+        force_arm: bool = False,
+        instant: bool | None = None,
+    ) -> None:
         """Arm area in away mode.
 
         Args:
             bypass_faulted: Bypass faulted zones (default: False)
             force_arm: Force arm bad zones (default: False)
+            instant: Remove entry/exit delays (Y/N). If None, omit third flag.
 
         Raises:
             DMPAreaError: If arm fails
@@ -93,24 +98,31 @@ class Area:
             )
             bypass = "Y" if bypass_faulted else "N"
             force = "Y" if force_arm else "N"
+            instant_flag = "Y" if instant is True else ("N" if instant is False else "")
 
             response = await self.panel._connection.send_command(
                 DMPCommand.ARM.value,
                 area=f"{self.number:02d}",
                 bypass=bypass,
                 force=force,
+                instant=instant_flag,
             )
 
             if response == "NAK":
                 raise DMPAreaError(f"Panel rejected arm command for area {self.number}")
 
-            self._state = AreaState.ARMING
+            self._state = "arming"
             _LOGGER.info(f"Area {self.number} arm command sent successfully")
 
         except Exception as e:
             raise DMPAreaError(f"Failed to arm area {self.number}: {e}") from e
 
-    async def arm_stay(self, bypass_faulted: bool = False, force_arm: bool = False) -> None:
+    async def arm_stay(
+        self,
+        bypass_faulted: bool = False,
+        force_arm: bool = False,
+        instant: bool | None = None,
+    ) -> None:
         """Arm area in stay mode.
 
         Note: DMP protocol doesn't distinguish between away/stay at the protocol level.
@@ -124,7 +136,7 @@ class Area:
             DMPAreaError: If arm fails
         """
         # DMP uses same command for all arm types
-        await self.arm_away(bypass_faulted=bypass_faulted, force_arm=force_arm)
+        await self.arm_away(bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
 
     async def disarm(self) -> None:
         """Disarm area.
@@ -146,13 +158,13 @@ class Area:
             if response == "NAK":
                 raise DMPAreaError(f"Panel rejected disarm command for area {self.number}")
 
-            self._state = AreaState.DISARMING
+            self._state = "disarming"
             _LOGGER.info(f"Area {self.number} disarm command sent successfully")
 
         except Exception as e:
             raise DMPAreaError(f"Failed to disarm area {self.number}: {e}") from e
 
-    async def get_state(self) -> AreaState:
+    async def get_state(self) -> str:
         """Get current state from panel.
 
         Returns:
@@ -190,7 +202,7 @@ class AreaSync:
         return self._area.name
 
     @property
-    def state(self) -> AreaState:
+    def state(self) -> str:
         """Get current state."""
         return self._area.state
 
@@ -216,7 +228,7 @@ class AreaSync:
         """Disarm area (sync)."""
         self._panel_sync._run(self._area.disarm())
 
-    def get_state_sync(self) -> AreaState:
+    def get_state_sync(self) -> str:
         """Get current state from panel (sync)."""
         return self._panel_sync._run(self._area.get_state())
 

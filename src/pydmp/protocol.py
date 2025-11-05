@@ -10,8 +10,18 @@ from .const.protocol import (
     RESPONSE_DELIMITER,
     ZONE_DELIMITER,
 )
-from .const.responses import DMPResponse
-from .const.states import AreaState, ZoneState
+from .const.responses import (
+    DMPResponse,
+    AREA_STATUS_ARMED_AWAY,
+    AREA_STATUS_DISARMED,
+    AREA_STATUS_ARMED_STAY,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
+    ZONE_STATUS_BYPASSED,
+    ZONE_STATUS_LOW_BATTERY,
+    ZONE_STATUS_MISSING,
+)
 from .crypto import DMPCrypto
 from .exceptions import DMPInvalidResponseError, DMPProtocolError
 
@@ -23,7 +33,7 @@ class AreaStatus:
     """Area status from panel."""
 
     number: str
-    state: AreaState
+    state: str  # 'A','D','S' (or 'unknown')
     name: str
 
 
@@ -32,7 +42,7 @@ class ZoneStatus:
     """Zone status from panel."""
 
     number: str
-    state: ZoneState
+    state: str  # 'N','O','S','X','L','M' (or 'unknown')
     name: str
 
 
@@ -199,15 +209,15 @@ class DMPProtocol:
                 if not area_num:
                     continue
 
-                # Map state character to AreaState
-                if state_char == "A":
-                    state = AreaState.ARMED_AWAY
-                elif state_char == "D":
-                    state = AreaState.DISARMED
-                elif state_char == "S":
-                    state = AreaState.ARMED_STAY
+                # Use raw area state character
+                if state_char in (
+                    AREA_STATUS_ARMED_AWAY,
+                    AREA_STATUS_DISARMED,
+                    AREA_STATUS_ARMED_STAY,
+                ):
+                    state = state_char
                 else:
-                    state = AreaState.UNKNOWN
+                    state = "unknown"
 
                 response.areas[area_num] = AreaStatus(
                     number=area_num, state=state, name=name
@@ -219,21 +229,18 @@ class DMPProtocol:
                 state_char = item[4:5]
                 name = item[5:].strip()
 
-                # Map state character to ZoneState
-                if state_char == "N":
-                    state = ZoneState.NORMAL
-                elif state_char == "O":
-                    state = ZoneState.OPEN
-                elif state_char == "S":
-                    state = ZoneState.SHORT
-                elif state_char == "X":
-                    state = ZoneState.BYPASSED
-                elif state_char == "L":
-                    state = ZoneState.LOW_BATTERY
-                elif state_char == "M":
-                    state = ZoneState.MISSING
+                # Use raw zone state character
+                if state_char in (
+                    ZONE_STATUS_NORMAL,
+                    ZONE_STATUS_OPEN,
+                    ZONE_STATUS_SHORT,
+                    ZONE_STATUS_BYPASSED,
+                    ZONE_STATUS_LOW_BATTERY,
+                    ZONE_STATUS_MISSING,
+                ):
+                    state = state_char
                 else:
-                    state = ZoneState.UNKNOWN
+                    state = "unknown"
 
                 response.zones[number] = ZoneStatus(number=number, state=state, name=name)
 

@@ -1,7 +1,6 @@
 """Constants for DMP protocol."""
 
 from .commands import DMPCommand
-from .states import AreaState, ZoneState, ZoneType, OutputState
 from .events import (
     DMPEvent,
     DMPEventType,
@@ -16,15 +15,21 @@ from .events import (
     DMPServiceUserEvent,
     DMPQualifierEvent,
 )
-from .responses import STATUS_TEXT
-from .strings import SYSTEM_MESSAGES
+from .strings import SYSTEM_MESSAGES, AREA_STATUS, ZONE_STATUS
+from .responses import (
+    AREA_STATUS_ARMED_AWAY,
+    AREA_STATUS_DISARMED,
+    AREA_STATUS_ARMED_STAY,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
+    ZONE_STATUS_BYPASSED,
+    ZONE_STATUS_LOW_BATTERY,
+    ZONE_STATUS_MISSING,
+)
 
 __all__ = [
     "DMPCommand",
-    "AreaState",
-    "ZoneState",
-    "ZoneType",
-    "OutputState",
     "DMPEvent",
     "DMPEventType",
     "DMPZoneEvent",
@@ -37,6 +42,16 @@ __all__ = [
     "DMPEquipmentEvent",
     "DMPServiceUserEvent",
     "DMPQualifierEvent",
-    "STATUS_TEXT",
+    "AREA_STATUS",
+    "ZONE_STATUS",
     "SYSTEM_MESSAGES",
+    "AREA_STATUS_ARMED_AWAY",
+    "AREA_STATUS_DISARMED",
+    "AREA_STATUS_ARMED_STAY",
+    "ZONE_STATUS_NORMAL",
+    "ZONE_STATUS_OPEN",
+    "ZONE_STATUS_SHORT",
+    "ZONE_STATUS_BYPASSED",
+    "ZONE_STATUS_LOW_BATTERY",
+    "ZONE_STATUS_MISSING",
 ]

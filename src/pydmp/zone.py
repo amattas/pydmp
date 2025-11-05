@@ -4,8 +4,15 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .const.states import ZoneState, ZoneType
 from .exceptions import DMPInvalidParameterError, DMPZoneError
+from .const.responses import (
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
+    ZONE_STATUS_BYPASSED,
+    ZONE_STATUS_LOW_BATTERY,
+    ZONE_STATUS_MISSING,
+)
 
 if TYPE_CHECKING:
     from .panel import DMPPanel
@@ -22,8 +29,7 @@ class Zone:
         panel: "DMPPanel",
         number: int,
         name: str = "",
-        zone_type: ZoneType = ZoneType.UNKNOWN,
-        state: ZoneState = ZoneState.UNKNOWN,
+        state: str = "unknown",
     ):
         """Initialize zone.
 
@@ -40,18 +46,17 @@ class Zone:
         self.panel = panel
         self.number = number
         self.name = name
-        self.zone_type = zone_type
         self._state = state
 
         _LOGGER.debug(f"Zone {number} initialized: {name} ({zone_type})")
 
     @property
-    def state(self) -> ZoneState:
+    def state(self) -> str:
         """Get current state."""
         return self._state
 
     def update_state(
-        self, state: ZoneState, name: str | None = None, zone_type: ZoneType | None = None
+        self, state: str, name: str | None = None
     ) -> None:
         """Update zone state from status response.
 
@@ -64,8 +69,6 @@ class Zone:
         self._state = state
         if name:
             self.name = name
-        if zone_type:
-            self.zone_type = zone_type
 
         if old_state != state:
             _LOGGER.info(f"Zone {self.number} state changed: {old_state} → {state}")
@@ -73,26 +76,25 @@ class Zone:
     @property
     def is_open(self) -> bool:
         """Check if zone is open/tripped."""
-        return self._state == ZoneState.OPEN
+        return self._state == ZONE_STATUS_OPEN
 
     @property
     def is_normal(self) -> bool:
         """Check if zone is normal (closed)."""
-        return self._state == ZoneState.NORMAL
+        return self._state == ZONE_STATUS_NORMAL
 
     @property
     def is_bypassed(self) -> bool:
         """Check if zone is bypassed."""
-        return self._state == ZoneState.BYPASSED
+        return self._state == ZONE_STATUS_BYPASSED
 
     @property
     def has_fault(self) -> bool:
         """Check if zone has a fault."""
         return self._state in (
-            ZoneState.SHORT,
-            ZoneState.LOW_BATTERY,
-            ZoneState.MISSING,
-            ZoneState.FAULT,
+            ZONE_STATUS_SHORT,
+            ZONE_STATUS_LOW_BATTERY,
+            ZONE_STATUS_MISSING,
         )
 
     @property
@@ -142,7 +144,7 @@ class Zone:
         except Exception as e:
             raise DMPZoneError(f"Failed to restore zone {self.number}: {e}") from e
 
-    async def get_state(self) -> ZoneState:
+    async def get_state(self) -> str:
         """Get current state from panel.
 
         Returns:
@@ -153,7 +155,7 @@ class Zone:
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<Zone {self.number}: {self.name} ({self.zone_type}, {self._state})>"
+        return f"<Zone {self.number}: {self.name} ({self._state})>"
 
 
 class ZoneSync:
@@ -180,12 +182,8 @@ class ZoneSync:
         return self._zone.name
 
     @property
-    def zone_type(self) -> ZoneType:
-        """Get zone type."""
-        return self._zone.zone_type
-
     @property
-    def state(self) -> ZoneState:
+    def state(self) -> str:
         """Get current state."""
         return self._zone.state
 
@@ -222,7 +220,7 @@ class ZoneSync:
         """Restore zone (sync)."""
         self._panel_sync._run(self._zone.restore())
 
-    def get_state_sync(self) -> ZoneState:
+    def get_state_sync(self) -> str:
         """Get current state from panel (sync)."""
         return self._panel_sync._run(self._zone.get_state())
 

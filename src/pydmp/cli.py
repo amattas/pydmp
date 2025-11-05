@@ -16,7 +16,6 @@ except ImportError:
     sys.exit(1)
 
 from . import __version__
-from .const.states import AreaState, ZoneState
 from .panel import DMPPanel
 
 console = Console()

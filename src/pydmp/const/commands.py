@@ -31,7 +31,9 @@ class DMPCommand(str, Enum):
     GET_ZONE_STATUS_CONT = "?WB"      # Continuation (no params)
 
     # Area control
-    ARM = "!C{area},{bypass}{force}"
+    # Optional third flag {instant} ("Y"/"N") may be appended to remove entry/exit delays.
+    # If not used, pass empty string for {instant}.
+    ARM = "!C{area},{bypass}{force}{instant}"
     DISARM = "!O{area}"
 
     # Zone control
@@ -41,4 +43,3 @@ class DMPCommand(str, Enum):
 
     # Output control
     OUTPUT = "!Q{output}{mode}"
-

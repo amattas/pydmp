@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from .const.commands import (
+from .const.protocol import (
     MESSAGE_PREFIX,
     MESSAGE_TERMINATOR,
     RESPONSE_DELIMITER,

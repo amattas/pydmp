@@ -4,7 +4,8 @@ import asyncio
 import logging
 from typing import Any
 
-from .const.commands import DEFAULT_PORT, RATE_LIMIT_SECONDS, DMPCommand
+from .const.commands import DMPCommand
+from .const.protocol import DEFAULT_PORT, RATE_LIMIT_SECONDS
 from .exceptions import (
     DMPAuthenticationError,
     DMPConnectionError,

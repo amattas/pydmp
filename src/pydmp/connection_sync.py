@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from .connection import DMPConnection
-from .const.commands import DEFAULT_PORT
+from .const.protocol import DEFAULT_PORT
 from .protocol import StatusResponse
 
 

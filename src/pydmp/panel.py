@@ -5,7 +5,8 @@ from typing import Any
 
 from .area import Area
 from .connection import DMPConnection
-from .const.commands import DEFAULT_PORT, DMPCommand
+from .const.commands import DMPCommand
+from .const.protocol import DEFAULT_PORT
 from .const.states import AreaState, ZoneState
 from .exceptions import DMPConnectionError
 from .output import Output

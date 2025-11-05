@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from .area import Area, AreaSync
-from .const.commands import DEFAULT_PORT
+from .const.protocol import DEFAULT_PORT
 from .output import Output, OutputSync
 from .panel import DMPPanel
 from .zone import Zone, ZoneSync

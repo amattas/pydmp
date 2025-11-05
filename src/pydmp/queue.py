@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from .const.commands import RATE_LIMIT_SECONDS
+from .const.protocol import RATE_LIMIT_SECONDS
 from .protocol import StatusResponse
 
 _LOGGER = logging.getLogger(__name__)

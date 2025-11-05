@@ -1,0 +1,284 @@
+"""High-level async panel controller."""
+
+import logging
+from typing import Any
+
+from .area import Area
+from .connection import DMPConnection
+from .const.commands import DEFAULT_PORT, DMPCommand
+from .const.states import AreaState, ZoneState
+from .exceptions import DMPConnectionError
+from .output import Output
+from .protocol import StatusResponse
+from .zone import Zone
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class DMPPanel:
+    """High-level async interface to DMP panel."""
+
+    def __init__(self, port: int = DEFAULT_PORT, timeout: float = 10.0):
+        """Initialize panel.
+
+        Args:
+            port: TCP port (default: 2011)
+            timeout: Connection timeout in seconds
+        """
+        self.port = port
+        self.timeout = timeout
+
+        self._connection: DMPConnection | None = None
+        self._areas: dict[int, Area] = {}
+        self._zones: dict[int, Zone] = {}
+        self._outputs: dict[int, Output] = {}
+
+        _LOGGER.debug("Panel initialized")
+
+    @property
+    def is_connected(self) -> bool:
+        """Check if connected to panel."""
+        return self._connection is not None and self._connection.is_connected
+
+    async def connect(self, host: str, account: str, remote_key: str) -> None:
+        """Connect to panel and authenticate.
+
+        Args:
+            host: Panel IP address or hostname
+            account: 5-digit account number
+            remote_key: Remote key for authentication
+
+        Raises:
+            DMPConnectionError: If connection fails
+        """
+        if self.is_connected:
+            _LOGGER.warning("Already connected")
+            return
+
+        _LOGGER.info(f"Connecting to panel at {host}:{self.port}")
+
+        self._connection = DMPConnection(host, account, remote_key, self.port, self.timeout)
+        await self._connection.connect()
+
+        # Initial status update to discover areas/zones
+        await self.update_status()
+
+        _LOGGER.info("Panel connected and initialized")
+
+    async def disconnect(self) -> None:
+        """Disconnect from panel."""
+        if not self.is_connected or not self._connection:
+            return
+
+        _LOGGER.info("Disconnecting from panel")
+        await self._connection.disconnect()
+        self._connection = None
+
+    async def update_status(self) -> None:
+        """Update status of all areas and zones from panel.
+
+        Raises:
+            DMPConnectionError: If not connected or update fails
+        """
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        _LOGGER.debug("Updating panel status")
+
+        # Request zone status (this returns both areas and zones)
+        # First command: ?WB**Y001 (initial query)
+        # Subsequent: ?WB (continuation)
+        commands = [DMPCommand.ZONE_STATUS.value] + [DMPCommand.ZONE_STATUS_CONT.value] * 10
+
+        responses = []
+        for cmd in commands:
+            response = await self._connection.send_command(cmd)
+            if isinstance(response, StatusResponse):
+                responses.append(response)
+
+        # Merge all responses
+        all_areas: dict[str, Any] = {}
+        all_zones: dict[str, Any] = {}
+
+        for response in responses:
+            all_areas.update(response.areas)
+            all_zones.update(response.zones)
+
+        # Update areas
+        for area_num_str, area_status in all_areas.items():
+            area_num = int(area_num_str)
+            if area_num not in self._areas:
+                self._areas[area_num] = Area(
+                    self, area_num, area_status.name, area_status.state
+                )
+            else:
+                self._areas[area_num].update_state(area_status.state, area_status.name)
+
+        # Update zones
+        for zone_num_str, zone_status in all_zones.items():
+            zone_num = int(zone_num_str)
+            if zone_num not in self._zones:
+                self._zones[zone_num] = Zone(
+                    self, zone_num, zone_status.name, state=zone_status.state
+                )
+            else:
+                self._zones[zone_num].update_state(zone_status.state, zone_status.name)
+
+        _LOGGER.info(
+            f"Status updated: {len(self._areas)} areas, {len(self._zones)} zones"
+        )
+
+    async def get_areas(self) -> list[Area]:
+        """Get all areas.
+
+        Returns:
+            List of Area objects
+
+        Raises:
+            DMPConnectionError: If not connected
+        """
+        if not self.is_connected:
+            raise DMPConnectionError("Not connected to panel")
+
+        if not self._areas:
+            await self.update_status()
+
+        return sorted(self._areas.values(), key=lambda a: a.number)
+
+    async def get_area(self, number: int) -> Area:
+        """Get specific area by number.
+
+        Args:
+            number: Area number (1-8)
+
+        Returns:
+            Area object
+
+        Raises:
+            DMPConnectionError: If not connected
+            KeyError: If area not found
+        """
+        if not self.is_connected:
+            raise DMPConnectionError("Not connected to panel")
+
+        if not self._areas:
+            await self.update_status()
+
+        if number not in self._areas:
+            raise KeyError(f"Area {number} not found")
+
+        return self._areas[number]
+
+    async def get_zones(self) -> list[Zone]:
+        """Get all zones.
+
+        Returns:
+            List of Zone objects
+
+        Raises:
+            DMPConnectionError: If not connected
+        """
+        if not self.is_connected:
+            raise DMPConnectionError("Not connected to panel")
+
+        if not self._zones:
+            await self.update_status()
+
+        return sorted(self._zones.values(), key=lambda z: z.number)
+
+    async def get_zone(self, number: int) -> Zone:
+        """Get specific zone by number.
+
+        Args:
+            number: Zone number (1-999)
+
+        Returns:
+            Zone object
+
+        Raises:
+            DMPConnectionError: If not connected
+            KeyError: If zone not found
+        """
+        if not self.is_connected:
+            raise DMPConnectionError("Not connected to panel")
+
+        if not self._zones:
+            await self.update_status()
+
+        if number not in self._zones:
+            raise KeyError(f"Zone {number} not found")
+
+        return self._zones[number]
+
+    async def get_outputs(self) -> list[Output]:
+        """Get all outputs.
+
+        Note: Outputs are created on-demand as they're not returned in status queries.
+
+        Returns:
+            List of Output objects
+        """
+        # Create outputs 1-4 if they don't exist
+        for i in range(1, 5):
+            if i not in self._outputs:
+                self._outputs[i] = Output(self, i, f"Output {i}")
+
+        return sorted(self._outputs.values(), key=lambda o: o.number)
+
+    async def get_output(self, number: int) -> Output:
+        """Get specific output by number.
+
+        Args:
+            number: Output number (1-4)
+
+        Returns:
+            Output object
+
+        Raises:
+            KeyError: If output number invalid
+        """
+        if not 1 <= number <= 4:
+            raise KeyError(f"Output number must be 1-4, got {number}")
+
+        if number not in self._outputs:
+            self._outputs[number] = Output(self, number, f"Output {number}")
+
+        return self._outputs[number]
+
+    async def trigger_fire_emergency(self) -> None:
+        """Trigger fire emergency alarm."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        _LOGGER.warning("Triggering FIRE emergency")
+        await self._connection.send_command(DMPCommand.FIRE_EMERGENCY.value)
+
+    async def trigger_police_emergency(self) -> None:
+        """Trigger police emergency alarm."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        _LOGGER.warning("Triggering POLICE emergency")
+        await self._connection.send_command(DMPCommand.POLICE_EMERGENCY.value)
+
+    async def trigger_medical_emergency(self) -> None:
+        """Trigger medical emergency alarm."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        _LOGGER.warning("Triggering MEDICAL emergency")
+        await self._connection.send_command(DMPCommand.MEDICAL_EMERGENCY.value)
+
+    async def __aenter__(self) -> "DMPPanel":
+        """Async context manager entry."""
+        # Panel is created unconnected, user must call connect()
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        """Async context manager exit."""
+        await self.disconnect()
+
+    def __repr__(self) -> str:
+        """String representation."""
+        status = "connected" if self.is_connected else "disconnected"
+        return f"<DMPPanel {status}, {len(self._areas)} areas, {len(self._zones)} zones>"

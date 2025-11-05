@@ -1,0 +1,21 @@
+# PyDMP Configuration Example
+#
+# Copy this file to config.yaml and update with your panel information
+# DO NOT commit config.yaml with real credentials!
+
+panel:
+  # Panel IP address or hostname
+  host: 192.168.1.100
+
+  # TCP port (default: 2011)
+  port: 2011
+
+  # 5-digit account number (left-padded with spaces or zeros)
+  account: "00001"
+
+  # Remote key for authentication
+  # This is provided by your alarm installer or DMP panel configuration
+  remote_key: "YOUR_REMOTE_KEY_HERE"
+
+  # Connection timeout in seconds (default: 10.0)
+  timeout: 10.0

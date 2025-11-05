@@ -24,8 +24,11 @@ class DMPCommand(str, Enum):
 
     # Status queries
     GET_AREA_STATUS = "?WA{area}"  # Format: ?WA01 for area 1, ?WA for continuation
+    GET_AREA_STATUS_CONT = "?WA"    # Continuation (no params)
     GET_OUTPUT_STATUS = "?WQ{output}"  # Format: ?WQ001 for output 1, ?WQ for continuation
-    GET_ZONE_STATUS = "?WB**Y{zone}"  # Format: ?WB**Y001 for zone 1, ?WB for continuation
+    GET_OUTPUT_STATUS_CONT = "?WQ"     # Continuation (no params)
+    GET_ZONE_STATUS = "?WB**Y{zone}"  # Format: ?WB**Y001 for initial query
+    GET_ZONE_STATUS_CONT = "?WB"      # Continuation (no params)
 
     # Area control
     ARM = "!C{area},{bypass}{force}"
@@ -39,31 +42,6 @@ class DMPCommand(str, Enum):
     # Output control
     OUTPUT = "!Q{output}{mode}"
 
-
-# Response prefixes
-class DMPResponse(str, Enum):
-    """DMP panel response message prefixes."""
-
-    # Status responses
-    AREA_STATUS = "*WA"
-    ZONE_STATUS = "*WB"
-    OUTPUT_STATUS = "*WQ"
-    SYSTEM_STATUS = "*WS"
-    MAC_SERIAL = "*ZX1"
-    SOFTWARE_VERSION = "* "
-
-    # User management responses
-    USER_CODES = "*P="
-    USER_PROFILES = "*U"
-
-    # Command acknowledgments
-    ACK = "+"
-    NAK = "-"
-
-
-# Response characters (for backward compatibility)
-ACK = "+"
-NAK = "-"
 
 # Protocol constants
 DEFAULT_PORT = 2011

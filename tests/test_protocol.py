@@ -38,11 +38,11 @@ class TestDMPProtocol:
         encoded = protocol.encode_command(DMPCommand.DISCONNECT.value)
         assert encoded == b"@    1!V0\r"
 
-    def test_encode_arm_away(self):
-        """Test arm away command encoding."""
+    def test_encode_arm(self):
+        """Test arm command encoding."""
         protocol = DMPProtocol("1", "")
-        encoded = protocol.encode_command(DMPCommand.ARM_AWAY.value, area=1, instant="N")
-        assert b"@    1!C1,YNN\r" == encoded
+        encoded = protocol.encode_command(DMPCommand.ARM.value, area="01", bypass="N", force="N")
+        assert b"@    1!C01,NN\r" == encoded
 
     def test_encode_bypass_zone(self):
         """Test bypass zone command encoding."""
@@ -50,23 +50,24 @@ class TestDMPProtocol:
         encoded = protocol.encode_command(DMPCommand.BYPASS_ZONE.value, zone="001")
         assert encoded == b"@    1!X001\r"
 
-    def test_encode_output_on(self):
-        """Test output ON command encoding."""
+    def test_encode_output(self):
+        """Test output command encoding."""
         protocol = DMPProtocol("1", "")
-        encoded = protocol.encode_command(DMPCommand.OUTPUT_ON.value, output=1)
-        assert encoded == b"@    1!P1ON\r"
+        encoded = protocol.encode_command(DMPCommand.OUTPUT.value, output="001", mode="S")
+        assert encoded == b"@    1!Q001S\r"
 
     def test_encode_missing_parameter(self):
         """Test encoding with missing parameter."""
         protocol = DMPProtocol("1", "")
         with pytest.raises(DMPProtocolError, match="Failed to encode command"):
-            protocol.encode_command(DMPCommand.ARM_AWAY.value, area=1)  # Missing 'instant'
+            protocol.encode_command(DMPCommand.ARM.value, area="01")  # Missing 'bypass' and 'force'
 
     def test_decode_ack(self):
         """Test ACK response decoding."""
         protocol = DMPProtocol("1", "")
         # Format: STX @ ACCT ACK CMD \r
-        response = b"\x02@    1+!C\r"
+        # Changed to !Q for output command (matching new protocol)
+        response = b"\x02@    1+!Q\r"
         result = protocol.decode_response(response)
         assert result == "ACK"
 

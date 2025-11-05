@@ -88,11 +88,15 @@ class DMPPanel:
         # Request zone status (this returns both areas and zones)
         # First command: ?WB**Y001 (initial query)
         # Subsequent: ?WB (continuation)
-        commands = [DMPCommand.ZONE_STATUS.value] + [DMPCommand.ZONE_STATUS_CONT.value] * 10
+        commands: list[tuple[str, dict[str, Any]]] = [
+            (DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"})
+        ] + [
+            (DMPCommand.GET_ZONE_STATUS_CONT.value, {})
+        ] * 10
 
-        responses = []
-        for cmd in commands:
-            response = await self._connection.send_command(cmd)
+        responses: list[StatusResponse] = []
+        for cmd, params in commands:
+            response = await self._connection.send_command(cmd, **params)
             if isinstance(response, StatusResponse):
                 responses.append(response)
 
@@ -244,30 +248,6 @@ class DMPPanel:
             self._outputs[number] = Output(self, number, f"Output {number}")
 
         return self._outputs[number]
-
-    async def trigger_fire_emergency(self) -> None:
-        """Trigger fire emergency alarm."""
-        if not self.is_connected or not self._connection:
-            raise DMPConnectionError("Not connected to panel")
-
-        _LOGGER.warning("Triggering FIRE emergency")
-        await self._connection.send_command(DMPCommand.FIRE_EMERGENCY.value)
-
-    async def trigger_police_emergency(self) -> None:
-        """Trigger police emergency alarm."""
-        if not self.is_connected or not self._connection:
-            raise DMPConnectionError("Not connected to panel")
-
-        _LOGGER.warning("Triggering POLICE emergency")
-        await self._connection.send_command(DMPCommand.POLICE_EMERGENCY.value)
-
-    async def trigger_medical_emergency(self) -> None:
-        """Trigger medical emergency alarm."""
-        if not self.is_connected or not self._connection:
-            raise DMPConnectionError("Not connected to panel")
-
-        _LOGGER.warning("Triggering MEDICAL emergency")
-        await self._connection.send_command(DMPCommand.MEDICAL_EMERGENCY.value)
 
     async def __aenter__(self) -> "DMPPanel":
         """Async context manager entry."""

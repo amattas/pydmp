@@ -2,7 +2,20 @@
 
 from .commands import DMPCommand
 from .states import AreaState, ZoneState, ZoneType, OutputState
-from .events import DMPEvent, DMPEventType
+from .events import (
+    DMPEvent,
+    DMPEventType,
+    DMPZoneEvent,
+    DMPScheduleEvent,
+    DMPHolidayEvent,
+    DMPUserCodeEvent,
+    DMPArmingEvent,
+    DMPAccessEvent,
+    DMPRealTimeStatusEvent,
+    DMPEquipmentEvent,
+    DMPServiceUserEvent,
+    DMPQualifierEvent,
+)
 
 __all__ = [
     "DMPCommand",
@@ -12,4 +25,14 @@ __all__ = [
     "OutputState",
     "DMPEvent",
     "DMPEventType",
+    "DMPZoneEvent",
+    "DMPScheduleEvent",
+    "DMPHolidayEvent",
+    "DMPUserCodeEvent",
+    "DMPArmingEvent",
+    "DMPAccessEvent",
+    "DMPRealTimeStatusEvent",
+    "DMPEquipmentEvent",
+    "DMPServiceUserEvent",
+    "DMPQualifierEvent",
 ]

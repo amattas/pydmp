@@ -5,13 +5,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from .const.commands import (
-    ACK,
     MESSAGE_PREFIX,
     MESSAGE_TERMINATOR,
-    NAK,
     RESPONSE_DELIMITER,
     ZONE_DELIMITER,
 )
+from .const.responses import DMPResponse
 from .const.states import AreaState, ZoneState
 from .crypto import DMPCrypto
 from .exceptions import DMPInvalidResponseError, DMPProtocolError
@@ -145,11 +144,11 @@ class DMPProtocol:
                     continue
 
                 # Command acknowledgment for arm/disarm/bypass/output
-                # These have ! followed by C/O/X/Y/P
-                if len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "P"]:
-                    if ack_nak_char == ACK:
+                # These have ! followed by C/O/X/Y/Q
+                if len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]:
+                    if ack_nak_char == DMPResponse.ACK.value:
                         return "ACK"
-                    elif ack_nak_char == NAK:
+                    elif ack_nak_char == DMPResponse.NAK.value:
                         return "NAK"
 
                 # Status response (?WB or !WB)

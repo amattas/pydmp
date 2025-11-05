@@ -125,10 +125,10 @@ def status(ctx: click.Context) -> None:
 
 @cli.command()
 @click.argument("area", type=int)
-@click.argument("code")
-@click.option("--instant", is_flag=True, help="Enable instant arming")
+@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
+@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
 @click.pass_context
-def arm_away(ctx: click.Context, area: int, code: str, instant: bool) -> None:
+def arm_away(ctx: click.Context, area: int, bypass_faulted: bool, force_arm: bool) -> None:
     """Arm area in away mode."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
@@ -141,9 +141,9 @@ def arm_away(ctx: click.Context, area: int, code: str, instant: bool) -> None:
             )
 
             area_obj = await panel.get_area(area)
-            console.print(f"[cyan]Arming area {area} (away, instant={instant})...[/cyan]")
+            console.print(f"[cyan]Arming area {area} (bypass={bypass_faulted}, force={force_arm})...[/cyan]")
 
-            await area_obj.arm_away(code, instant)
+            await area_obj.arm_away(bypass_faulted=bypass_faulted, force_arm=force_arm)
             console.print(f"[green]Area {area} armed successfully[/green]")
 
         finally:
@@ -154,10 +154,10 @@ def arm_away(ctx: click.Context, area: int, code: str, instant: bool) -> None:
 
 @cli.command()
 @click.argument("area", type=int)
-@click.argument("code")
-@click.option("--instant", is_flag=True, help="Enable instant arming")
+@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
+@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
 @click.pass_context
-def arm_stay(ctx: click.Context, area: int, code: str, instant: bool) -> None:
+def arm_stay(ctx: click.Context, area: int, bypass_faulted: bool, force_arm: bool) -> None:
     """Arm area in stay mode."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
@@ -170,9 +170,9 @@ def arm_stay(ctx: click.Context, area: int, code: str, instant: bool) -> None:
             )
 
             area_obj = await panel.get_area(area)
-            console.print(f"[cyan]Arming area {area} (stay, instant={instant})...[/cyan]")
+            console.print(f"[cyan]Arming area {area} (stay, bypass={bypass_faulted}, force={force_arm})...[/cyan]")
 
-            await area_obj.arm_stay(code, instant)
+            await area_obj.arm_stay(bypass_faulted=bypass_faulted, force_arm=force_arm)
             console.print(f"[green]Area {area} armed (stay) successfully[/green]")
 
         finally:
@@ -183,9 +183,8 @@ def arm_stay(ctx: click.Context, area: int, code: str, instant: bool) -> None:
 
 @cli.command()
 @click.argument("area", type=int)
-@click.argument("code")
 @click.pass_context
-def disarm(ctx: click.Context, area: int, code: str) -> None:
+def disarm(ctx: click.Context, area: int) -> None:
     """Disarm area."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
@@ -200,7 +199,7 @@ def disarm(ctx: click.Context, area: int, code: str) -> None:
             area_obj = await panel.get_area(area)
             console.print(f"[cyan]Disarming area {area}...[/cyan]")
 
-            await area_obj.disarm(code)
+            await area_obj.disarm()
             console.print(f"[green]Area {area} disarmed successfully[/green]")
 
         finally:

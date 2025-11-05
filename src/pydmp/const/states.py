@@ -31,7 +31,11 @@ class ZoneState(str, Enum):
 
 
 class ZoneType(str, Enum):
-    """Zone types from DMP."""
+    """Zone type codes (tXX) used for zone-related events.
+
+    These mirror the DMP zone event type codes from LT-1959 and
+    match the common two-character identifiers seen in messages.
+    """
 
     BLANK = "BL"
     FIRE = "FI"
@@ -41,12 +45,8 @@ class ZoneType(str, Enum):
     EMERGENCY = "EM"
     AUXILIARY_1 = "A1"
     AUXILIARY_2 = "A2"
-    DOOR = "door"
-    WINDOW = "window"
-    MOTION = "motion"
-    GLASS_BREAK = "glass"
-    SMOKE = "smoke"
-    CO = "co"
+    CARBON_MONOXIDE = "CO"
+    VIDEO_ALARM = "VA"
     UNKNOWN = "unknown"
 
 

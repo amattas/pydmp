@@ -89,7 +89,7 @@ def test_cli_config_errors(monkeypatch, tmp_path):
     assert out2.exit_code != 0 and "Invalid config" in out2.output
 
 
-def test_cli_verbose_flag_executes(monkeypatch, tmp_path):
+def test_cli_debug_flag_executes(monkeypatch, tmp_path):
     class P:
         async def connect(self, *a, **k):
             return None
@@ -102,5 +102,5 @@ def test_cli_verbose_flag_executes(monkeypatch, tmp_path):
 
     monkeypatch.setattr(cli, "DMPPanel", P)
     cfg = _cfg(tmp_path)
-    r = CliRunner().invoke(cli.cli, ["-v", "-c", str(cfg), "arm", "1"])  # uses verbose path
+    r = CliRunner().invoke(cli.cli, ["-d", "-c", str(cfg), "arm", "1"])  # debug flag
     assert r.exit_code == 0

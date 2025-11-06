@@ -178,7 +178,7 @@ def _normalize_config(raw: Any) -> dict | None:
         ("Realtime", ["listen"]),
     ],
 )
-@click.version_option(__version__, "-V", "--version")
+@click.version_option(__version__, "-v", "--version")
 @click.option(
     "--config",
     "-c",
@@ -186,20 +186,19 @@ def _normalize_config(raw: Any) -> dict | None:
     default="config.yaml",
     help="Configuration file path",
 )
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging (DEBUG)")
 @click.option("--quiet", "-q", is_flag=True, help="Reduce output (WARNING)")
 @click.option("--debug", "-d", is_flag=True, help="Enable debug logging (overrides other flags)")
 @click.pass_context
-def cli(ctx: click.Context, config: Path, verbose: bool, quiet: bool, debug: bool) -> None:
+def cli(ctx: click.Context, config: Path, quiet: bool, debug: bool) -> None:
     """PyDMP - Control DMP alarm panels from command line."""
     # Setup logging
     level = logging.INFO
     if quiet:
         level = logging.WARNING
-    if verbose or debug:
+    if debug:
         level = logging.DEBUG
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    _LOG.debug("CLI initialized (debug=%s, verbose=%s, quiet=%s)", debug, verbose, quiet)
+    _LOG.debug("CLI initialized (debug=%s, quiet=%s)", debug, quiet)
 
     # Load config
     ctx.ensure_object(dict)

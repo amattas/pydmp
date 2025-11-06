@@ -50,10 +50,9 @@ PyDMP includes a CLI for common operations. See the full guide: docs/guide/cli.m
 
 - Global options
   - `--config, -c PATH` — path to YAML file (default: `config.yaml`)
-  - `--verbose, -v` — verbose logging (DEBUG)
   - `--quiet, -q` — reduced logging (WARNING)
   - `--debug, -d` — debug logging (overrides other flags)
-  - `--version, -V` — show version and exit
+  - `--version, -v` — show version and exit
   - `--help, -h` — show help
 
 - Common option

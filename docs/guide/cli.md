@@ -19,10 +19,9 @@ panel:
 
 Global options:
 - `--config, -c PATH` — path to YAML file (default: `config.yaml`)
-- `--verbose, -v` — verbose logs (DEBUG)
 - `--quiet, -q` — reduce logs (WARNING)
 - `--debug, -d` — debug logs (overrides other flags)
-- `--version, -V` — show version and exit
+- `--version, -v` — show version and exit
 - `--help, -h` — show help
 
 Common option:

@@ -39,7 +39,7 @@ from .transport import DMPTransport
 from .transport_sync import DMPTransportSync
 from .zone import Zone, ZoneSync
 
-__version__ = "0.1.0"
+__version__ = "1.0.0-alpha.1"
 
 __all__ = [
     # High-level API (recommended)

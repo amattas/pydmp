@@ -26,6 +26,7 @@ nav:
   - Home: index.md
   - Guide:
       - Getting Started: guide/getting-started.md
+      - CLI: guide/cli.md
       - Realtime Status (S3): guide/realtime-status.md
       - Encryption & User Data: guide/encryption.md
   - API Reference:
@@ -33,4 +34,3 @@ nav:
       - Entities: api/entities.md
       - Protocol & Crypto: api/protocol.md
       - Realtime Server: api/status.md
-

@@ -17,6 +17,9 @@ except ImportError:
 
 from . import __version__
 from .panel import DMPPanel
+from .const.commands import DMPCommand
+from .status_server import DMPStatusServer
+from .status_parser import parse_scsvr_message
 
 console = Console()
 
@@ -293,6 +296,161 @@ def output(ctx: click.Context, output: int, action: str) -> None:
 
         finally:
             await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("arm-areas")
+@click.argument("areas", type=str)
+@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
+@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
+@click.option("--instant/--no-instant", default=None, help="Remove entry/exit delays")
+@click.pass_context
+def arm_areas_cmd(
+    ctx: click.Context,
+    areas: str,
+    bypass_faulted: bool,
+    force_arm: bool,
+    instant: Optional[bool],
+) -> None:
+    """Arm one or more areas, e.g. "1,2,3"."""
+    area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            console.print(
+                f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})...[/cyan]"
+            )
+            await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
+            console.print(f"[green]Areas {area_list} armed successfully[/green]")
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("disarm-areas")
+@click.argument("areas", type=str)
+@click.pass_context
+def disarm_areas_cmd(ctx: click.Context, areas: str) -> None:
+    """Disarm one or more areas, e.g. "1,2,3"."""
+    area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            console.print(f"[cyan]Disarming areas {area_list}...[/cyan]")
+            await panel.disarm_areas(area_list)
+            console.print(f"[green]Areas {area_list} disarmed successfully[/green]")
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("users")
+@click.pass_context
+def list_users(ctx: click.Context) -> None:
+    """List panel user codes (decrypted)."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            users = await panel.get_user_codes()
+            table = Table(title="Users")
+            table.add_column("Number", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("Code", style="yellow")
+            table.add_column("PIN", style="yellow")
+            for u in users:
+                table.add_row(u.number, u.name or "", u.code, u.pin)
+            console.print(table)
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("profiles")
+@click.pass_context
+def list_profiles(ctx: click.Context) -> None:
+    """List user profiles."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            profiles = await panel.get_user_profiles()
+            table = Table(title="Profiles")
+            table.add_column("Number", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("Output Group", style="yellow")
+            for p in profiles:
+                table.add_row(p.number, p.name or "", p.output_group)
+            console.print(table)
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("sensor-reset")
+@click.pass_context
+def sensor_reset(ctx: click.Context) -> None:
+    """Send sensor reset (!E001)."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            console.print("[cyan]Sending sensor reset...[/cyan]")
+            resp = await panel._connection.send_command(DMPCommand.SENSOR_RESET.value)  # type: ignore[union-attr]
+            console.print(f"[green]Response: {resp}[/green]")
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("listen")
+@click.option("--host", default="0.0.0.0", show_default=True, help="Listen host")
+@click.option("--port", default=5001, show_default=True, type=int, help="Listen port")
+@click.option("--duration", default=0, type=int, help="Seconds to run (0=until Ctrl+C)")
+def listen(host: str, port: int, duration: int) -> None:
+    """Run realtime S3 status server and print parsed events."""
+
+    async def run():
+        server = DMPStatusServer(host=host, port=port)
+
+        def on_event(msg):
+            evt = parse_scsvr_message(msg)
+            console.print(f"[blue]{evt.category}[/blue] {evt.type_code} a={evt.area} z={evt.zone} v={evt.device} {evt.system_text or ''}")
+
+        server.register_callback(on_event)
+        await server.start()
+        if duration > 0:
+            await asyncio.sleep(duration)
+        else:
+            try:
+                while True:
+                    await asyncio.sleep(3600)
+            except KeyboardInterrupt:
+                pass
+        await server.stop()
 
     asyncio.run(run())
 

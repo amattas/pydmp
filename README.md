@@ -9,6 +9,8 @@
 
 PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP alarm panels via TCP/IP. It provides both asynchronous and synchronous APIs with full type hints, comprehensive error handling, and automatic rate limiting.
 
+> Status: Work in progress — under active development. Interfaces and CLI commands may change between releases.
+
 ## Features
 
 - ✅ **Low-level protocol communication** with DMP panels

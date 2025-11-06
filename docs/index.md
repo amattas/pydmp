@@ -4,7 +4,7 @@ PyDMP is a platform‑agnostic Python library to control DMP (Digital Monitoring
 
 - Async and sync APIs
 - High‑level entities (Panel, Areas, Zones, Outputs)
-- Protocol encoder/decoder with rate limiting and single‑connection guard
+- Protocol encoder/decoder with rate limiting and single-connection guard
 - Realtime Serial 3 (S3) status server with callbacks
 - User code decryption and profile parsing
 
@@ -53,7 +53,7 @@ import asyncio
 from pydmp import DMPStatusServer, parse_s3_message
 
 async def run():
-    server = DMPStatusServer(host="0.0.0.0", port=5001)
+    server = DMPStatusServer(host="127.0.0.1", port=5001)
     server.register_callback(lambda msg: print(parse_s3_message(msg)))
     await server.start()
     await asyncio.sleep(3600)

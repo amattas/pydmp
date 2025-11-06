@@ -4,15 +4,15 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .exceptions import DMPInvalidParameterError, DMPZoneError
 from .const.responses import (
-    ZONE_STATUS_NORMAL,
-    ZONE_STATUS_OPEN,
-    ZONE_STATUS_SHORT,
     ZONE_STATUS_BYPASSED,
     ZONE_STATUS_LOW_BATTERY,
     ZONE_STATUS_MISSING,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
 )
+from .exceptions import DMPInvalidParameterError, DMPZoneError
 
 if TYPE_CHECKING:
     from .panel import DMPPanel
@@ -55,9 +55,7 @@ class Zone:
         """Get current state."""
         return self._state
 
-    def update_state(
-        self, state: str, name: str | None = None
-    ) -> None:
+    def update_state(self, state: str, name: str | None = None) -> None:
         """Update zone state from status response.
 
         Args:
@@ -109,16 +107,16 @@ class Zone:
             DMPZoneError: If bypass fails
         """
         try:
-            _LOGGER.info(f"Bypassing zone {self.number}")
+            _LOGGER.info("Bypassing zone %s", self.number)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.BYPASS_ZONE.value, zone=self.formatted_number
             )
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected bypass command for zone {self.number}")
 
-            _LOGGER.info(f"Zone {self.number} bypassed successfully")
+            _LOGGER.info("Zone %s bypassed", self.number)
 
         except Exception as e:
             raise DMPZoneError(f"Failed to bypass zone {self.number}: {e}") from e
@@ -130,16 +128,16 @@ class Zone:
             DMPZoneError: If restore fails
         """
         try:
-            _LOGGER.info(f"Restoring zone {self.number}")
+            _LOGGER.info("Restoring zone %s", self.number)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.RESTORE_ZONE.value, zone=self.formatted_number
             )
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected restore command for zone {self.number}")
 
-            _LOGGER.info(f"Zone {self.number} restored successfully")
+            _LOGGER.info("Zone %s restored", self.number)
 
         except Exception as e:
             raise DMPZoneError(f"Failed to restore zone {self.number}: {e}") from e
@@ -238,4 +236,4 @@ class ZoneSync:
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ZoneSync {self._zone.number}: {self._zone.name} ({self._zone.zone_type}, {self._zone.state})>"
+        return f"<ZoneSync {self._zone.number}: {self._zone.name} ({self._zone.state})>"

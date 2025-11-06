@@ -13,13 +13,13 @@ PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP
 
 ## Features
 
-- ✅ **Low-level protocol communication** with DMP panels
-- ✅ **High-level abstractions** (panels, areas, zones, outputs)
-- ✅ **Both sync and async APIs** with automatic rate limiting
-- ✅ **Full type hints** and comprehensive error handling
-- ✅ **LFSR encryption** for user codes
-- ✅ **CLI tool** for command-line control
-- ✅ **Platform-independent** - not tied to any home automation system
+- Low-level protocol communication with DMP panels
+- High-level abstractions (panels, areas, zones, outputs)
+- Both sync and async APIs with automatic rate limiting
+- Full type hints and comprehensive error handling
+- LFSR encryption for user codes
+- CLI tool for command-line control
+- Platform-independent — not tied to any home automation system
 
 ## Installation
 
@@ -42,6 +42,40 @@ For development with tests:
 ```bash
 pip install -e ".[dev]"
 ```
+
+## CLI Overview
+
+PyDMP includes a CLI for common operations. See the full guide: docs/guide/cli.md
+
+- Global options
+  - `--config, -c PATH` — path to YAML file (default: `config.yaml`)
+  - `--verbose, -v` — verbose logging (DEBUG)
+  - `--quiet, -q` — reduced logging (WARNING)
+  - `--debug, -d` — debug logging (overrides other flags)
+  - `--version, -V` — show version and exit
+  - `--help, -h` — show help
+
+- Common option
+  - `--json, -j` — JSON output where supported (for `listen`, outputs NDJSON)
+
+- Command sections
+  - Panel Control: `arm`, `disarm`, `sensor-reset`
+  - Status & Query: `get-areas`, `get-zones`, `get-outputs`, `get-users`, `get-profiles`, `check-code`
+  - Zones: `set-zone-bypass`, `set-zone-restore`
+  - Outputs: `output`, `set-output`
+  - Realtime: `listen`
+
+## Development: Formatting with pre-commit
+
+This repository uses Black for code formatting. To avoid formatting failures in CI, install and enable pre‑commit hooks:
+
+```bash
+pip install -e ".[dev]"           # installs black and pre-commit
+pre-commit install                 # installs the git hook
+pre-commit run -a                  # optional: format all files once
+```
+
+Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-version = py310`).
 
 ## Quick Start
 
@@ -245,13 +279,16 @@ pydmp listen --json --duration 10 | jq
 
 ```
 pydmp/
-├── connection.py         # Async TCP connection
-├── connection_sync.py    # Sync TCP connection
+├── transport.py         # Async TCP transport (raw bytes I/O)
+├── transport_sync.py    # Sync wrapper (transport + protocol)
 ├── protocol.py          # DMP protocol encoder/decoder
 ├── crypto.py            # LFSR encryption
-├── queue.py             # Command queue with rate limiting
 ├── panel.py             # Async panel controller
 ├── panel_sync.py        # Sync panel controller
+├── status_server.py     # Serial 3 (S3) realtime listener
+├── status_parser.py     # Parse S3 Z-frames to typed events
+├── user.py              # User code model
+├── profile.py           # User profile model
 ├── area.py              # Area abstraction
 ├── zone.py              # Zone abstraction
 ├── output.py            # Output abstraction

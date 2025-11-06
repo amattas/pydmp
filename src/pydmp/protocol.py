@@ -11,19 +11,21 @@ from .const.protocol import (
     ZONE_DELIMITER,
 )
 from .const.responses import (
-    DMPResponse,
     AREA_STATUS_ARMED_AWAY,
-    AREA_STATUS_DISARMED,
     AREA_STATUS_ARMED_STAY,
-    ZONE_STATUS_NORMAL,
-    ZONE_STATUS_OPEN,
-    ZONE_STATUS_SHORT,
+    AREA_STATUS_DISARMED,
     ZONE_STATUS_BYPASSED,
     ZONE_STATUS_LOW_BATTERY,
     ZONE_STATUS_MISSING,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
+    DMPResponse,
 )
 from .crypto import DMPCrypto
 from .exceptions import DMPInvalidResponseError, DMPProtocolError
+from .profile import UserProfile
+from .user import UserCode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,41 +71,10 @@ class OutputsResponse:
 
 
 @dataclass
-class UserCode:
-    """Decrypted user code record."""
-
-    number: str
-    code: str
-    pin: str
-    profiles: tuple[str, str, str, str]
-    # Historically parsed fields; see start_date/end_date for clarified meaning
-    temp_date: str  # legacy 6-digit field; same as end_date (DDMMYY)
-    exp_date: str   # legacy 4-char field; often '----' on observed panels
-    name: str
-    # Clarified/additional fields parsed from the trailing plaintext segment
-    start_date: str | None = None   # 6 digits DDMMYY; start of access
-    end_date: str | None = None     # 6 digits DDMMYY; end of access
-    flags: str | None = None        # 3 chars (e.g., 'YNN')
-
-
-@dataclass
 class UserCodesResponse:
     users: list[UserCode]
     has_more: bool
     last_number: str | None
-
-
-@dataclass
-class UserProfile:
-    """User profile record (not encrypted)."""
-
-    number: str
-    areas_mask: str
-    access_areas_mask: str
-    output_group: str
-    menu_options: str
-    rearm_delay: str
-    name: str
 
 
 @dataclass
@@ -160,7 +131,9 @@ class DMPProtocol:
             formatted_command = command.format(**kwargs)
 
             # Build full message: @[ACCOUNT][COMMAND]\r
-            message = f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
+            message = (
+                f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
+            )
 
             _LOGGER.debug(f"Encoded command: {message.strip()}")
             return message.encode()
@@ -168,7 +141,9 @@ class DMPProtocol:
         except (KeyError, ValueError) as e:
             raise DMPProtocolError(f"Failed to encode command: {e}") from e
 
-    def decode_response(self, response: bytes) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
+    def decode_response(
+        self, response: bytes
+    ) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
         """Decode response from panel.
 
         Args:
@@ -216,13 +191,17 @@ class DMPProtocol:
                 ack_pos = -1
                 ack_nak_char = ""
                 for i in range(6, min(len(line), 12)):
-                    if line[i:i+1] in (DMPResponse.ACK.value, DMPResponse.NAK.value):
+                    if line[i : i + 1] in (DMPResponse.ACK.value, DMPResponse.NAK.value):
                         ack_pos = i
-                        ack_nak_char = line[i:i+1]
+                        ack_nak_char = line[i : i + 1]
                         break
 
                 # Command starts right after ACK/NAK; may be '!X' or short 'X'
-                cmd_with_prefix = line[ack_pos+1:ack_pos+3] if ack_pos != -1 and len(line) > ack_pos+2 else ""
+                cmd_with_prefix = (
+                    line[ack_pos + 1 : ack_pos + 3]
+                    if ack_pos != -1 and len(line) > ack_pos + 2
+                    else ""
+                )
 
                 # Authentication/disconnect response (!V)
                 if cmd_with_prefix == "!V":
@@ -232,9 +211,12 @@ class DMPProtocol:
                 # Some panels return '+!X' style, others '+X' (or '-XU' on errors).
                 # Handle both forms.
                 if (
-                    (len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]) or
-                    (len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"])  # short form
-                ):
+                    len(cmd_with_prefix) == 2
+                    and cmd_with_prefix[0] == "!"
+                    and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]
+                ) or (
+                    len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"]
+                ):  # short form
                     if ack_nak_char == DMPResponse.ACK.value:
                         return "ACK"
                     elif ack_nak_char == DMPResponse.NAK.value:
@@ -242,7 +224,7 @@ class DMPProtocol:
                         detail = ""
                         # Prefer the 2-char window after ACK/NAK
                         if len(line) >= ack_pos + 3:
-                            short = line[ack_pos+1:ack_pos+3]
+                            short = line[ack_pos + 1 : ack_pos + 3]
                             if short[0:1] in ["C", "O", "X", "Y", "Q"]:
                                 detail = short
                         # Fallback to '!X' form (take letter only)
@@ -341,9 +323,7 @@ class DMPProtocol:
                 else:
                     state = "unknown"
 
-                response.areas[area_num] = AreaStatus(
-                    number=area_num, state=state, name=name
-                )
+                response.areas[area_num] = AreaStatus(number=area_num, state=state, name=name)
 
             elif item_type == "L":
                 # Zone: L[XXX][State][Name]
@@ -411,7 +391,8 @@ class DMPProtocol:
             p2 = plain[25:28]
             p3 = plain[28:31]
             p4 = plain[31:34]
-            # End date (DDMMYY) appears in decrypted block; panel also includes a start date in the trailing plaintext
+            # End date (DDMMYY) appears in decrypted block.
+            # Panel also includes a start date in the trailing plaintext.
             end_date_ddmmyy = plain[34:40]
             legacy_exp = plain[40:44]
             tail = plain[44:]
@@ -423,7 +404,12 @@ class DMPProtocol:
                 # Only treat as such if it matches pattern [Y/N]{3}[0-9]{6}
                 maybe_flags = tail[0:3] if len(tail) >= 3 else ""
                 maybe_date = tail[3:9] if len(tail) >= 9 else ""
-                if len(maybe_flags) == 3 and all(c in "YN" for c in maybe_flags) and len(maybe_date) == 6 and maybe_date.isdigit():
+                if (
+                    len(maybe_flags) == 3
+                    and all(c in "YN" for c in maybe_flags)
+                    and len(maybe_date) == 6
+                    and maybe_date.isdigit()
+                ):
                     flags = maybe_flags
                     start_date_ddmmyy = maybe_date
                     name = tail[9:]
@@ -444,6 +430,8 @@ class DMPProtocol:
                     start_date=start_date_ddmmyy,
                     end_date=end_date_ddmmyy,
                     flags=flags,
+                    active=(flags[0] == "Y") if flags else None,
+                    temporary=(flags[2] == "Y") if flags else None,
                     name=name,
                 )
             )

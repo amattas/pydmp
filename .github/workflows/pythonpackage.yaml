@@ -33,6 +33,7 @@ jobs:
 
       - name: Format check with Black
         run: |
+          black --version
           black --check --diff src tests
 
       - name: Lint with Ruff

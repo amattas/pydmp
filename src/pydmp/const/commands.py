@@ -24,11 +24,11 @@ class DMPCommand(str, Enum):
 
     # Status queries
     GET_AREA_STATUS = "?WA{area}"  # Format: ?WA01 for area 1, ?WA for continuation
-    GET_AREA_STATUS_CONT = "?WA"    # Continuation (no params)
+    GET_AREA_STATUS_CONT = "?WA"  # Continuation (no params)
     GET_OUTPUT_STATUS = "?WQ{output}"  # Format: ?WQ001 for output 1, ?WQ for continuation
-    GET_OUTPUT_STATUS_CONT = "?WQ"     # Continuation (no params)
+    GET_OUTPUT_STATUS_CONT = "?WQ"  # Continuation (no params)
     GET_ZONE_STATUS = "?WB**Y{zone}"  # Format: ?WB**Y001 for initial query
-    GET_ZONE_STATUS_CONT = "?WB"      # Continuation (no params)
+    GET_ZONE_STATUS_CONT = "?WB"  # Continuation (no params)
 
     # Area control
     # Optional third flag {instant} ("Y"/"N") may be appended to remove entry/exit delays.

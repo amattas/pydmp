@@ -5,19 +5,28 @@ import logging
 from typing import Any
 
 from .area import Area
-from .connection import DMPConnection
 from .const.commands import DMPCommand
+from .const.events import DMPEventType
 from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
+from .protocol import (
+    DMPProtocol,
+    OutputsResponse,
+    StatusResponse,
+    UserCode,
+    UserCodesResponse,
+    UserProfile,
+    UserProfilesResponse,
+)
 from .status_parser import parse_s3_message
-from .const.events import DMPEventType
-from .protocol import StatusResponse
-from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
-from .protocol import OutputsResponse
+from .transport import DMPTransport
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
+
+# Backward-compat alias for tests expecting DMPConnection symbol in this module
+DMPConnection = DMPTransport
 
 
 # Active connection guard: one connection per (host, port, account)
@@ -37,7 +46,9 @@ class DMPPanel:
         self.port = port
         self.timeout = timeout
 
-        self._connection: DMPConnection | None = None
+        self._connection: DMPTransport | None = None
+        self._protocol: DMPProtocol | None = None
+        self._active_key: tuple[str, int, str] | None = None
         self._areas: dict[int, Area] = {}
         self._zones: dict[int, Zone] = {}
         self._outputs: dict[int, Output] = {}
@@ -86,11 +97,19 @@ class DMPPanel:
                 "Only one connection is allowed."
             )
 
-        self._connection = DMPConnection(host, account, remote_key, self.port, self.timeout)
+        # Initialize transport and protocol
+        self._connection = DMPTransport(host, self.port, self.timeout)
+        self._protocol = DMPProtocol(account, remote_key)
         await self._connection.connect()
+        # Authenticate via protocol
+        _LOGGER.info("Authenticating panel session")
+        auth_cmd = self._protocol.encode_command(DMPCommand.AUTH.value, key=remote_key)
+        await self._connection.send_and_receive(auth_cmd)
+        _LOGGER.info("Authentication successful")
 
         # Register active connection
         _ACTIVE_CONNECTIONS.add(key)
+        self._active_key = key
 
         _LOGGER.info("Panel connected")
 
@@ -102,16 +121,23 @@ class DMPPanel:
         _LOGGER.info("Disconnecting from panel")
         # Stop keep-alive loop if running
         await self.stop_keepalive()
-        # Cleanup active connection guard
+        # Send panel disconnect command if possible
         try:
-            if self._connection:
-                key = (self._connection.host, self._connection.port, self._connection.account)
-                _ACTIVE_CONNECTIONS.discard(key)
-        except Exception:
-            pass
+            if self._connection and self._protocol:
+                _LOGGER.debug("Sending panel disconnect command")
+                disc = self._protocol.encode_command(DMPCommand.DISCONNECT.value)
+                await self._connection.send_and_receive(disc)
+        except Exception as e:
+            _LOGGER.debug("Panel disconnect send failed: %s", e)
+
+        # Cleanup active connection guard
+        if self._active_key is not None:
+            _ACTIVE_CONNECTIONS.discard(self._active_key)
+            self._active_key = None
 
         await self._connection.disconnect()
         self._connection = None
+        self._protocol = None
 
     async def update_status(self) -> None:
         """Update status of all areas and zones from panel.
@@ -129,13 +155,11 @@ class DMPPanel:
         # Subsequent: ?WB (continuation)
         commands: list[tuple[str, dict[str, Any]]] = [
             (DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"})
-        ] + [
-            (DMPCommand.GET_ZONE_STATUS_CONT.value, {})
-        ] * 10
+        ] + [(DMPCommand.GET_ZONE_STATUS_CONT.value, {})] * 10
 
         responses: list[StatusResponse] = []
         for cmd, params in commands:
-            response = await self._connection.send_command(cmd, **params)
+            response = await self._send_command(cmd, **params)
             if isinstance(response, StatusResponse):
                 responses.append(response)
 
@@ -151,9 +175,7 @@ class DMPPanel:
         for area_num_str, area_status in all_areas.items():
             area_num = int(area_num_str)
             if area_num not in self._areas:
-                self._areas[area_num] = Area(
-                    self, area_num, area_status.name, area_status.state
-                )
+                self._areas[area_num] = Area(self, area_num, area_status.name, area_status.state)
             else:
                 self._areas[area_num].update_state(area_status.state, area_status.name)
 
@@ -167,9 +189,7 @@ class DMPPanel:
             else:
                 self._zones[zone_num].update_state(zone_status.state, zone_status.name)
 
-        _LOGGER.info(
-            f"Status updated: {len(self._areas)} areas, {len(self._zones)} zones"
-        )
+        _LOGGER.info(f"Status updated: {len(self._areas)} areas, {len(self._zones)} zones")
 
     async def get_areas(self) -> list[Area]:
         """Get all areas.
@@ -303,13 +323,11 @@ class DMPPanel:
 
         commands: list[tuple[str, dict[str, Any]]] = [
             (DMPCommand.GET_OUTPUT_STATUS.value, {"output": "001"})
-        ] + [
-            (DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})
-        ] * 5
+        ] + [(DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})] * 5
 
         outputs: dict[str, Any] = {}
         for cmd, params in commands:
-            resp = await self._connection.send_command(cmd, **params)
+            resp = await self._send_command(cmd, **params)
             if isinstance(resp, OutputsResponse):
                 outputs.update(resp.outputs)
 
@@ -334,7 +352,9 @@ class DMPPanel:
             # Map mode to the Output state semantics used in Output
             mode = out.mode
             if mode == "O":
-                self._outputs[num]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
+                self._outputs[num]._state = (
+                    DMPEventType.REAL_TIME_STATUS
+                )  # will set properly in next block
             # Use Output.update_state mapping via set_mode semantics
             # Set internal state directly based on mode
             if mode == "O":
@@ -354,7 +374,7 @@ class DMPPanel:
         """Send sensor reset command to the panel (!E001)."""
         if not self.is_connected or not self._connection:
             raise DMPConnectionError("Not connected to panel")
-        await self._connection.send_command(DMPCommand.SENSOR_RESET.value)
+        await self._send_command(DMPCommand.SENSOR_RESET.value)
 
     async def get_user_codes(self) -> list[UserCode]:
         """Retrieve all user codes from the panel (decrypting entries)."""
@@ -367,9 +387,7 @@ class DMPPanel:
         pages = 0
         while pages < max_pages:
             pages += 1
-            resp = await self._connection.send_command(
-                DMPCommand.GET_USER_CODES.value, user=start
-            )
+            resp = await self._send_command(DMPCommand.GET_USER_CODES.value, user=start)
             if not isinstance(resp, UserCodesResponse):
                 break
 
@@ -402,9 +420,7 @@ class DMPPanel:
         pages = 0
         while pages < max_pages:
             pages += 1
-            resp = await self._connection.send_command(
-                DMPCommand.GET_USER_PROFILES.value, profile=start
-            )
+            resp = await self._send_command(DMPCommand.GET_USER_PROFILES.value, profile=start)
             if not isinstance(resp, UserProfilesResponse):
                 break
 
@@ -438,7 +454,9 @@ class DMPPanel:
                 if pin:
                     self._user_cache_by_pin[pin] = u
 
-    async def check_code(self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True) -> UserCode | None:
+    async def check_code(
+        self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True
+    ) -> UserCode | None:
         """Check if a user code (or PIN) exists in the panel.
 
         Args:
@@ -506,8 +524,8 @@ class DMPPanel:
             return
         try:
             server.remove_callback(cb)
-        except Exception:
-            pass
+        except Exception as e:
+            _LOGGER.debug("Failed to remove status callback: %s", e)
 
     async def start_keepalive(self, interval: float = 10.0) -> None:
         """Start periodic keep-alive (!H) while connected.
@@ -526,7 +544,9 @@ class DMPPanel:
             try:
                 while self.is_connected and self._connection:
                     try:
-                        await self._connection.keep_alive()
+                        if self._protocol and self._connection:
+                            ka = self._protocol.encode_command(DMPCommand.KEEP_ALIVE.value)
+                            await self._connection.send_and_receive(ka)
                     except Exception as e:
                         _LOGGER.debug("Keep-alive send failed: %s", e)
                     await asyncio.sleep(self._keepalive_interval)
@@ -545,9 +565,9 @@ class DMPPanel:
             try:
                 await task
             except asyncio.CancelledError:
-                pass
-            except Exception:
-                pass
+                _LOGGER.debug("Keep-alive task cancelled")
+            except Exception as e:
+                _LOGGER.debug("Keep-alive stop error: %s", e)
 
     async def arm_areas(
         self,
@@ -574,7 +594,7 @@ class DMPPanel:
         force = "Y" if force_arm else "N"
         instant_flag = "Y" if instant is True else ("N" if instant is False else "")
 
-        resp = await self._connection.send_command(
+        resp = await self._send_command(
             DMPCommand.ARM.value,
             area=areas_concat,
             bypass=bypass,
@@ -595,7 +615,7 @@ class DMPPanel:
                 raise ValueError(f"Invalid area number: {n}")
 
         areas_concat = "".join(f"{int(n):02d}" for n in area_numbers)
-        resp = await self._connection.send_command(DMPCommand.DISARM.value, area=areas_concat)
+        resp = await self._send_command(DMPCommand.DISARM.value, area=areas_concat)
         if resp == "NAK":
             raise DMPConnectionError("Panel rejected disarm command")
 
@@ -612,3 +632,17 @@ class DMPPanel:
         """String representation."""
         status = "connected" if self.is_connected else "disconnected"
         return f"<DMPPanel {status}, {len(self._areas)} areas, {len(self._zones)} zones>"
+
+    async def _send_command(self, command: str, **kwargs: Any) -> Any:
+        """Encode, send and decode a protocol command via transport."""
+        if not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+        # Backward-compat shim for tests or legacy stubs providing send_command
+        if hasattr(self._connection, "send_command"):
+            send_cmd = getattr(self._connection, "send_command")
+            return await send_cmd(command, **kwargs)
+        if not self._protocol:
+            raise DMPConnectionError("Not connected to panel")
+        encoded = self._protocol.encode_command(command, **kwargs)
+        response = await self._connection.send_and_receive(encoded)
+        return self._protocol.decode_response(response)

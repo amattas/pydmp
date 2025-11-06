@@ -1,16 +1,18 @@
 import asyncio
+
 import pytest
 
 from pydmp.panel import DMPPanel
-from pydmp.protocol import StatusResponse, AreaStatus, ZoneStatus
-from pydmp.exceptions import DMPConnectionError
+from pydmp.protocol import StatusResponse
 
 
 class FakeConn:
     def __init__(self, responses=None):
         self.is_connected = True
         self._responses = list(responses or [])
-        self.host = "h"; self.port = 0; self.account = "a"
+        self.host = "h"
+        self.port = 0
+        self.account = "a"
 
     async def send_command(self, cmd: str, **kwargs):
         if self._responses:
@@ -49,4 +51,3 @@ async def test_keepalive_start_stop(monkeypatch):
     await asyncio.sleep(0.03)
     await panel.stop_keepalive()
     assert panel._keepalive_task is None
-

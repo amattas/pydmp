@@ -1,9 +1,8 @@
-import asyncio
 import pytest
 
-from pydmp.status_server import DMPStatusServer
+from pydmp.const import DMPArmingEvent, DMPEventType, DMPRealTimeStatusEvent
 from pydmp.status_parser import parse_s3_message
-from pydmp.const import DMPEventType, DMPArmingEvent, DMPRealTimeStatusEvent
+from pydmp.status_server import DMPStatusServer
 
 
 class FakeWriter:
@@ -33,7 +32,7 @@ async def test_process_line_sends_ack_and_dispatches():
 
     # Build a simple Zq (arming status) line with OP (disarmed)
     account = b"    1"  # 5 chars (4 spaces + '1')
-    z_body = "Zq\\060\\t \"OP\\a 01\"AREA ONE\\"
+    z_body = 'Zq\\060\\t "OP\\a 01"AREA ONE\\'
     line = b"\x02" + account + z_body.encode("utf-8")
 
     received = {}
@@ -65,7 +64,7 @@ def test_parse_device_status():
         't "ON',
         'v 002"OUT2',
     ]
-    msg = S3Message(account="00001", definition="Zc", type_code="ON", fields=fields, raw="" )
+    msg = S3Message(account="00001", definition="Zc", type_code="ON", fields=fields, raw="")
     evt = parse_s3_message(msg)
     assert evt.category == DMPEventType.REAL_TIME_STATUS
     assert isinstance(evt.code_enum, DMPRealTimeStatusEvent)

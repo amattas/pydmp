@@ -1,4 +1,5 @@
 import asyncio
+
 import pytest
 
 from pydmp.status_server import DMPStatusServer
@@ -13,13 +14,13 @@ async def test_status_server_start_stop():
 
 
 def test_extract_account_helper():
-    from pydmp.status_server import DMPStatusServer as S
+    from pydmp.status_server import DMPStatusServer
 
     good = b"\x02    1Zq\\...\r"
-    assert S._extract_account(good) == "    1"
+    assert DMPStatusServer._extract_account(good) == "    1"
 
     bad = b"NoSTXHere"
-    assert S._extract_account(bad) is None
+    assert DMPStatusServer._extract_account(bad) is None
 
 
 class FakeReader:
@@ -39,10 +40,21 @@ async def test_handle_client_multiple_lines():
     srv.register_callback(lambda m: got.append(m))
 
     account = b"    1"
-    line1 = b"\x02" + account + b"Za\\060\\t \"BU\\z 001\"Z1\\\r"
-    line2 = b"\x02" + account + b"Zq\\060\\t \"OP\\a 01\"AREA\\\r"
+    line1 = b"\x02" + account + b'Za\\060\\t "BU\\z 001"Z1\\\r'
+    line2 = b"\x02" + account + b'Zq\\060\\t "OP\\a 01"AREA\\\r'
     reader = FakeReader([line1 + line2, b""])  # both in one chunk
-    writer = type("W", (), {"buffer": bytearray(), "write": lambda self, d: self.buffer.extend(d), "drain": (lambda self: asyncio.sleep(0)), "get_extra_info": lambda self, _: ("127.0.0.1", 0), "close": lambda self: None, "wait_closed": (lambda self: asyncio.sleep(0))})()
+    writer = type(
+        "W",
+        (),
+        {
+            "buffer": bytearray(),
+            "write": lambda self, d: self.buffer.extend(d),
+            "drain": (lambda self: asyncio.sleep(0)),
+            "get_extra_info": lambda self, _: ("127.0.0.1", 0),
+            "close": lambda self: None,
+            "wait_closed": (lambda self: asyncio.sleep(0)),
+        },
+    )()
 
     await srv._handle_client(reader, writer)
 

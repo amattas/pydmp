@@ -1,12 +1,10 @@
-import asyncio
 import pytest
 
 from pydmp.area import Area
-from pydmp.zone import Zone
+from pydmp.const.events import DMPRealTimeStatusEvent
 from pydmp.output import Output
 from pydmp.panel import DMPPanel
-from pydmp.exceptions import DMPAreaError, DMPZoneError, DMPOutputError, DMPConnectionError
-from pydmp.const.events import DMPRealTimeStatusEvent
+from pydmp.zone import Zone
 
 
 class FakeConnection:
@@ -14,7 +12,9 @@ class FakeConnection:
         self.is_connected = True
         self.calls = []
         self.response_map = response_map or {}
-        self.host = "h"; self.port = 0; self.account = "a"
+        self.host = "h"
+        self.port = 0
+        self.account = "a"
 
     async def send_command(self, cmd: str, **kwargs):
         self.calls.append((cmd, kwargs))

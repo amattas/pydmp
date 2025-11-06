@@ -1,14 +1,14 @@
+from pydmp.const import (
+    DMPEquipmentEvent,
+    DMPEventType,
+    DMPHolidayEvent,
+    DMPQualifierEvent,
+    DMPScheduleEvent,
+    DMPUserCodeEvent,
+    DMPZoneEvent,
+)
 from pydmp.status_parser import parse_s3_message
 from pydmp.status_server import S3Message
-from pydmp.const import (
-    DMPEventType,
-    DMPZoneEvent,
-    DMPUserCodeEvent,
-    DMPScheduleEvent,
-    DMPHolidayEvent,
-    DMPEquipmentEvent,
-    DMPQualifierEvent,
-)
 
 
 def _msg(defn: str, type_code: str | None, fields: list[str]):
@@ -47,12 +47,12 @@ def test_parse_schedules_holidays_equipment_and_qualifier():
 
     mq = _msg("Za", "AC", ["Za", 't "AC'])  # Qualifier fallback
     evtq = parse_s3_message(mq)
-    assert isinstance(evtq.code_enum, (DMPQualifierEvent, type(None)))
+    assert isinstance(evtq.code_enum, DMPQualifierEvent | type(None))
 
 
 def test_parse_system_message():
-    ms = _msg("Zs", None, ["Zs", 's 072'])
+    ms = _msg("Zs", None, ["Zs", "s 072"])
     evts = parse_s3_message(ms)
     assert evts.category == DMPEventType.SYSTEM_MESSAGE
     assert evts.system_code == "072"
-    assert isinstance(evts.system_text, (str, type(None)))
+    assert isinstance(evts.system_text, str | type(None))

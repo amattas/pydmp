@@ -1,11 +1,11 @@
-"""Async SCS-VR realtime status server for DMP panels.
+"""Async Serial 3 (S3) realtime status server for DMP panels.
 
 This server listens for Serial 3 (Z-frames) pushed by the panel and
 invokes registered callbacks with parsed messages.
 
 Notes:
-- You must configure your DMP panel to connect to this machine/port
-  for realtime status. Only one connection is expected.
+- Configure your DMP panel to connect to this machine/port for realtime
+  S3 status (Z-frames). Only one connection is expected.
 - The server sends an ACK per message: STX + [5-byte account] + 0x06 + CR.
 """
 
@@ -14,8 +14,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Iterable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ Callback = Callable[[S3Message], Awaitable[None] | None]
 class DMPStatusServer:
     """Async TCP server for DMP Serial 3 realtime status (Z-frames)."""
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 5001):
+    def __init__(self, host: str = "127.0.0.1", port: int = 5001):
         self._host = host
         self._port = port
         self._server: asyncio.base_events.Server | None = None
@@ -52,10 +52,9 @@ class DMPStatusServer:
     async def start(self) -> None:
         if self._server is not None:
             return
-        loop = asyncio.get_running_loop()
         self._server = await asyncio.start_server(self._handle_client, self._host, self._port)
         sockets = ", ".join(str(s.getsockname()) for s in (self._server.sockets or []))
-        _LOGGER.info("DMP status server listening on %s", sockets)
+        _LOGGER.info("S3 status server listening on %s", sockets)
         # Do not await serve_forever; let caller manage lifecycle
 
     async def stop(self) -> None:
@@ -63,13 +62,15 @@ class DMPStatusServer:
         self._server = None
         if server is None:
             return
-        _LOGGER.info("Stopping DMP status server")
+        _LOGGER.info("Stopping S3 status server")
         server.close()
         await server.wait_closed()
 
-    async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def _handle_client(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         peer = writer.get_extra_info("peername")
-        _LOGGER.info("Status connection from %s", peer)
+        _LOGGER.info("S3 status connection from %s", peer)
         buf = b""
         try:
             while True:
@@ -90,9 +91,9 @@ class DMPStatusServer:
             try:
                 writer.close()
                 await writer.wait_closed()
-            except Exception:
-                pass
-            _LOGGER.info("Status connection closed: %s", peer)
+            except Exception as e:
+                _LOGGER.debug("Error closing status connection: %s", e)
+            _LOGGER.info("S3 status connection closed: %s", peer)
 
     async def _process_line(self, line: bytes, writer: asyncio.StreamWriter) -> None:
         """Parse one ASCII line and send ACK if possible."""

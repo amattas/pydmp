@@ -4,12 +4,12 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .exceptions import DMPAreaError, DMPInvalidParameterError
 from .const.responses import (
     AREA_STATUS_ARMED_AWAY,
     AREA_STATUS_ARMED_STAY,
     AREA_STATUS_DISARMED,
 )
+from .exceptions import DMPAreaError, DMPInvalidParameterError
 
 if TYPE_CHECKING:
     from .panel import DMPPanel
@@ -94,13 +94,17 @@ class Area:
         """
         try:
             _LOGGER.info(
-                f"Arming area {self.number} (bypass={bypass_faulted}, force={force_arm})"
+                "Arming area %s (bypass=%s, force=%s, instant=%s)",
+                self.number,
+                bypass_faulted,
+                force_arm,
+                instant,
             )
             bypass = "Y" if bypass_faulted else "N"
             force = "Y" if force_arm else "N"
             instant_flag = "Y" if instant is True else ("N" if instant is False else "")
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.ARM.value,
                 area=f"{self.number:02d}",
                 bypass=bypass,
@@ -112,7 +116,7 @@ class Area:
                 raise DMPAreaError(f"Panel rejected arm command for area {self.number}")
 
             self._state = "arming"
-            _LOGGER.info(f"Area {self.number} arm command sent successfully")
+            _LOGGER.info("Area %s arm command sent", self.number)
 
         except Exception as e:
             raise DMPAreaError(f"Failed to arm area {self.number}: {e}") from e
@@ -127,9 +131,9 @@ class Area:
             DMPAreaError: If disarm fails
         """
         try:
-            _LOGGER.info(f"Disarming area {self.number}")
+            _LOGGER.info("Disarming area %s", self.number)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.DISARM.value,
                 area=f"{self.number:02d}",
             )
@@ -138,7 +142,7 @@ class Area:
                 raise DMPAreaError(f"Panel rejected disarm command for area {self.number}")
 
             self._state = "disarming"
-            _LOGGER.info(f"Area {self.number} disarm command sent successfully")
+            _LOGGER.info("Area %s disarm command sent", self.number)
 
         except Exception as e:
             raise DMPAreaError(f"Failed to disarm area {self.number}: {e}") from e

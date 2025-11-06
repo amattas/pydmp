@@ -1,9 +1,9 @@
-from pydmp.panel import DMPPanel
 from pydmp.area import Area
-from pydmp.zone import Zone
 from pydmp.output import Output
+from pydmp.panel import DMPPanel
 from pydmp.status_parser import parse_s3_message
 from pydmp.status_server import S3Message
+from pydmp.zone import Zone
 
 
 def test_entity_reprs():

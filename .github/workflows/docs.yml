@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Need write for mike to push to gh-pages
+  contents: write  # allow mike to push to gh-pages
 
 concurrency:
   group: "pages"
@@ -75,7 +75,7 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy docs with mike
+      - name: Deploy docs with mike (push to gh-pages)
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ALIAS="${{ steps.version.outputs.alias }}"
@@ -87,9 +87,8 @@ jobs:
             mike deploy --push "$VERSION"
           fi
 
-          # Set default version if needed
           if [[ "${{ steps.version.outputs.set_default }}" == "true" ]]; then
             mike set-default --push latest
           fi
 
-          echo "Deployed docs for version: $VERSION (alias: $ALIAS)"
+          echo "Deployed docs for version: $VERSION (alias: ${ALIAS:-none})"

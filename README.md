@@ -3,10 +3,11 @@
 **Python library for controlling DMP (Digital Monitoring Products) alarm systems**
 
 [![Tests](https://img.shields.io/badge/tests-passing-green.svg)](https://github.com/amattas/pydmp/actions)
+[![codecov](https://codecov.io/gh/amattas/pydmp/branch/main/graph/badge.svg)](https://codecov.io/gh/amattas/pydmp)
 [![Docs Workflow](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
 [![Pages](https://img.shields.io/badge/docs-GitHub%20Pages-0A7ACC)](https://amattas.github.io/pydmp/)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP alarm panels via TCP/IP. It provides both asynchronous and synchronous APIs with full type hints, comprehensive error handling, and automatic rate limiting.
 
@@ -21,6 +22,17 @@ PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP
 - LFSR encryption for user codes
 - CLI tool for command-line control
 - Platform-independent — not tied to any home automation system
+
+## Panel Compatibility
+
+PyDMP has been fully tested with the **DMP XR150** panel. Other DMP panels using the same TCP/IP protocol should work, but have not been extensively tested.
+
+**For detailed compatibility information**, see the [Panel Compatibility](https://amattas.github.io/pydmp/compatibility/) documentation, which includes:
+- Tested panel models and firmware versions
+- Feature compatibility matrices
+- Network topology compatibility
+- Community compatibility reports
+- How to report compatibility with your panel
 
 ## Installation
 
@@ -409,7 +421,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 ## Future Enhancements
 

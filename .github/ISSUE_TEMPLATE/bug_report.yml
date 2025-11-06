@@ -1,0 +1,195 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Tell us what happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: Tell us what should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Install pydmp with '...'
+        2. Run command '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code Sample
+      description: Minimal code sample that reproduces the issue
+      placeholder: |
+        ```python
+        import asyncio
+        from pydmp import DMPPanel
+
+        async def main():
+            panel = DMPPanel()
+            # Your code here
+        ```
+      render: python
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Relevant error messages, stack traces, or debug output
+      placeholder: Paste error logs here
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: panel-model
+    attributes:
+      label: DMP Panel Model
+      description: What DMP panel model are you using?
+      options:
+        - XR150
+        - XR550
+        - XR2500
+        - XT30
+        - XT50
+        - Other (please specify below)
+    validations:
+      required: true
+
+  - type: input
+    id: panel-model-other
+    attributes:
+      label: Panel Model (if Other)
+      description: Please specify your panel model if not listed above
+      placeholder: e.g., XR100
+
+  - type: input
+    id: panel-firmware
+    attributes:
+      label: Panel Firmware Version
+      description: The software/firmware version running on your DMP panel
+      placeholder: e.g., 2.45
+    validations:
+      required: false
+
+  - type: input
+    id: panel-hardware
+    attributes:
+      label: Panel Hardware Revision
+      description: The hardware revision of your panel (if known)
+      placeholder: e.g., Rev 3.0
+    validations:
+      required: false
+
+  - type: dropdown
+    id: connection-type
+    attributes:
+      label: Connection Type
+      description: How is the panel connected to your network?
+      options:
+        - Direct Ethernet
+        - WiFi
+        - Serial to Ethernet converter
+        - VPN/Remote
+        - Other (please specify below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: network-topology
+    attributes:
+      label: Network Topology
+      description: Describe your network setup (optional but helpful for connection issues)
+      placeholder: |
+        e.g., Panel -> Switch -> Router -> Python script on same LAN
+        or: Panel -> VPN -> Remote server running pydmp
+    validations:
+      required: false
+
+  - type: input
+    id: pydmp-version
+    attributes:
+      label: PyDMP Version
+      description: What version of pydmp are you using?
+      placeholder: e.g., 0.1.0 or output of 'pip show pydmp'
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: What version of Python are you using?
+      placeholder: e.g., 3.12.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Docker/Container
+        - Home Assistant OS
+        - Other (please specify below)
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: Version or distribution details
+      placeholder: e.g., Ubuntu 22.04, macOS 14.1, Windows 11
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or information that might be helpful
+      placeholder: Add any other context about the problem here
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided all relevant information above
+          required: true
+        - label: I am using a supported Python version (3.10+)
+          required: true

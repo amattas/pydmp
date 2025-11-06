@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://amattas.github.io/pydmp/
+    about: Check the documentation for guides and API reference
+  - name: Discussions
+    url: https://github.com/amattas/pydmp/discussions
+    about: Ask questions and discuss features with the community
+  - name: DMP Panel Information
+    url: https://www.dmp.com/
+    about: Official DMP website for panel specifications and manuals

@@ -24,6 +24,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Panel Compatibility: compatibility.md
   - Guide:
       - Getting Started: guide/getting-started.md
       - CLI: guide/cli.md
@@ -32,6 +33,13 @@ nav:
       - Migration: guide/migration.md
   - API Reference:
       - Panel: api/panel.md
-      - Entities: api/entities.md
-      - Protocol & Crypto: api/protocol.md
+      - Entities:
+          - Area: api/entities/area.md
+          - Zone: api/entities/zone.md
+          - Output: api/entities/output.md
+          - User: api/entities/user.md
+          - Profile: api/entities/profile.md
+      - Protocol:
+          - Protocol: api/protocol.md
+          - Encryption: api/protocol/encryption.md
       - Realtime Server: api/status.md

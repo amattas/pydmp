@@ -11,7 +11,7 @@ Some user data returned by the panel (e.g., `?P=` user codes) is obfuscated with
   - `system_seed = XOR(int(remote_key[0:2],16), int(remote_key[6:8],16))`
   - Final seed = base_seed XOR system_seed
 
-PyDMP uses remote‑link mixing when a remote key is supplied and hex‑parsable; otherwise, it falls back to Entrée mode.
+PyDMP uses remote-link mixing when a remote key is supplied and hex-parsable; otherwise, it falls back to Entrée mode.
 
 ## Fetching Users & Profiles
 
@@ -26,19 +26,19 @@ profiles = await panel.get_user_profiles()  # Parses *U replies into UserProfile
 
 After decryption, each user record exposes:
 
-- `number` (str): 4‑digit user number
+- `number` (str): 4-digit user number
 - `code` (str): up to 12 chars ("F" padding removed)
 - `pin` (str): up to 6 chars ("F" padding removed)
-- `profiles` (tuple[str,str,str,str]): 3‑digit profile numbers ("255" = unused)
-- `end_date` (str|None): 6 digits DDMMYY — end of access window
-- `start_date` (str|None): 6 digits DDMMYY — start of access window (from trailing plaintext)
-- `flags` (str|None): 3 letters (Y/N) — additional authorization flags
+- `profiles` (tuple[str,str,str,str]): 3-digit profile numbers ("255" = unused)
+- `end_date` (str|None): 6 digits DDMMYY - end of access window
+- `start_date` (str|None): 6 digits DDMMYY - start of access window (from trailing plaintext)
+- `flags` (str|None): 3 letters (Y/N) - additional authorization flags
 - `name` (str): user name
 
 For backward compatibility, two legacy fields are retained:
 
 - `temp_date` (str): same as `end_date`
-- `exp_date` (str): legacy 4‑char field (often "----")
+- `exp_date` (str): legacy 4-char field (often "----")
 
 Example tail parsing: a segment like `NNY310725HARDWOOD FLOORING` is split as
 `flags=NNY`, `start_date=310725 (31 Jul 2025)`, `name=HARDWOOD FLOORING`.

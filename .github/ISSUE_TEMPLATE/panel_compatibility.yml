@@ -1,0 +1,156 @@
+name: Panel Compatibility Report
+description: Report compatibility with a DMP panel model
+title: "[Compatibility]: "
+labels: ["compatibility", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us expand our compatibility documentation by reporting your experience with a DMP panel model!
+
+        This is not for bug reports - use the Bug Report template if something isn't working correctly.
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Compatibility Status
+      description: Does pydmp work with your panel?
+      options:
+        - Fully working
+        - Mostly working (see notes)
+        - Partially working (some features broken)
+        - Not working
+        - Untested (requesting information)
+    validations:
+      required: true
+
+  - type: input
+    id: panel-model
+    attributes:
+      label: Panel Model
+      description: Exact DMP panel model number
+      placeholder: e.g., XR150, XR550, XT50
+    validations:
+      required: true
+
+  - type: input
+    id: panel-firmware
+    attributes:
+      label: Panel Firmware Version
+      description: The software/firmware version running on your panel
+      placeholder: e.g., 2.45
+    validations:
+      required: true
+
+  - type: input
+    id: panel-hardware
+    attributes:
+      label: Panel Hardware Revision
+      description: The hardware revision of your panel
+      placeholder: e.g., Rev 3.0, PCB v2.1
+    validations:
+      required: false
+
+  - type: textarea
+    id: features-tested
+    attributes:
+      label: Features Tested
+      description: Which features have you tested?
+      placeholder: |
+        - [x] Connection/Authentication
+        - [x] Area arm/disarm
+        - [x] Zone status
+        - [ ] Output control
+        - [ ] User management
+        - [ ] Status updates (S3)
+      value: |
+        - [ ] Connection/Authentication
+        - [ ] Area arm/disarm
+        - [ ] Zone status
+        - [ ] Zone bypass/restore
+        - [ ] Output control
+        - [ ] User management
+        - [ ] Profile management
+        - [ ] Status updates (S3)
+    validations:
+      required: true
+
+  - type: textarea
+    id: working-features
+    attributes:
+      label: Working Features
+      description: List features that work correctly
+      placeholder: All basic arm/disarm operations work perfectly
+    validations:
+      required: false
+
+  - type: textarea
+    id: broken-features
+    attributes:
+      label: Broken/Unsupported Features
+      description: List features that don't work or have issues
+      placeholder: Output control returns NAK, user management not supported by panel
+    validations:
+      required: false
+
+  - type: input
+    id: pydmp-version
+    attributes:
+      label: PyDMP Version Tested
+      description: What version of pydmp did you test with?
+      placeholder: e.g., 0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: config-notes
+    attributes:
+      label: Configuration Notes
+      description: Any special configuration or setup required for this panel
+      placeholder: |
+        e.g., Required enabling TCP/IP on panel, specific port, authentication settings
+    validations:
+      required: false
+
+  - type: dropdown
+    id: connection-type
+    attributes:
+      label: Connection Type
+      description: How is the panel connected?
+      options:
+        - Direct Ethernet
+        - WiFi
+        - Serial to Ethernet converter
+        - VPN/Remote
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Notes
+      description: Any other information about compatibility, quirks, or recommendations
+      placeholder: |
+        Panel-specific notes, recommended settings, known issues, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: willing-to-help
+    attributes:
+      label: Ongoing Support
+      options:
+        - label: I am willing to help test future releases with this panel
+        - label: I can provide additional information if needed
+        - label: I can help document this panel's specific features
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have tested with the latest version of pydmp
+          required: true
+        - label: I have provided accurate panel model and firmware information
+          required: true

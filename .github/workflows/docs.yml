@@ -65,7 +65,7 @@ jobs:
             echo "set_default=false" >> $GITHUB_OUTPUT
           elif [[ "$BRANCH_NAME" =~ ^release/(.+)$ ]]; then
             # Specific release branch: use version from branch name
-            VERSION="${BASH_REMATCH[1]}"
+            VERSION=${BASH_REMATCH[1]}
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "alias=" >> $GITHUB_OUTPUT
             echo "update_aliases=false" >> $GITHUB_OUTPUT

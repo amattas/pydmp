@@ -21,6 +21,14 @@ plugins:
             docstring_style: google
             show_source: false
             members_order: source
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: false
+            filters:
+              - "!^_"  # Exclude private members unless documented
 
 nav:
   - Home: index.md

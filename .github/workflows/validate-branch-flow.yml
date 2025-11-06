@@ -1,0 +1,51 @@
+name: Validate Branch Flow
+
+on:
+  pull_request:
+    branches:
+      - 'release/**'
+
+jobs:
+  validate-source:
+    name: Validate PR Source Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch flow rules
+        run: |
+          TARGET="${{ github.base_ref }}"
+          SOURCE="${{ github.head_ref }}"
+
+          echo "🔍 Validating branch flow..."
+          echo "   Source: $SOURCE"
+          echo "   Target: $TARGET"
+          echo ""
+
+          # Rule 1: release/x.x.x can only accept PRs from main
+          if [[ "$TARGET" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "📋 Rule: Version release branches (release/x.x.x) can only accept PRs from 'main'"
+            if [[ "$SOURCE" != "main" ]]; then
+              echo "❌ FAILED: Source branch must be 'main', got '$SOURCE'"
+              echo ""
+              echo "Valid flow: main → release/x.x.x → release/latest"
+              exit 1
+            fi
+            echo "✅ PASSED: Valid flow from main to version release branch"
+            exit 0
+          fi
+
+          # Rule 2: release/latest can only accept PRs from release/x.x.x
+          if [[ "$TARGET" == "release/latest" ]]; then
+            echo "📋 Rule: release/latest can only accept PRs from version release branches (release/x.x.x)"
+            if [[ ! "$SOURCE" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "❌ FAILED: Source branch must be 'release/x.x.x', got '$SOURCE'"
+              echo ""
+              echo "Valid flow: main → release/x.x.x → release/latest"
+              exit 1
+            fi
+            echo "✅ PASSED: Valid flow from version release to latest"
+            exit 0
+          fi
+
+          # Unknown target branch
+          echo "⚠️  WARNING: Unknown release branch pattern: $TARGET"
+          echo "✅ PASSED: No specific rules apply"

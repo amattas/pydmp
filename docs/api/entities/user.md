@@ -1,3 +1,3 @@
-# User
+# User Code
 
-::: pydmp.user.User
+::: pydmp.user.UserCode

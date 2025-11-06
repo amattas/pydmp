@@ -37,8 +37,8 @@ nav:
           - Area: api/entities/area.md
           - Zone: api/entities/zone.md
           - Output: api/entities/output.md
-          - User: api/entities/user.md
-          - Profile: api/entities/profile.md
+          - User Code: api/entities/user.md
+          - User Profile: api/entities/profile.md
       - Protocol:
           - Protocol: api/protocol.md
           - Encryption: api/protocol/encryption.md

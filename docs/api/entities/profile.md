@@ -1,3 +1,3 @@
-# Profile
+# User Profile
 
-::: pydmp.profile.Profile
+::: pydmp.profile.UserProfile

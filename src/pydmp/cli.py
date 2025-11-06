@@ -178,7 +178,7 @@ def _normalize_config(raw: Any) -> dict | None:
         ("Realtime", ["listen"]),
     ],
 )
-@click.version_option(version=__version__, param_decls=("-V", "--version"))
+@click.version_option(__version__, "-V", "--version")
 @click.option(
     "--config",
     "-c",

@@ -36,7 +36,7 @@ from .protocol import DMPProtocol
 from .status_parser import ParsedEvent, parse_s3_message
 from .status_server import DMPStatusServer, S3Message
 from .transport import DMPTransport
-from .transport_sync import DMPConnectionSync, DMPTransportSync
+from .transport_sync import DMPTransportSync
 from .zone import Zone, ZoneSync
 
 __version__ = "0.1.0"
@@ -55,7 +55,6 @@ __all__ = [
     # Low-level API (advanced use)
     "DMPTransport",
     "DMPTransportSync",
-    "DMPConnectionSync",
     "DMPProtocol",
     "DMPStatusServer",
     "S3Message",
@@ -69,5 +68,4 @@ __all__ = [
     "__version__",
 ]
 
-# Backward compatibility alias
-DMPConnection = DMPTransport
+# Note: No backward-compatibility aliases are provided.

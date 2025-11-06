@@ -25,10 +25,6 @@ from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
 
-# Backward-compat alias for tests expecting DMPConnection symbol in this module
-DMPConnection = DMPTransport
-
-
 # Active connection guard: one connection per (host, port, account)
 _ACTIVE_CONNECTIONS: set[tuple[str, int, str]] = set()
 
@@ -637,10 +633,6 @@ class DMPPanel:
         """Encode, send and decode a protocol command via transport."""
         if not self._connection:
             raise DMPConnectionError("Not connected to panel")
-        # Backward-compat shim for tests or legacy stubs providing send_command
-        if hasattr(self._connection, "send_command"):
-            send_cmd = getattr(self._connection, "send_command")
-            return await send_cmd(command, **kwargs)
         if not self._protocol:
             raise DMPConnectionError("Not connected to panel")
         encoded = self._protocol.encode_command(command, **kwargs)

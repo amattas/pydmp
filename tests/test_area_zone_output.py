@@ -28,6 +28,7 @@ class FakeConnection:
 async def test_area_basic_states_and_commands():
     panel = DMPPanel()
     panel._connection = FakeConnection()
+    panel._send_command = panel._connection.send_command
     # Fake connected flag
     assert panel._connection.is_connected
 
@@ -50,6 +51,7 @@ async def test_area_basic_states_and_commands():
 async def test_zone_bypass_restore_and_helpers():
     panel = DMPPanel()
     panel._connection = FakeConnection()
+    panel._send_command = panel._connection.send_command
 
     z = Zone(panel, 5, name="Front", state="N")
     assert z.is_normal
@@ -72,6 +74,7 @@ async def test_zone_bypass_restore_and_helpers():
 async def test_output_modes_and_toggle():
     panel = DMPPanel()
     panel._connection = FakeConnection()
+    panel._send_command = panel._connection.send_command
 
     o = Output(panel, 2, name="Relay")
     await o.turn_on()

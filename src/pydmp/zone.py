@@ -190,7 +190,6 @@ class ZoneSync:
         return self._zone.name
 
     @property
-    @property
     def state(self) -> str:
         """Get current state."""
         return self._zone.state

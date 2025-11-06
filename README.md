@@ -3,8 +3,8 @@
 **Python library for controlling DMP (Digital Monitoring Products) alarm systems**
 
 [![Tests](https://img.shields.io/badge/tests-passing-green.svg)](https://github.com/amattas/pydmp/actions)
-[![Coverage](https://img.shields.io/badge/coverage-41%25-yellow.svg)](https://github.com/amattas/pydmp/actions)
-[![Docs](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
+[![Docs Workflow](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
+[![Pages](https://img.shields.io/badge/docs-GitHub%20Pages-0A7ACC)](https://amattas.github.io/pydmp/)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -196,6 +196,25 @@ await output.toggle()
 # Status
 state = output.state  # OutputState enum
 is_on = output.is_on
+```
+
+## Breaking Changes
+
+Recent cleanup removed temporary compatibility aliases and shims. Update your code as follows:
+
+- Replace `DMPConnection` with `DMPTransport`.
+- Replace `DMPConnectionSync` with `DMPTransportSync`.
+- Use `DMPCommandNAKError` (the `DMPCommandNAK` alias was removed).
+- `DMPPanel` no longer falls back to a connection object that implements `send_command`. Tests or callers that injected a stub connection should either:
+  - Patch `panel._send_command` directly to your async stub, or
+  - Provide a proper `DMPTransport` + `DMPProtocol` if exercising the full path.
+
+Examples (tests):
+
+```python
+panel = DMPPanel()
+panel._connection = FakeConnection()
+panel._send_command = panel._connection.send_command  # route through fake
 ```
 
 ## CLI Usage
@@ -408,10 +427,5 @@ This is an independent project and is not affiliated with, endorsed by, or assoc
 
 ## Support
 
-- **Issues**: https://github.com/yourusername/pydmp/issues
-- **Documentation**: https://github.com/yourusername/pydmp/wiki
-- **Discussions**: https://github.com/yourusername/pydmp/discussions
-
----
-
-Made with ❤️ for the home automation community
+- Issues: https://github.com/amattas/pydmp/issues
+- Discussions: https://github.com/amattas/pydmp/discussions

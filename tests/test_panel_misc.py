@@ -28,6 +28,7 @@ async def test_get_outputs_and_missing_area_zone():
     panel = DMPPanel()
     # Empty status response
     panel._connection = FakeConn([StatusResponse(areas={}, zones={})])
+    panel._send_command = panel._connection.send_command
 
     # get_outputs creates 1..4
     outs = await panel.get_outputs()

@@ -29,6 +29,7 @@ nav:
       - CLI: guide/cli.md
       - Realtime Status (S3): guide/realtime-status.md
       - Encryption & User Data: guide/encryption.md
+      - Migration: guide/migration.md
   - API Reference:
       - Panel: api/panel.md
       - Entities: api/entities.md

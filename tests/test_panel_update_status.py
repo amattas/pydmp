@@ -35,6 +35,8 @@ async def test_update_status_merges_areas_and_zones():
     )
     panel = DMPPanel()
     panel._connection = FakeConnection([sr])
+    # Route panel command path through our fake connection
+    panel._send_command = panel._connection.send_command
 
     await panel.update_status()
 
@@ -64,6 +66,7 @@ async def test_arm_disarm_areas_multi_and_nak():
 
     panel = DMPPanel()
     panel._connection = Conn()
+    panel._send_command = panel._connection.send_command
 
     await panel.arm_areas([1, 2], bypass_faulted=True, force_arm=False, instant=True)
 
@@ -81,16 +84,10 @@ async def test_single_connection_guard(monkeypatch):
     try:
         p = DMPPanel()
 
-        # Prevent real DMPConnection.connect and update_status
-        class NoopConn:
-            async def connect(self):
-                return None
-
+        # Prevent update_status side effects during this test
         async def no_upd():
             return None
 
-        # monkeypatch connection and update_status
-        monkeypatch.setattr(panel_mod, "DMPConnection", lambda *a, **k: NoopConn())
         monkeypatch.setattr(DMPPanel, "update_status", lambda self: no_upd())
 
         with pytest.raises(DMPConnectionError):

@@ -66,4 +66,5 @@ asyncio.run(run())
 - Guide → Getting Started covers install, connect, command flow
 - Guide → Realtime Status shows S3 listener + parsing
 - Guide → Encryption explains user code decryption and remote key behavior
+- Guide → Migration covers recent breaking API changes
 - API Reference documents all classes and methods with type hints

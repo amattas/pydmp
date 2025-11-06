@@ -4,6 +4,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-passing-green.svg)](https://github.com/amattas/pydmp/actions)
 [![Coverage](https://img.shields.io/badge/coverage-41%25-yellow.svg)](https://github.com/amattas/pydmp/actions)
+[![Docs](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -228,8 +229,8 @@ pydmp arm "1,2"
 pydmp disarm 1
 
 # Zone control
-pydmp bypass-zone 5
-pydmp restore-zone 5
+pydmp set-zone-bypass 5
+pydmp set-zone-restore 5
 
 # Output control
 pydmp output 1 on
@@ -238,9 +239,9 @@ pydmp output 3 pulse
 pydmp output 4 toggle
 
 # JSON output examples
-pydmp status --json
-pydmp users --json
-pydmp profiles --json
+pydmp get-areas --json
+pydmp get-users --json
+pydmp get-profiles --json
 pydmp listen --json --duration 10 | jq
 ```
 
@@ -303,15 +304,15 @@ PyDMP provides a comprehensive exception hierarchy:
 
 ```python
 from pydmp.exceptions import (
-    DMPError,               # Base exception
-    DMPConnectionError,     # Connection issues
-    DMPAuthenticationError, # Auth failed
-    DMPTimeoutError,        # Operation timeout
-    DMPProtocolError,       # Protocol errors
-    DMPCommandNAK,         # Command rejected
-    DMPAreaError,          # Area-specific errors
-    DMPZoneError,          # Zone-specific errors
-    DMPOutputError,        # Output-specific errors
+    DMPError,                # Base exception
+    DMPConnectionError,      # Connection issues
+    DMPAuthenticationError,  # Auth failed
+    DMPTimeoutError,         # Operation timeout
+    DMPProtocolError,        # Protocol errors
+    DMPCommandNAKError,      # Command rejected
+    DMPAreaError,            # Area-specific errors
+    DMPZoneError,            # Zone-specific errors
+    DMPOutputError,          # Output-specific errors
 )
 ```
 
@@ -327,7 +328,7 @@ from pydmp.exceptions import (
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/pydmp.git
+git clone https://github.com/amattas/pydmp.git
 cd pydmp
 
 # Install dev dependencies
@@ -352,6 +353,7 @@ ruff check src/ tests/
 ## Documentation
 
 Online docs (MkDocs + mkdocstrings) include concepts, realtime status (S3), encryption details, and full API reference.
+Hosted: https://amattas.github.io/pydmp/
 
 - Build locally:
 

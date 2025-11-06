@@ -10,6 +10,8 @@ from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
+from .status_parser import parse_scsvr_message
+from .const.events import DMPEventType
 from .protocol import StatusResponse
 from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
 from .zone import Zone
@@ -40,6 +42,12 @@ class DMPPanel:
         self._outputs: dict[int, Output] = {}
         self._keepalive_task: Any | None = None
         self._keepalive_interval: float = 10.0
+        # User code cache
+        self._user_cache_by_code: dict[str, UserCode] = {}
+        self._user_cache_by_pin: dict[str, UserCode] = {}
+        self._user_cache_lock = asyncio.Lock()
+        self._user_refresh_task: Any | None = None
+        self._status_callbacks: dict[Any, Any] = {}
 
         _LOGGER.debug("Panel initialized")
 
@@ -86,6 +94,12 @@ class DMPPanel:
             # On initialization failure, clean up and re-raise
             await self.disconnect()
             raise
+
+        # Warm user cache (best-effort)
+        try:
+            await self._refresh_user_cache()
+        except Exception as e:
+            _LOGGER.debug("User cache refresh failed during connect: %s", e)
 
         _LOGGER.info("Panel connected and initialized")
 
@@ -317,6 +331,91 @@ class DMPPanel:
                     continue
             break
         return profiles
+
+    async def _refresh_user_cache(self) -> None:
+        """Refresh internal user code cache from panel."""
+        async with self._user_cache_lock:
+            users = await self.get_user_codes()
+            self._user_cache_by_code = {}
+            self._user_cache_by_pin = {}
+            for u in users:
+                code = (u.code or "").strip()
+                pin = (u.pin or "").strip()
+                if code:
+                    self._user_cache_by_code[code] = u
+                if pin:
+                    self._user_cache_by_pin[pin] = u
+
+    async def check_code(self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True) -> UserCode | None:
+        """Check if a user code (or PIN) exists in the panel.
+
+        Args:
+            code: The code/PIN string to validate
+            include_pin: If True, also match against PIN codes
+            refresh_if_missing: If True, refresh cache on miss and retry once
+
+        Returns:
+            Matching UserCode or None if not found
+        """
+        # Ensure cache is loaded at least once
+        if not (self._user_cache_by_code or self._user_cache_by_pin):
+            try:
+                await self._refresh_user_cache()
+            except Exception as e:
+                _LOGGER.debug("Initial user cache refresh failed: %s", e)
+
+        # First attempt
+        user = self._user_cache_by_code.get(code)
+        if not user and include_pin:
+            user = self._user_cache_by_pin.get(code)
+        if user or not refresh_if_missing:
+            return user
+
+        # Refresh and retry once
+        try:
+            await self._refresh_user_cache()
+        except Exception as e:
+            _LOGGER.debug("User cache refresh on miss failed: %s", e)
+            return None
+
+        user = self._user_cache_by_code.get(code)
+        if not user and include_pin:
+            user = self._user_cache_by_pin.get(code)
+        return user
+
+    def attach_status_server(self, server: Any) -> None:
+        """Attach a DMPStatusServer to auto-refresh user cache on Zu events.
+
+        When the server receives a User Codes (Zu) event, the panel will refresh
+        its user cache in the background. Call detach_status_server to remove.
+        """
+
+        if server in self._status_callbacks:
+            return
+
+        async def _on_event(msg: Any) -> None:
+            try:
+                evt = parse_scsvr_message(msg)
+                if evt.category is DMPEventType.USER_CODES:
+                    await self._refresh_user_cache()
+            except Exception as e:
+                _LOGGER.debug("Status server callback error: %s", e)
+
+        self._status_callbacks[server] = _on_event
+        try:
+            server.register_callback(_on_event)
+        except Exception as e:
+            _LOGGER.debug("Failed to register status callback: %s", e)
+
+    def detach_status_server(self, server: Any) -> None:
+        """Detach a previously attached DMPStatusServer."""
+        cb = self._status_callbacks.pop(server, None)
+        if cb is None:
+            return
+        try:
+            server.remove_callback(cb)
+        except Exception:
+            pass
 
     async def start_keepalive(self, interval: float = 10.0) -> None:
         """Start periodic keep-alive (!H) while connected.

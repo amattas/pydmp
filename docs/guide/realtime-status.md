@@ -39,3 +39,18 @@ Use `parse_scsvr_message` to build a `ParsedEvent` with both raw codes and typed
 ## ACK Behavior
 
 The server automatically ACKs each incoming message with: `STX + [5‑byte account] + 0x06 + CR`. This prevents panel retries.
+
+## Auto‑Refreshing User Cache
+
+If you already have a `DMPPanel` instance, you can attach the status server so user code (Zu) events automatically refresh the panel’s user cache:
+
+```python
+from pydmp import DMPPanel, DMPStatusServer
+
+panel = DMPPanel()
+# ... connect panel ...
+server = DMPStatusServer(host="0.0.0.0", port=5001)
+panel.attach_status_server(server)
+```
+
+Detach later with `panel.detach_status_server(server)`.

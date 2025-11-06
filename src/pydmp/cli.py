@@ -426,6 +426,30 @@ def sensor_reset(ctx: click.Context) -> None:
     asyncio.run(run())
 
 
+@cli.command("check-code")
+@click.argument("code", type=str)
+@click.option("--include-pin/--no-include-pin", default=True, show_default=True, help="Match PIN as well as code")
+@click.pass_context
+def check_code_cmd(ctx: click.Context, code: str, include_pin: bool) -> None:
+    """Check if a code or PIN exists in the panel."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            user = await panel.check_code(code, include_pin=include_pin)
+            if user:
+                console.print(f"[green]MATCH[/green]: number={user.number} name={user.name}")
+            else:
+                console.print("[red]No match[/red]")
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
 @cli.command("listen")
 @click.option("--host", default="0.0.0.0", show_default=True, help="Listen host")
 @click.option("--port", default=5001, show_default=True, type=int, help="Listen port")

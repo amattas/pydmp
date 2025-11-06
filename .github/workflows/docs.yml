@@ -56,7 +56,6 @@ jobs:
             echo "alias=latest" >> $GITHUB_OUTPUT
             echo "update_aliases=true" >> $GITHUB_OUTPUT
             echo "set_default=true" >> $GITHUB_OUTPUT
-# (Removed logic for release/stable branch to match allowed branch patterns)
           elif [[ "$BRANCH_NAME" =~ ^release/(.+)$ ]]; then
             # Specific release branch: use version from branch name
             VERSION=${BASH_REMATCH[1]}

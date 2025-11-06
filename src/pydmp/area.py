@@ -177,6 +177,16 @@ class Area:
         """String representation."""
         return f"<Area {self.number}: {self.name} ({self._state})>"
 
+    def to_dict(self) -> dict:
+        """Return a JSON-serializable representation of the area."""
+        return {
+            "number": self.number,
+            "name": self.name,
+            "state": self.state,
+            "is_armed": self.is_armed,
+            "is_disarmed": self.is_disarmed,
+        }
+
 
 class AreaSync:
     """Synchronous wrapper for Area."""

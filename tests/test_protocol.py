@@ -105,6 +105,17 @@ class TestDMPProtocol:
         assert result.zones["001"].state == "N"
         assert result.zones["001"].name == "Front Door"
 
+    def test_decode_status_zone_star_prefix(self):
+        """Test status response where panel uses '*WB' prefix (observed on wire)."""
+        protocol = DMPProtocol("1", "")
+        response = b"\x02@    1*WBL002OLiving Room Window\x1e-\r"
+        result = protocol.decode_response(response)
+
+        assert isinstance(result, StatusResponse)
+        assert "002" in result.zones
+        assert result.zones["002"].state == "O"
+        assert result.zones["002"].name == "Living Room Window"
+
     def test_decode_status_multiple(self):
         """Test status response with multiple items."""
         protocol = DMPProtocol("1", "")

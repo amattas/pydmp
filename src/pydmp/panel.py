@@ -55,7 +55,12 @@ class DMPPanel:
         """Check if connected to panel."""
         return self._connection is not None and self._connection.is_connected
 
-    async def connect(self, host: str, account: str, remote_key: str) -> None:
+    async def connect(
+        self,
+        host: str,
+        account: str,
+        remote_key: str,
+    ) -> None:
         """Connect to panel and authenticate.
 
         Args:
@@ -86,21 +91,7 @@ class DMPPanel:
         # Register active connection
         _ACTIVE_CONNECTIONS.add(key)
 
-        # Initial status update to discover areas/zones
-        try:
-            await self.update_status()
-        except Exception:
-            # On initialization failure, clean up and re-raise
-            await self.disconnect()
-            raise
-
-        # Warm user cache (best-effort)
-        try:
-            await self._refresh_user_cache()
-        except Exception as e:
-            _LOGGER.debug("User cache refresh failed during connect: %s", e)
-
-        _LOGGER.info("Panel connected and initialized")
+        _LOGGER.info("Panel connected")
 
     async def disconnect(self) -> None:
         """Disconnect from panel."""
@@ -309,13 +300,30 @@ class DMPPanel:
 
         users: list[UserCode] = []
         start = "0000"
-        while True:
-            resp = await self._connection.send_command(DMPCommand.GET_USER_CODES.value, user=start)
-            if isinstance(resp, UserCodesResponse):
-                users.extend(resp.users)
-                if resp.has_more and resp.last_number:
-                    # Next page begins at last + 1
-                    start = f"{int(resp.last_number) + 1:04d}"
+        max_pages = 200
+        pages = 0
+        while pages < max_pages:
+            pages += 1
+            resp = await self._connection.send_command(
+                DMPCommand.GET_USER_CODES.value, user=start
+            )
+            if not isinstance(resp, UserCodesResponse):
+                break
+
+            users.extend(resp.users)
+
+            # Determine continuation boundary (per Lua: last < 9999)
+            if resp.has_more and resp.last_number:
+                try:
+                    last = int(resp.last_number)
+                except ValueError:
+                    break
+                if last < 9999:
+                    next_start = f"{last + 1:04d}"
+                    # If the panel keeps returning the same page, stop
+                    if next_start == start:
+                        break
+                    start = next_start
                     continue
             break
         return users
@@ -327,12 +335,28 @@ class DMPPanel:
 
         profiles: list[UserProfile] = []
         start = "000"
-        while True:
-            resp = await self._connection.send_command(DMPCommand.GET_USER_PROFILES.value, profile=start)
-            if isinstance(resp, UserProfilesResponse):
-                profiles.extend(resp.profiles)
-                if resp.has_more and resp.last_number:
-                    start = f"{int(resp.last_number) + 1:03d}"
+        max_pages = 50
+        pages = 0
+        while pages < max_pages:
+            pages += 1
+            resp = await self._connection.send_command(
+                DMPCommand.GET_USER_PROFILES.value, profile=start
+            )
+            if not isinstance(resp, UserProfilesResponse):
+                break
+
+            profiles.extend(resp.profiles)
+
+            if resp.has_more and resp.last_number:
+                try:
+                    last = int(resp.last_number)
+                except ValueError:
+                    break
+                if last < 99:
+                    next_start = f"{last + 1:03d}"
+                    if next_start == start:
+                        break
+                    start = next_start
                     continue
             break
         return profiles

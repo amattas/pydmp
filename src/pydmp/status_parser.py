@@ -1,6 +1,6 @@
-"""Helper to convert SCS‑VR messages into structured, typed events.
+"""Helper to convert Serial 3 (S3) messages into structured, typed events.
 
-This module maps a low-level SCSVRMessage (from status_server) to enums and
+This module maps a low-level S3Message (from status_server) to enums and
 fields from pydmp.const, making it easier to act on realtime events.
 """
 

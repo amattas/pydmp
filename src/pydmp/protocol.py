@@ -165,11 +165,15 @@ class DMPProtocol:
             return None
 
         try:
-            decoded = response.decode("utf-8")
-            _LOGGER.debug(f"Decoding response: {decoded[:100]}...")
+            decoded = response.decode("utf-8", errors="replace")
+            _LOGGER.debug(f"Decoding response stream ({len(decoded)} chars)")
 
             # Split by response delimiter (STX)
             lines = decoded.split(RESPONSE_DELIMITER)
+            for i, line in enumerate(lines):
+                if not line:
+                    continue
+                _LOGGER.debug(f"[resp line {i}] {line[:120]!r}")
 
             status_response = StatusResponse(areas={}, zones={})
             has_status_data = False
@@ -201,10 +205,20 @@ class DMPProtocol:
                     elif ack_nak_char == DMPResponse.NAK.value:
                         return "NAK"
 
-                # Status response (?WB or !WB)
-                # Status query responses: "@    1+!WB..." or "@    1+?WB..."
-                if len(line) > 9 and line[7:10] in ["!WB", "?WB"]:
-                    self._parse_status_line(line[10:], status_response)
+                # Status response (*WB, !WB, or ?WB)
+                # Panels may prefix status frames with '*', e.g. "@    1*WBL001N..."
+                # Others return acknowledgements with '!WB' or queries with '?WB'.
+                # Find the first occurrence of any marker then parse the payload
+                # immediately following that 3-char marker.
+                marker_pos = -1
+                for marker in ("*WB", "!WB", "?WB"):
+                    pos = line.find(marker)
+                    if pos != -1:
+                        marker_pos = pos
+                        break
+                if marker_pos != -1 and len(line) > marker_pos + 3:
+                    start = marker_pos + 3
+                    self._parse_status_line(line[start:], status_response)
                     has_status_data = True
 
                 # User codes (*P=...)

@@ -153,6 +153,16 @@ class Output:
         """String representation."""
         return f"<Output {self.number}: {self.name} ({self._state})>"
 
+    def to_dict(self) -> dict:
+        """Return a JSON-serializable representation of the output."""
+        return {
+            "number": self.number,
+            "name": self.name,
+            "state": self.state,
+            "is_on": self.is_on,
+            "is_off": self.is_off,
+        }
+
 
 class OutputSync:
     """Synchronous wrapper for Output."""

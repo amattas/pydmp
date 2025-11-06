@@ -77,6 +77,7 @@ class DMPStatusServer:
                 if not chunk:
                     break
                 buf += chunk
+                _LOGGER.debug("[s3] recv chunk %d bytes", len(chunk))
                 # Process complete frames terminated by CR (\r)
                 while b"\r" in buf:
                     line, buf = buf.split(b"\r", 1)
@@ -108,6 +109,7 @@ class DMPStatusServer:
             _LOGGER.debug("Ignoring non-Z line: %s", text)
             return
         z_body = text[z_index:]
+        _LOGGER.debug("[s3] line: %r", z_body[:200])
 
         # Build message
         msg = self._parse_z_body(account, z_body)
@@ -118,13 +120,14 @@ class DMPStatusServer:
                 ack = b"\x02" + account.encode("ascii", errors="ignore") + b"\x06\r"
                 writer.write(ack)
                 await writer.drain()
+                _LOGGER.debug("[s3] sent ACK for account %r", account)
             except Exception as e:
                 _LOGGER.debug("Failed to send ACK: %s", e)
 
         # Dispatch to callbacks
         await self._dispatch(msg)
 
-    async def _dispatch(self, msg: SCSVRMessage) -> None:
+    async def _dispatch(self, msg: S3Message) -> None:
         for cb in list(self._callbacks):
             try:
                 res = cb(msg)

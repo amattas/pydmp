@@ -193,7 +193,10 @@ class DMPConnection:
             raise DMPConnectionError("Not connected")
 
         try:
-            _LOGGER.debug(f"Sending: {data}")
+            try:
+                _LOGGER.debug(f">>> {data.decode('utf-8', errors='replace')!r}")
+            except Exception:
+                _LOGGER.debug(f">>> {data!r}")
             self._writer.write(data)
             await self._writer.drain()
             self._last_command_time = asyncio.get_event_loop().time()
@@ -217,7 +220,7 @@ class DMPConnection:
             # Wait a moment for response to arrive
             await asyncio.sleep(RATE_LIMIT_SECONDS)
 
-            # Read all available data
+            # Read all available data (log chunks as they arrive)
             data = b""
             while True:
                 try:
@@ -225,11 +228,15 @@ class DMPConnection:
                     if not chunk:
                         break
                     data += chunk
+                    try:
+                        _LOGGER.debug(f"<<< chunk {len(chunk)} bytes: {chunk.decode('utf-8', errors='replace')!r}")
+                    except Exception:
+                        _LOGGER.debug(f"<<< chunk {len(chunk)} bytes: {chunk!r}")
                 except asyncio.TimeoutError:
                     # No more data available
                     break
 
-            _LOGGER.debug(f"Received {len(data)} bytes")
+            _LOGGER.debug(f"<<< total {len(data)} bytes")
             return data
 
         except Exception as e:

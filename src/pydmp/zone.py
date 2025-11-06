@@ -157,6 +157,18 @@ class Zone:
         """String representation."""
         return f"<Zone {self.number}: {self.name} ({self._state})>"
 
+    def to_dict(self) -> dict:
+        """Return a JSON-serializable representation of the zone."""
+        return {
+            "number": self.number,
+            "name": self.name,
+            "state": self.state,
+            "is_open": self.is_open,
+            "is_normal": self.is_normal,
+            "is_bypassed": self.is_bypassed,
+            "has_fault": self.has_fault,
+        }
+
 
 class ZoneSync:
     """Synchronous wrapper for Zone."""

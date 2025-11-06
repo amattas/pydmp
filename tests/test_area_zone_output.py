@@ -35,10 +35,10 @@ async def test_area_basic_states_and_commands():
     assert a.is_disarmed
     assert not a.is_armed
 
-    await a.arm_away(bypass_faulted=False, force_arm=False, instant=None)
+    await a.arm(bypass_faulted=False, force_arm=False, instant=None)
     assert a.state == "arming"
 
-    await a.arm_stay(bypass_faulted=True, force_arm=False, instant=True)
+    await a.arm(bypass_faulted=True, force_arm=False, instant=True)
     # Still "arming" locally; protocol confirmation comes via status
     assert a.state == "arming"
 
@@ -89,4 +89,3 @@ async def test_output_modes_and_toggle():
     # Toggle from pulse should turn on
     await o.toggle()
     assert o.is_on
-

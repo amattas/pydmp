@@ -14,6 +14,7 @@ from .status_parser import parse_s3_message
 from .const.events import DMPEventType
 from .protocol import StatusResponse
 from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
+from .protocol import OutputsResponse
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
@@ -255,12 +256,13 @@ class DMPPanel:
     async def get_outputs(self) -> list[Output]:
         """Get all outputs.
 
-        Note: Outputs are created on-demand as they're not returned in status queries.
+        Note: Outputs are created on-demand; prefer calling update_output_status()
+        first to populate real states from the panel.
 
         Returns:
             List of Output objects
         """
-        # Create outputs 1-4 if they don't exist
+        # Ensure outputs 1-4 exist for convenience
         for i in range(1, 5):
             if i not in self._outputs:
                 self._outputs[i] = Output(self, i, f"Output {i}")
@@ -271,7 +273,7 @@ class DMPPanel:
         """Get specific output by number.
 
         Args:
-            number: Output number (1-4)
+            number: Output number (1-999)
 
         Returns:
             Output object
@@ -279,13 +281,74 @@ class DMPPanel:
         Raises:
             KeyError: If output number invalid
         """
-        if not 1 <= number <= 4:
-            raise KeyError(f"Output number must be 1-4, got {number}")
+        if not 1 <= number <= 999:
+            raise KeyError(f"Output number must be 1-999, got {number}")
 
         if number not in self._outputs:
             self._outputs[number] = Output(self, number, f"Output {number}")
 
         return self._outputs[number]
+
+    async def update_output_status(self) -> None:
+        """Fetch output status from panel (*WQ) and update known outputs.
+
+        The panel returns a stream of output entries in frames. We request
+        the initial page for output 001, then continue with '?WQ' a few times
+        to collect subsequent chunks.
+
+        Note: Many residential installations only use outputs 1-4.
+        """
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        commands: list[tuple[str, dict[str, Any]]] = [
+            (DMPCommand.GET_OUTPUT_STATUS.value, {"output": "001"})
+        ] + [
+            (DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})
+        ] * 5
+
+        outputs: dict[str, Any] = {}
+        for cmd, params in commands:
+            resp = await self._connection.send_command(cmd, **params)
+            if isinstance(resp, OutputsResponse):
+                outputs.update(resp.outputs)
+
+        # Map mode to our Output state strings
+        def mode_to_state(mode: str) -> str:
+            m = mode.upper()
+            if m == "O":
+                return DMPEventType.REAL_TIME_STATUS  # placeholder, replaced below
+            return m
+
+        # Update/create Output objects
+        for num_str, out in outputs.items():
+            try:
+                num = int(num_str)
+            except ValueError:
+                continue
+            if num not in self._outputs:
+                self._outputs[num] = Output(self, num, out.name)
+            else:
+                if out.name:
+                    self._outputs[num].name = out.name
+            # Map mode to the Output state semantics used in Output
+            mode = out.mode
+            if mode == "O":
+                self._outputs[num]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
+            # Use Output.update_state mapping via set_mode semantics
+            # Set internal state directly based on mode
+            if mode == "O":
+                self._outputs[num]._state = "OF"
+            elif mode == "P":
+                self._outputs[num]._state = "PL"
+            elif mode == "S":
+                self._outputs[num]._state = "ON"
+            elif mode == "T":
+                self._outputs[num]._state = "TP"
+            elif mode in ("W", "A", "a", "t"):
+                self._outputs[num]._state = "MO"
+            else:
+                self._outputs[num]._state = ""
 
     async def sensor_reset(self) -> None:
         """Send sensor reset command to the panel (!E001)."""

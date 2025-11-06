@@ -11,7 +11,7 @@ Example (Async):
     ...     panel = DMPPanel()
     ...     await panel.connect("192.168.1.100", "00001", "YOUR_KEY")
     ...     areas = await panel.get_areas()
-    ...     await areas[0].arm_away("1234")
+    ...     await areas[0].arm()
     ...     await panel.disconnect()
     >>>
     >>> asyncio.run(main())
@@ -22,7 +22,7 @@ Example (Sync):
     >>> panel = DMPPanelSync()
     >>> panel.connect("192.168.1.100", "00001", "YOUR_KEY")
     >>> areas = panel.get_areas()
-    >>> areas[0].arm_away_sync("1234")
+    >>> areas[0].arm_sync()
     >>> panel.disconnect()
 """
 

@@ -32,8 +32,8 @@ class Output:
             name: Output name
             state: Current output state
         """
-        if not 1 <= number <= 4:
-            raise DMPInvalidParameterError("Output number must be between 1 and 4")
+        if not 1 <= number <= 999:
+            raise DMPInvalidParameterError("Output number must be between 1 and 999")
 
         self.panel = panel
         self.number = number

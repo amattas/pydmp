@@ -25,11 +25,12 @@ Common flag:
 
 ## Commands
 
-### Status
+### Areas & Zones
 ```bash
-pydmp status [--json]
+pydmp get-areas [--json]
+pydmp get-zones [--json]
 ```
-Connects and prints tables of areas and zones.
+Print areas and zones separately.
 
 ### Arm/Disarm (single area)
 ```bash

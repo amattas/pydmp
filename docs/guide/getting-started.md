@@ -26,7 +26,7 @@ outs  = await panel.get_outputs()  # List[Output] (1..4 are created on demand)
 
 ```python
 # Arm single area
-await areas[0].arm_away(bypass_faulted=False, force_arm=False, instant=None)
+await areas[0].arm(bypass_faulted=False, force_arm=False, instant=None)
 await areas[0].disarm()
 
 # Arm multiple areas in one command

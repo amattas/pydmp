@@ -55,7 +55,7 @@ async def main():
 
     # Arm/disarm area
     areas = await panel.get_areas()
-    await areas[0].arm_away(bypass_faulted=True)  # Optional flags; instant can be set too
+    await areas[0].arm(bypass_faulted=True)  # Optional flags; instant can be set too
     await areas[0].disarm()
 
     # Check status (raw codes: A/D/S)
@@ -83,7 +83,7 @@ panel = DMPPanelSync()
 panel.connect("192.168.1.100", "00001", "YOUR_KEY")
 
 areas = panel.get_areas()
-areas[0].arm_away_sync()
+areas[0].arm_sync()
 
 state = areas[0].get_state_sync()
 if state == 'A':
@@ -118,10 +118,9 @@ await panel.disconnect()
 area = await panel.get_area(1)
 
 # Arming (no user code required)
-await area.arm_away()
-await area.arm_away(bypass_faulted=True)  # Bypass faulted zones
-await area.arm_away(force_arm=True)  # Force arm bad zones
-await area.arm_stay()  # Same as arm_away in DMP protocol
+await area.arm()
+await area.arm(bypass_faulted=True)  # Bypass faulted zones
+await area.arm(force_arm=True)  # Force arm bad zones
 await area.disarm()  # No user code sent to panel
 
 # Status
@@ -182,12 +181,12 @@ JSON output
 ### Commands
 
 ```bash
-# Get panel status
-pydmp status
+# Get areas and zones
+pydmp get-areas
+pydmp get-zones
 
-# Arm area (no user code needed)
-pydmp arm-away 1
-pydmp arm-stay 1
+# Arm area(s)
+pydmp arm "1,2"
 
 # Disarm area (no user code needed)
 pydmp disarm 1

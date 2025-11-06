@@ -21,10 +21,30 @@ from .panel import DMPPanel
 from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
 from .status_server import DMPStatusServer
-from .const.strings import AREA_STATUS, ZONE_STATUS
+from .const.strings import AREA_STATUS, ZONE_STATUS, OUTPUT_STATUS
 from .status_parser import parse_s3_message
 
 console = Console()
+
+
+def _fmt_ddmmyy(value: str | None) -> str:
+    """Format DDMMYY into a human-readable date like '31 Jul 2025'.
+
+    Returns empty string for None/invalid/zeros.
+    """
+    if not value or len(value) != 6 or not value.isdigit() or value == "000000":
+        return ""
+    dd = int(value[0:2])
+    mm = int(value[2:4])
+    yy = int(value[4:6])
+    # Map YY to year: 00-79 => 2000-2079, 80-99 => 1980-1999
+    year = 2000 + yy if yy <= 79 else 1900 + yy
+    try:
+        import datetime as _dt
+        dt = _dt.date(year, mm, dd)
+        return dt.strftime("%d %b %Y")
+    except Exception:
+        return ""
 
 
 def load_config(config_path: Path) -> dict:
@@ -121,151 +141,33 @@ def cli(ctx: click.Context, config: Path, debug: bool) -> None:
     ctx.obj["debug"] = debug
 
 
-@cli.command()
-@click.option("--json", "as_json", is_flag=True, help="Output status as JSON")
-@click.pass_context
-def status(ctx: click.Context, as_json: bool) -> None:
-    """Get panel status (areas and zones)."""
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
-        try:
-            if not as_json:
-                console.print("[cyan]Connecting to panel...[/cyan]")
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-
-            if not as_json:
-                console.print("[green]Connected![/green]\n")
-
-            # Fetch
-            areas = await panel.get_areas()
-            zones = await panel.get_zones()
-
-            if as_json:
-                payload = {"ok": True, "areas": [a.to_dict() for a in areas], "zones": [z.to_dict() for z in zones]}
-                click.echo(json.dumps(payload))
-                return
-
-            # Human-readable tables
-            if areas:
-                table = Table(title="Areas")
-                table.add_column("Number", style="cyan")
-                table.add_column("Name", style="magenta")
-                table.add_column("State", style="yellow")
-
-                for area in areas:
-                    state_style = "green" if area.is_disarmed else "red"
-                    state_text = AREA_STATUS.get(area.state, area.state)
-                    table.add_row(
-                        str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]"
-                    )
-
-                console.print(table)
-                console.print()
-
-            if zones:
-                table = Table(title="Zones")
-                table.add_column("Number", style="cyan")
-                table.add_column("Name", style="magenta")
-                table.add_column("State", style="yellow")
-
-                for zone in zones:
-                    state_style = "green" if zone.is_normal else "red"
-                    state_text = ZONE_STATUS.get(zone.state, zone.state)
-                    table.add_row(
-                        str(zone.number), zone.name, f"[{state_style}]{state_text}[/{state_style}]"
-                    )
-
-                console.print(table)
-
-        except Exception as e:
-            # If JSON requested, emit structured error; otherwise styled message
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
+# removed: get-status (use get-areas and get-zones)
 
 
-@cli.command()
-@click.argument("area", type=int)
+@cli.command("arm")
+@click.argument("areas", type=str)
 @click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
 @click.option("--force-arm", is_flag=True, help="Force arm bad zones")
+@click.option("--instant/--no-instant", default=None, help="Remove entry/exit delays")
 @click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def arm_away(ctx: click.Context, area: int, bypass_faulted: bool, force_arm: bool, as_json: bool) -> None:
-    """Arm area in away mode."""
+def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: bool, instant: Optional[bool], as_json: bool) -> None:
+    """Arm one or more areas, e.g. "1,2,3"."""
+    area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
     async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-            area_obj = await panel.get_area(area)
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
-                console.print(f"[cyan]Arming area {area} (bypass={bypass_faulted}, force={force_arm})...[/cyan]")
-            await area_obj.arm_away(bypass_faulted=bypass_faulted, force_arm=force_arm)
+                console.print(f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})...[/cyan]")
+            await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
             if not as_json:
-                console.print(f"[green]Area {area} armed successfully[/green]")
+                console.print(f"[green]Areas {area_list} armed successfully[/green]")
             else:
-                click.echo(json.dumps({"ok": True, "action": "arm_away", "area": area, "bypass_faulted": bypass_faulted, "force_arm": force_arm}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
-
-
-@cli.command()
-@click.argument("area", type=int)
-@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
-@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
-@click.pass_context
-def arm_stay(ctx: click.Context, area: int, bypass_faulted: bool, force_arm: bool, as_json: bool) -> None:
-    """Arm area in stay mode."""
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
-        try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-            area_obj = await panel.get_area(area)
-            if not as_json:
-                console.print(f"[cyan]Arming area {area} (stay, bypass={bypass_faulted}, force={force_arm})...[/cyan]")
-            await area_obj.arm_stay(bypass_faulted=bypass_faulted, force_arm=force_arm)
-            if not as_json:
-                console.print(f"[green]Area {area} armed (stay) successfully[/green]")
-            else:
-                click.echo(json.dumps({"ok": True, "action": "arm_stay", "area": area, "bypass_faulted": bypass_faulted, "force_arm": force_arm}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+                click.echo(json.dumps({"ok": True, "action": "arm", "areas": area_list, "bypass_faulted": bypass_faulted, "force_arm": force_arm, "instant": instant}))
         finally:
             await panel.disconnect()
 
@@ -308,72 +210,76 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command()
+@cli.command("set-zone-bypass")
 @click.argument("zone", type=int)
 @click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def bypass_zone(ctx: click.Context, zone: int, as_json: bool) -> None:
+def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     """Bypass a zone."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
     async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-            zone_obj = await panel.get_zone(zone)
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(f"[cyan]Bypassing zone {zone}...[/cyan]")
-            await zone_obj.bypass()
+            # Send direct command without forcing a status fetch
+            resp = await panel._connection.send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
+            if resp == "NAK":
+                detail = panel._connection.protocol.last_nak_detail or ""
+                reason = ""
+                if len(detail) == 2 and detail[1] == "U":
+                    reason = " (undefined)"
+                msg = f"Panel NAK (-{detail or 'X'}): bypass zone {zone}{reason}"
+                if as_json:
+                    click.echo(json.dumps({"ok": False, "error": msg}))
+                else:
+                    console.print(f"[red]{msg}[/red]")
+                raise SystemExit(1)
             if not as_json:
                 console.print(f"[green]Zone {zone} bypassed successfully[/green]")
             else:
-                click.echo(json.dumps({"ok": True, "action": "bypass_zone", "zone": zone}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+                click.echo(json.dumps({"ok": True, "action": "set-zone-bypass", "zone": zone}))
         finally:
             await panel.disconnect()
 
     asyncio.run(run())
 
 
-@cli.command()
+@cli.command("set-zone-restore")
 @click.argument("zone", type=int)
 @click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def restore_zone(ctx: click.Context, zone: int, as_json: bool) -> None:
+def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     """Restore (un-bypass) a zone."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
     async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-            zone_obj = await panel.get_zone(zone)
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(f"[cyan]Restoring zone {zone}...[/cyan]")
-            await zone_obj.restore()
+            # Send direct command without forcing a status fetch
+            resp = await panel._connection.send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
+            if resp == "NAK":
+                detail = panel._connection.protocol.last_nak_detail or ""
+                reason = ""
+                if len(detail) == 2 and detail[1] == "U":
+                    reason = " (undefined)"
+                msg = f"Panel NAK (-{detail or 'Y'}): restore zone {zone}{reason}"
+                if as_json:
+                    click.echo(json.dumps({"ok": False, "error": msg}))
+                else:
+                    console.print(f"[red]{msg}[/red]")
+                raise SystemExit(1)
             if not as_json:
                 console.print(f"[green]Zone {zone} restored successfully[/green]")
             else:
-                click.echo(json.dumps({"ok": True, "action": "restore_zone", "zone": zone}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+                click.echo(json.dumps({"ok": True, "action": "set-zone-restore", "zone": zone}))
         finally:
             await panel.disconnect()
 
@@ -426,86 +332,13 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("arm-areas")
-@click.argument("areas", type=str)
-@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
-@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
-@click.option("--instant/--no-instant", default=None, help="Remove entry/exit delays")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
-@click.pass_context
-def arm_areas_cmd(
-    ctx: click.Context,
-    areas: str,
-    bypass_faulted: bool,
-    force_arm: bool,
-    instant: Optional[bool],
-    as_json: bool,
-) -> None:
-    """Arm one or more areas, e.g. "1,2,3"."""
-    area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
-        try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
-            if not as_json:
-                console.print(
-                    f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})...[/cyan]"
-                )
-            await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
-            if not as_json:
-                console.print(f"[green]Areas {area_list} armed successfully[/green]")
-            else:
-                click.echo(json.dumps({"ok": True, "action": "arm_areas", "areas": area_list, "bypass_faulted": bypass_faulted, "force_arm": force_arm, "instant": instant}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
+# removed: arm-areas (use 'arm')
 
 
-@cli.command("disarm-areas")
-@click.argument("areas", type=str)
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
-@click.pass_context
-def disarm_areas_cmd(ctx: click.Context, areas: str, as_json: bool) -> None:
-    """Disarm one or more areas, e.g. "1,2,3"."""
-    area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run():
-        panel = DMPPanel()
-        try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
-            if not as_json:
-                console.print(f"[cyan]Disarming areas {area_list}...[/cyan]")
-            await panel.disarm_areas(area_list)
-            if not as_json:
-                console.print(f"[green]Areas {area_list} disarmed successfully[/green]")
-            else:
-                click.echo(json.dumps({"ok": True, "action": "disarm_areas", "areas": area_list}))
-        except Exception as e:
-            if as_json:
-                click.echo(json.dumps({"ok": False, "error": str(e)}))
-            else:
-                console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
+# removed: disarm-areas (use multiple calls to 'disarm' or add back if needed)
 
 
-@cli.command("users")
+@cli.command("get-users")
 @click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def list_users(ctx: click.Context, as_json: bool) -> None:
@@ -533,8 +366,8 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                         u.name or "",
                         u.code,
                         u.pin,
-                        (u.start_date or ""),
-                        (u.end_date or ""),
+                        _fmt_ddmmyy(u.start_date),
+                        _fmt_ddmmyy(u.end_date),
                         (u.flags or ""),
                     )
                 console.print(table)
@@ -553,7 +386,7 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("profiles")
+@cli.command("get-profiles")
 @click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def list_profiles(ctx: click.Context, as_json: bool) -> None:
@@ -571,12 +404,64 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
                 table.add_column("Number", style="cyan")
                 table.add_column("Name", style="magenta")
                 table.add_column("Output Group", style="yellow")
+                table.add_column("Areas", style="yellow")
+                table.add_column("Access Areas", style="yellow")
+                table.add_column("Menu", style="yellow")
+                table.add_column("Rearm", style="yellow")
                 for p in profiles:
-                    table.add_row(p.number, p.name or "", p.output_group)
+                    table.add_row(
+                        p.number,
+                        p.name or "",
+                        p.output_group,
+                        p.areas_mask,
+                        p.access_areas_mask,
+                        p.menu_options,
+                        p.rearm_delay,
+                    )
                 console.print(table)
             else:
                 from dataclasses import asdict
                 click.echo(json.dumps({"ok": True, "profiles": [asdict(p) for p in profiles]}))
+        except Exception as e:
+            if as_json:
+                click.echo(json.dumps({"ok": False, "error": str(e)}))
+            else:
+                console.print(f"[red]Error: {e}[/red]")
+            raise SystemExit(1)
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("get-outputs")
+@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.pass_context
+def list_outputs(ctx: click.Context, as_json: bool) -> None:
+    """List outputs (1-4) and last-known state."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        panel = DMPPanel()
+        try:
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
+            # Fetch current status
+            await panel.update_output_status()
+            outputs = await panel.get_outputs()
+            if not as_json:
+                table = Table(title="Outputs")
+                table.add_column("Number", style="cyan")
+                table.add_column("Name", style="magenta")
+                table.add_column("Code", style="yellow")
+                table.add_column("State", style="yellow")
+                for o in outputs:
+                    code = o.state
+                    text = OUTPUT_STATUS.get(code, code)
+                    table.add_row(str(o.number), o.name or f"Output {o.number}", code, text)
+                console.print(table)
+            else:
+                click.echo(json.dumps({"ok": True, "outputs": [o.to_dict() for o in outputs]}))
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
@@ -690,6 +575,123 @@ def listen(host: str, port: int, duration: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
+@cli.command("get-areas")
+@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.pass_context
+def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
+    """List areas and their state."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        pc = panel_config
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        try:
+            if not as_json:
+                console.print("[cyan]Connecting to panel...[/cyan]")
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.update_status()
+            areas = await panel.get_areas()
+            if as_json:
+                payload = {"ok": True, "areas": [a.to_dict() for a in areas]}
+                click.echo(json.dumps(payload))
+                return
+            table = Table(title="Areas")
+            table.add_column("Number", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("State", style="yellow")
+            for area in areas:
+                state_style = "green" if area.is_disarmed else "red"
+                state_text = AREA_STATUS.get(area.state, area.state)
+                table.add_row(str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]")
+            console.print(table)
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("get-zones")
+@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.pass_context
+def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
+    """List zones and their state."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        pc = panel_config
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        try:
+            if not as_json:
+                console.print("[cyan]Connecting to panel...[/cyan]")
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.update_status()
+            zones = await panel.get_zones()
+            if as_json:
+                payload = {"ok": True, "zones": [z.to_dict() for z in zones]}
+                click.echo(json.dumps(payload))
+                return
+            table = Table(title="Zones")
+            table.add_column("Number", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("Code", style="yellow")
+            table.add_column("State", style="yellow")
+            table.add_column("Bypassed", style="yellow")
+            table.add_column("Fault", style="yellow")
+            for zone in zones:
+                state_style = "green" if zone.is_normal else "red"
+                state_text = ZONE_STATUS.get(zone.state, zone.state)
+                bypassed = "Y" if zone.is_bypassed else ""
+                fault = "Y" if zone.has_fault else ""
+                table.add_row(str(zone.number), zone.name, zone.state, f"[{state_style}]{state_text}[/{state_style}]", bypassed, fault)
+            console.print(table)
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+@cli.command("set-output")
+@click.argument("output", type=int)
+@click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
+@click.pass_context
+def set_output(ctx: click.Context, output: int, action: str) -> None:
+    """Control an output."""
+    config = ctx.obj["config"]
+    panel_config = config.get("panel", {})
+
+    async def run():
+        pc = panel_config
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        try:
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
+            output_obj = await panel.get_output(output)
+            console.print(f"[cyan]Setting output {output} to {action}...[/cyan]")
+            if action == "on":
+                await output_obj.turn_on()
+            elif action == "off":
+                await output_obj.turn_off()
+            elif action == "pulse":
+                await output_obj.pulse()
+            elif action == "toggle":
+                await output_obj.toggle()
+            console.print(f"[green]Output {output} {action} successfully[/green]")
+        finally:
+            await panel.disconnect()
+
+    asyncio.run(run())
+
+
+# removed: 'outputs' alias; use 'get-outputs'
+
+
+# (removed duplicate alias commands for set-zone-bypass and set-zone-restore)
+
+
+# (removed legacy arm command with away/stay modes)
 def main() -> None:
     """CLI entry point."""
     cli(obj={})

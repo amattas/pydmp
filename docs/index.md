@@ -34,7 +34,7 @@ async def main():
     zones = await panel.get_zones()
 
     # Control
-    await areas[0].arm_away(bypass_faulted=False, force_arm=False, instant=None)
+    await areas[0].arm(bypass_faulted=False, force_arm=False, instant=None)
     await areas[0].disarm()
 
     # Outputs

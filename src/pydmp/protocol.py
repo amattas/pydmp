@@ -55,6 +55,20 @@ class StatusResponse:
 
 
 @dataclass
+class OutputStatus:
+    """Output status from panel (*WQ)."""
+
+    number: str
+    mode: str  # 'O','P','S','T','W','a','t'
+    name: str
+
+
+@dataclass
+class OutputsResponse:
+    outputs: dict[str, OutputStatus]
+
+
+@dataclass
 class UserCode:
     """Decrypted user code record."""
 
@@ -121,6 +135,8 @@ class DMPProtocol:
         self.crypto = DMPCrypto(account_int, remote_key)
 
         _LOGGER.debug(f"Protocol initialized for account: {self.account_number}")
+        # Last NAK detail code seen (e.g., 'XU' for bypass NAK undefined)
+        self.last_nak_detail: str | None = None
 
     def encode_command(
         self,
@@ -152,7 +168,7 @@ class DMPProtocol:
         except (KeyError, ValueError) as e:
             raise DMPProtocolError(f"Failed to encode command: {e}") from e
 
-    def decode_response(self, response: bytes) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | None:
+    def decode_response(self, response: bytes) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
         """Decode response from panel.
 
         Args:
@@ -172,6 +188,8 @@ class DMPProtocol:
         try:
             decoded = response.decode("utf-8", errors="replace")
             _LOGGER.debug(f"Decoding response stream ({len(decoded)} chars)")
+            # Reset last NAK detail for new frame
+            self.last_nak_detail = None
 
             # Split by response delimiter (STX)
             lines = decoded.split(RESPONSE_DELIMITER)
@@ -181,7 +199,9 @@ class DMPProtocol:
                 _LOGGER.debug(f"[resp line {i}] {line[:120]!r}")
 
             status_response = StatusResponse(areas={}, zones={})
+            outputs_response = OutputsResponse(outputs={})
             has_status_data = False
+            has_output_data = False
 
             for line in lines:
                 if not line or len(line) < 8:
@@ -192,22 +212,43 @@ class DMPProtocol:
                 # 6 = '+' (ACK) or '-' (NAK)
                 # 7-8 = "!C" (command)
 
-                # ACK/NAK character is at position 6
-                ack_nak_char = line[6:7] if len(line) > 6 else ""
+                # Find ACK/NAK character ('+' or '-') shortly after account field
+                ack_pos = -1
+                ack_nak_char = ""
+                for i in range(6, min(len(line), 12)):
+                    if line[i:i+1] in (DMPResponse.ACK.value, DMPResponse.NAK.value):
+                        ack_pos = i
+                        ack_nak_char = line[i:i+1]
+                        break
 
-                # Command starts at position 7
-                cmd_with_prefix = line[7:9] if len(line) > 8 else ""
+                # Command starts right after ACK/NAK; may be '!X' or short 'X'
+                cmd_with_prefix = line[ack_pos+1:ack_pos+3] if ack_pos != -1 and len(line) > ack_pos+2 else ""
 
                 # Authentication/disconnect response (!V)
                 if cmd_with_prefix == "!V":
                     continue
 
                 # Command acknowledgment for arm/disarm/bypass/output
-                # These have ! followed by C/O/X/Y/Q
-                if len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]:
+                # Some panels return '+!X' style, others '+X' (or '-XU' on errors).
+                # Handle both forms.
+                if (
+                    (len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]) or
+                    (len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"])  # short form
+                ):
                     if ack_nak_char == DMPResponse.ACK.value:
                         return "ACK"
                     elif ack_nak_char == DMPResponse.NAK.value:
+                        # Capture NAK detail if present, e.g. '-XU'
+                        detail = ""
+                        # Prefer the 2-char window after ACK/NAK
+                        if len(line) >= ack_pos + 3:
+                            short = line[ack_pos+1:ack_pos+3]
+                            if short[0:1] in ["C", "O", "X", "Y", "Q"]:
+                                detail = short
+                        # Fallback to '!X' form (take letter only)
+                        if not detail and len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!":
+                            detail = cmd_with_prefix[1]
+                        self.last_nak_detail = detail or None
                         return "NAK"
 
                 # Status response (*WB, !WB, or ?WB)
@@ -226,6 +267,18 @@ class DMPProtocol:
                     self._parse_status_line(line[start:], status_response)
                     has_status_data = True
 
+                # Output status (*WQ or ?WQ)
+                marker_pos = -1
+                for marker in ("*WQ", "?WQ", "!WQ"):
+                    pos = line.find(marker)
+                    if pos != -1:
+                        marker_pos = pos
+                        break
+                if marker_pos != -1 and len(line) > marker_pos + 3:
+                    start = marker_pos + 3
+                    self._parse_output_status_line(line[start:], outputs_response)
+                    has_output_data = True
+
                 # User codes (*P=...)
                 if "*P=" in line:
                     return self._parse_user_codes_line(line.split("*P=", 1)[1])
@@ -236,6 +289,8 @@ class DMPProtocol:
 
             if has_status_data:
                 return status_response
+            if has_output_data:
+                return outputs_response
 
             return None
 
@@ -312,6 +367,22 @@ class DMPProtocol:
                 response.zones[number] = ZoneStatus(number=number, state=state, name=name)
 
         _LOGGER.debug(f"Parsed status: {len(response.areas)} areas, {len(response.zones)} zones")
+
+    def _parse_output_status_line(self, data: str, response: OutputsResponse) -> None:
+        """Parse an output status line (*WQ) and populate response object.
+
+        Each item: [NNN][Mode][Name]\x1e ... where Mode in {O,P,S,T,W,a,t}
+        """
+        if not data or data.startswith("-\r") or data == "-":
+            return
+        items = data.split(ZONE_DELIMITER)
+        for item in items:
+            if len(item) < 5:
+                continue
+            num = item[0:3]
+            mode = item[3:4]
+            name = item[4:].strip()
+            response.outputs[num] = OutputStatus(number=num, mode=mode, name=name)
 
     def _parse_user_codes_line(self, data: str) -> UserCodesResponse:
         """Parse user codes response, decrypting entries.

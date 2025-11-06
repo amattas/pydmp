@@ -26,6 +26,16 @@ ZONE_STATUS: dict[str, str] = {
 }
 
 
+# Outputs: ON/OF/PL/TP/MO (derived from *WQ and realtime)
+OUTPUT_STATUS: dict[str, str] = {
+    "ON": "On",
+    "OF": "Off",
+    "PL": "Pulse",
+    "TP": "Temporal",
+    "MO": "Momentary/Wink",
+}
+
+
 # System message codes (subset per LT-1959)
 SYSTEM_MESSAGES: dict[str, str] = {
     "000": "AC Power Restored",

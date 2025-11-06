@@ -76,13 +76,13 @@ class Area:
         """Check if area is disarmed."""
         return self._state == AREA_STATUS_DISARMED
 
-    async def arm_away(
+    async def arm(
         self,
         bypass_faulted: bool = False,
         force_arm: bool = False,
         instant: bool | None = None,
     ) -> None:
-        """Arm area in away mode.
+        """Arm area.
 
         Args:
             bypass_faulted: Bypass faulted zones (default: False)
@@ -94,7 +94,7 @@ class Area:
         """
         try:
             _LOGGER.info(
-                f"Arming area {self.number} (away, bypass={bypass_faulted}, force={force_arm})"
+                f"Arming area {self.number} (bypass={bypass_faulted}, force={force_arm})"
             )
             bypass = "Y" if bypass_faulted else "N"
             force = "Y" if force_arm else "N"
@@ -116,27 +116,6 @@ class Area:
 
         except Exception as e:
             raise DMPAreaError(f"Failed to arm area {self.number}: {e}") from e
-
-    async def arm_stay(
-        self,
-        bypass_faulted: bool = False,
-        force_arm: bool = False,
-        instant: bool | None = None,
-    ) -> None:
-        """Arm area in stay mode.
-
-        Note: DMP protocol doesn't distinguish between away/stay at the protocol level.
-        This is provided for API compatibility but uses the same command as arm_away.
-
-        Args:
-            bypass_faulted: Bypass faulted zones (default: False)
-            force_arm: Force arm bad zones (default: False)
-
-        Raises:
-            DMPAreaError: If arm fails
-        """
-        # DMP uses same command for all arm types
-        await self.arm_away(bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
 
     async def disarm(self) -> None:
         """Disarm area.
@@ -226,13 +205,9 @@ class AreaSync:
         """Check if area is disarmed."""
         return self._area.is_disarmed
 
-    def arm_away_sync(self, bypass_faulted: bool = False, force_arm: bool = False) -> None:
-        """Arm area in away mode (sync)."""
-        self._panel_sync._run(self._area.arm_away(bypass_faulted, force_arm))
-
-    def arm_stay_sync(self, bypass_faulted: bool = False, force_arm: bool = False) -> None:
-        """Arm area in stay mode (sync)."""
-        self._panel_sync._run(self._area.arm_stay(bypass_faulted, force_arm))
+    def arm_sync(self, bypass_faulted: bool = False, force_arm: bool = False) -> None:
+        """Arm area (sync)."""
+        self._panel_sync._run(self._area.arm(bypass_faulted, force_arm))
 
     def disarm_sync(self) -> None:
         """Disarm area (sync)."""

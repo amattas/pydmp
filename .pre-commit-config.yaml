@@ -6,6 +6,8 @@ repos:
         name: black (code formatter)
         language_version: python3.12
         additional_dependencies: []
+        pass_filenames: false
+        args: ["src", "tests"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:

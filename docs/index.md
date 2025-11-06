@@ -53,7 +53,7 @@ import asyncio
 from pydmp import DMPStatusServer, parse_s3_message
 
 async def run():
-    server = DMPStatusServer(host="0.0.0.0", port=5001)
+    server = DMPStatusServer(host="127.0.0.1", port=5001)
     server.register_callback(lambda msg: print(parse_s3_message(msg)))
     await server.start()
     await asyncio.sleep(3600)

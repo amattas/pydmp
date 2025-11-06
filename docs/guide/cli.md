@@ -72,7 +72,7 @@ Fetches and prints decrypted user codes and user profiles. User code decryption 
 
 ### Realtime Status Listener
 ```bash
-pydmp listen [--host|-H 0.0.0.0] [--port|-p 5001] [--duration|-t 0] [--json|-j]
+pydmp listen [--host|-H 127.0.0.1] [--port|-p 5001] [--duration|-t 0] [--json|-j]
 ```
 Starts the S3 listener and prints parsed events. Use `Ctrl+C` to stop or `--duration` to exit after N seconds. With `--json`, each event is printed as a single line of JSON (NDJSON).
 

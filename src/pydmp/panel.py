@@ -127,8 +127,8 @@ class DMPPanel:
                 _LOGGER.debug("Sending panel disconnect command")
                 disc = self._protocol.encode_command(DMPCommand.DISCONNECT.value)
                 await self._connection.send_and_receive(disc)
-        except Exception:
-            pass
+        except Exception as e:
+            _LOGGER.debug("Panel disconnect send failed: %s", e)
 
         # Cleanup active connection guard
         if self._active_key is not None:
@@ -524,8 +524,8 @@ class DMPPanel:
             return
         try:
             server.remove_callback(cb)
-        except Exception:
-            pass
+        except Exception as e:
+            _LOGGER.debug("Failed to remove status callback: %s", e)
 
     async def start_keepalive(self, interval: float = 10.0) -> None:
         """Start periodic keep-alive (!H) while connected.
@@ -565,9 +565,9 @@ class DMPPanel:
             try:
                 await task
             except asyncio.CancelledError:
-                pass
-            except Exception:
-                pass
+                _LOGGER.debug("Keep-alive task cancelled")
+            except Exception as e:
+                _LOGGER.debug("Keep-alive stop error: %s", e)
 
     async def arm_areas(
         self,

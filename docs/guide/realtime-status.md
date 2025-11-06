@@ -9,7 +9,7 @@ import asyncio
 from pydmp import DMPStatusServer, parse_s3_message
 
 async def on_start():
-    server = DMPStatusServer(host="0.0.0.0", port=5001)
+    server = DMPStatusServer(host="127.0.0.1", port=5001)
 
     def on_event(msg):
         evt = parse_s3_message(msg)
@@ -49,7 +49,7 @@ from pydmp import DMPPanel, DMPStatusServer
 
 panel = DMPPanel()
 # ... connect panel ...
-server = DMPStatusServer(host="0.0.0.0", port=5001)
+server = DMPStatusServer(host="127.0.0.1", port=5001)
 panel.attach_status_server(server)
 ```
 

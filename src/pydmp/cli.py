@@ -694,7 +694,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
 
 
 @cli.command("listen", context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--host", "-H", default="0.0.0.0", show_default=True, help="Listen host")
+@click.option("--host", "-H", default="127.0.0.1", show_default=True, help="Listen host")
 @click.option("--port", "-p", default=5001, show_default=True, type=int, help="Listen port")
 @click.option("--duration", "-t", default=0, type=int, help="Seconds to run (0=until Ctrl+C)")
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output events as JSON (NDJSON)")

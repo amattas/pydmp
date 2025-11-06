@@ -53,8 +53,11 @@ class DMPTransportSync:
         try:
             disc = self._protocol.encode_command(DMPCommand.DISCONNECT.value)
             self._run(self._transport.send_and_receive(disc))
-        except Exception:
-            pass
+        except Exception as e:
+            # Non-fatal if the connection is already closed
+            import logging
+
+            logging.getLogger(__name__).debug("Transport disconnect send failed: %s", e)
         self._run(self._transport.disconnect())
 
     def send_command(

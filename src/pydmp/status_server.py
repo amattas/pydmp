@@ -37,7 +37,7 @@ Callback = Callable[[S3Message], Awaitable[None] | None]
 class DMPStatusServer:
     """Async TCP server for DMP Serial 3 realtime status (Z-frames)."""
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 5001):
+    def __init__(self, host: str = "127.0.0.1", port: int = 5001):
         self._host = host
         self._port = port
         self._server: asyncio.base_events.Server | None = None
@@ -91,8 +91,8 @@ class DMPStatusServer:
             try:
                 writer.close()
                 await writer.wait_closed()
-            except Exception:
-                pass
+            except Exception as e:
+                _LOGGER.debug("Error closing status connection: %s", e)
             _LOGGER.info("S3 status connection closed: %s", peer)
 
     async def _process_line(self, line: bytes, writer: asyncio.StreamWriter) -> None:

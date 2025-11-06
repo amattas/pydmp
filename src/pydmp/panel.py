@@ -11,6 +11,7 @@ from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
 from .protocol import StatusResponse
+from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
@@ -281,6 +282,41 @@ class DMPPanel:
             self._outputs[number] = Output(self, number, f"Output {number}")
 
         return self._outputs[number]
+
+    async def get_user_codes(self) -> list[UserCode]:
+        """Retrieve all user codes from the panel (decrypting entries)."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        users: list[UserCode] = []
+        start = "0000"
+        while True:
+            resp = await self._connection.send_command(DMPCommand.GET_USER_CODES.value, user=start)
+            if isinstance(resp, UserCodesResponse):
+                users.extend(resp.users)
+                if resp.has_more and resp.last_number:
+                    # Next page begins at last + 1
+                    start = f"{int(resp.last_number) + 1:04d}"
+                    continue
+            break
+        return users
+
+    async def get_user_profiles(self) -> list[UserProfile]:
+        """Retrieve all user profiles from the panel."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+
+        profiles: list[UserProfile] = []
+        start = "000"
+        while True:
+            resp = await self._connection.send_command(DMPCommand.GET_USER_PROFILES.value, profile=start)
+            if isinstance(resp, UserProfilesResponse):
+                profiles.extend(resp.profiles)
+                if resp.has_more and resp.last_number:
+                    start = f"{int(resp.last_number) + 1:03d}"
+                    continue
+            break
+        return profiles
 
     async def start_keepalive(self, interval: float = 10.0) -> None:
         """Start periodic keep-alive (!H) while connected.

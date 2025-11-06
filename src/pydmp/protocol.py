@@ -54,6 +54,46 @@ class StatusResponse:
     zones: dict[str, ZoneStatus]
 
 
+@dataclass
+class UserCode:
+    """Decrypted user code record."""
+
+    number: str
+    code: str
+    pin: str
+    profiles: tuple[str, str, str, str]
+    temp_date: str
+    exp_date: str
+    name: str
+
+
+@dataclass
+class UserCodesResponse:
+    users: list[UserCode]
+    has_more: bool
+    last_number: str | None
+
+
+@dataclass
+class UserProfile:
+    """User profile record (not encrypted)."""
+
+    number: str
+    areas_mask: str
+    access_areas_mask: str
+    output_group: str
+    menu_options: str
+    rearm_delay: str
+    name: str
+
+
+@dataclass
+class UserProfilesResponse:
+    profiles: list[UserProfile]
+    has_more: bool
+    last_number: str | None
+
+
 class DMPProtocol:
     """DMP protocol encoder/decoder."""
 
@@ -107,7 +147,7 @@ class DMPProtocol:
         except (KeyError, ValueError) as e:
             raise DMPProtocolError(f"Failed to encode command: {e}") from e
 
-    def decode_response(self, response: bytes) -> str | StatusResponse | None:
+    def decode_response(self, response: bytes) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | None:
         """Decode response from panel.
 
         Args:
@@ -166,6 +206,14 @@ class DMPProtocol:
                 if len(line) > 9 and line[7:10] in ["!WB", "?WB"]:
                     self._parse_status_line(line[10:], status_response)
                     has_status_data = True
+
+                # User codes (*P=...)
+                if "*P=" in line:
+                    return self._parse_user_codes_line(line.split("*P=", 1)[1])
+
+                # User profiles (*U...)
+                if "*U" in line:
+                    return self._parse_user_profiles_line(line.split("*U", 1)[1])
 
             if has_status_data:
                 return status_response
@@ -245,3 +293,83 @@ class DMPProtocol:
                 response.zones[number] = ZoneStatus(number=number, state=state, name=name)
 
         _LOGGER.debug(f"Parsed status: {len(response.areas)} areas, {len(response.zones)} zones")
+
+    def _parse_user_codes_line(self, data: str) -> UserCodesResponse:
+        """Parse user codes response, decrypting entries.
+
+        Data is a sequence of encrypted user strings delimited by ZONE_DELIMITER.
+        """
+        users: list[UserCode] = []
+        has_more = False
+        last_number: str | None = None
+
+        for item in data.split(ZONE_DELIMITER):
+            item = item.rstrip("\r")
+            if not item:
+                continue
+            if item.startswith("----"):
+                has_more = True
+                continue
+            # Decrypt with LFSR
+            plain = self.crypto.decrypt_string(item)
+            if len(plain) < 44:
+                continue
+            num = plain[0:4]
+            code = plain[4:16].split("F", 1)[0]
+            pin = plain[16:22].split("F", 1)[0]
+            p1 = plain[22:25]
+            p2 = plain[25:28]
+            p3 = plain[28:31]
+            p4 = plain[31:34]
+            temp = plain[34:40]
+            exp = plain[40:44]
+            name = plain[44:]
+            last_number = num
+            users.append(
+                UserCode(
+                    number=num,
+                    code=code,
+                    pin=pin,
+                    profiles=(p1, p2, p3, p4),
+                    temp_date=temp,
+                    exp_date=exp,
+                    name=name,
+                )
+            )
+        return UserCodesResponse(users=users, has_more=has_more, last_number=last_number)
+
+    def _parse_user_profiles_line(self, data: str) -> UserProfilesResponse:
+        """Parse user profiles response (*U...)."""
+        profiles: list[UserProfile] = []
+        has_more = False
+        last_number: str | None = None
+
+        for item in data.split(ZONE_DELIMITER):
+            item = item.rstrip("\r")
+            if not item:
+                continue
+            if item.startswith("----"):
+                has_more = True
+                continue
+            # Fields per lua slicing
+            num = item[0:3]
+            areas = item[3:11]
+            acc_areas = item[11:19]
+            out_grp = item[19:22]
+            menu = item[22:30]
+            # Optional indexes
+            rearm = item[46:49] if len(item) >= 49 else ""
+            name = item[49:] if len(item) >= 49 else item[30:]
+            last_number = num
+            profiles.append(
+                UserProfile(
+                    number=num,
+                    areas_mask=areas,
+                    access_areas_mask=acc_areas,
+                    output_group=out_grp,
+                    menu_options=menu,
+                    rearm_delay=rearm,
+                    name=name,
+                )
+            )
+        return UserProfilesResponse(profiles=profiles, has_more=has_more, last_number=last_number)

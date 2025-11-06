@@ -40,6 +40,11 @@ cli = [
     "pyyaml>=6.0",
     "rich>=13.0",
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.4",
+    "mkdocstrings[python]>=0.24",
+]
 
 [project.scripts]
 pydmp = "pydmp.cli:main"

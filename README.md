@@ -303,6 +303,19 @@ mypy src/
 ruff check src/ tests/
 ```
 
+## Documentation
+
+Online docs (MkDocs + mkdocstrings) include concepts, realtime status (S3), encryption details, and full API reference.
+
+- Build locally:
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve
+```
+
+- CI deploys docs to GitHub Pages on push to main.
+
 ## Testing
 
 PyDMP includes comprehensive unit tests for core functionality:

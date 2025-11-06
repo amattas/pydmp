@@ -43,9 +43,17 @@ class DMPCrypto:
         # Base seed: (account + code) & 0xFF
         base_seed = (self.account_number + code_int) & 0xFF
 
-        # System seed (for remote link - set to 0 for Entree)
+        # System seed (for remote link)
         # For remote: system_seed = remote_key[0:2] XOR remote_key[6:8]
         system_seed = 0
+        rk = (self.remote_key or "")
+        if len(rk) >= 8:
+            try:
+                a = int(rk[0:2], 16)
+                b = int(rk[6:8], 16)
+                system_seed = a ^ b
+            except ValueError:
+                system_seed = 0
 
         # Final seed
         final_seed = base_seed ^ system_seed

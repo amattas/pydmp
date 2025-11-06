@@ -1,0 +1,36 @@
+site_name: PyDMP
+site_description: Python library for controlling DMP alarm systems
+site_url: https://github.com/yourusername/pydmp
+repo_url: https://github.com/yourusername/pydmp
+repo_name: yourusername/pydmp
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            members_order: source
+
+nav:
+  - Home: index.md
+  - Guide:
+      - Getting Started: guide/getting-started.md
+      - Realtime Status (S3): guide/realtime-status.md
+      - Encryption & User Data: guide/encryption.md
+  - API Reference:
+      - Panel: api/panel.md
+      - Entities: api/entities.md
+      - Protocol & Crypto: api/protocol.md
+      - Realtime Server: api/status.md
+

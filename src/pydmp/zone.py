@@ -48,7 +48,7 @@ class Zone:
         self.name = name
         self._state = state
 
-        _LOGGER.debug(f"Zone {number} initialized: {name} ({zone_type})")
+        _LOGGER.debug(f"Zone {number} initialized: {name}")
 
     @property
     def state(self) -> str:

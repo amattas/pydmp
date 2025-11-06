@@ -1,0 +1,128 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: I would like to see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered
+      placeholder: I also considered...
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe your use case and how this feature would help
+      placeholder: |
+        This feature would help me...
+        Example scenario: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Code/API
+      description: If applicable, show what the API or usage might look like
+      placeholder: |
+        ```python
+        # Proposed API usage
+        panel = DMPPanel()
+        await panel.new_feature()
+        ```
+      render: python
+    validations:
+      required: false
+
+  - type: dropdown
+    id: panel-specific
+    attributes:
+      label: Is this panel-specific?
+      description: Does this feature relate to a specific DMP panel model?
+      options:
+        - No, generic feature
+        - Yes, specific to my panel model
+    validations:
+      required: true
+
+  - type: input
+    id: panel-model
+    attributes:
+      label: Panel Model (if panel-specific)
+      description: Which panel model does this relate to?
+      placeholder: e.g., XR150, XR550
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority/Impact
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be helpful
+        - Important for my use case
+        - Critical/Blocking
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing-to-contribute
+    attributes:
+      label: Willing to Contribute
+      description: Would you be willing to help implement this feature?
+      options:
+        - Yes, I can submit a PR
+        - Yes, I can help test
+        - Yes, I can provide documentation
+        - No, but I can provide feedback
+        - No
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or documentation links
+      placeholder: Any additional information...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues and feature requests
+          required: true
+        - label: This feature aligns with the project's goals (platform-agnostic DMP library)
+          required: true

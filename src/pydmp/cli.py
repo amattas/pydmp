@@ -182,7 +182,9 @@ def _normalize_config(raw: Any) -> dict | None:
 @click.option(
     "--config",
     "-c",
-    type=click.Path(exists=True, path_type=Path),
+    # Do not require the file to exist so commands like 'listen'
+    # can run without a config present (tests/CI environments).
+    type=click.Path(path_type=Path),
     default="config.yaml",
     help="Configuration file path",
 )

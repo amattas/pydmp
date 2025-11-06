@@ -1,4 +1,4 @@
-# Protocol & Crypto
+# Protocol
 
 ::: pydmp.protocol.DMPProtocol
 
@@ -7,5 +7,3 @@
 ::: pydmp.protocol.UserCodesResponse
 
 ::: pydmp.protocol.UserProfilesResponse
-
-::: pydmp.crypto.DMPCrypto

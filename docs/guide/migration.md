@@ -4,9 +4,9 @@ This page highlights recent breaking changes that removed temporary compatibilit
 
 ## Removed Aliases
 
-- `DMPConnection` → use `DMPTransport`
-- `DMPConnectionSync` → use `DMPTransportSync`
-- `DMPCommandNAK` → use `DMPCommandNAKError`
+- `DMPConnection` - use `DMPTransport`
+- `DMPConnectionSync` - use `DMPTransportSync`
+- `DMPCommandNAK` - use `DMPCommandNAKError`
 
 These were transitional names kept during refactors and are now removed to keep the public API consistent.
 

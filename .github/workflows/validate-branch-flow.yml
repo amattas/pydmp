@@ -1,0 +1,104 @@
+name: Validate Branch Flow
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - 'release/**'
+
+jobs:
+  validate-source:
+    name: Validate PR Source Branch
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Check branch flow rules
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          TARGET="${{ github.base_ref }}"
+          SOURCE="${{ github.head_ref }}"
+
+          echo "Validating branch flow..."
+          echo "   Source: $SOURCE"
+          echo "   Target: $TARGET"
+          echo "" | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Validating branch flow"
+            echo "- Source: $SOURCE"
+            echo "- Target: $TARGET"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Allowed targets:
+          #   - release/latest (from main)
+          #   - release/x.y.z-<suffix> (from release/latest)
+
+          # Rule 1: release/latest can ONLY accept from main
+          if [[ "$TARGET" == "release/latest" ]]; then
+            echo "Rule: release/latest can only accept PRs from 'main'"
+            if [[ "$SOURCE" != "main" ]]; then
+              echo "FAILED: Source branch must be 'main', got '$SOURCE'"
+              echo ""
+              echo "Valid flow: main -> release/latest -> release/x.y.z-*"
+              {
+                echo "## Validate Branch Flow - FAILED"
+                echo "- Rule: release/latest requires 'main' source"
+                echo "- Source: $SOURCE"
+                echo "- Target: $TARGET"
+                echo "- Result: FAILED"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            echo "PASSED: Valid flow from main to release/latest"
+            {
+              echo "## Validate Branch Flow - PASSED"
+              echo "- Rule: release/latest target"
+              echo "- Source: $SOURCE"
+              echo "- Target: $TARGET"
+              echo "- Result: PASS"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Rule 2: release/x.y.z-* can ONLY accept from release/latest
+          # Regex for prerelease with suffix: release/1.2.3-alpha.1
+          if [[ "$TARGET" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+-[-0-9A-Za-z.]+$ ]]; then
+            echo "Rule: Version release branches (release/x.y.z-*) can only accept PRs from 'release/latest'"
+            if [[ "$SOURCE" != "release/latest" ]]; then
+              echo "FAILED: Source branch must be 'release/latest', got '$SOURCE'"
+              echo ""
+              echo "Valid flow: main -> release/latest -> release/x.y.z-*"
+              {
+                echo "## Validate Branch Flow - FAILED"
+                echo "- Rule: prerelease targets require 'release/latest' source"
+                echo "- Source: $SOURCE"
+                echo "- Target: $TARGET"
+                echo "- Result: FAILED"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            echo "PASSED: Valid flow from release/latest to prerelease branch"
+            {
+              echo "## Validate Branch Flow - PASSED"
+              echo "- Rule: prerelease target"
+              echo "- Source: $SOURCE"
+              echo "- Target: $TARGET"
+              echo "- Result: PASS"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Any other release/* target is not allowed
+          echo "FAILED: Target branch not allowed for release workflows: $TARGET"
+          echo "Allowed targets: release/latest (from main), release/x.y.z-* (from release/latest)"
+          {
+            echo "## Validate Branch Flow - FAILED"
+            echo "- Rule: target must be release/latest or release/x.y.z-*"
+            echo "- Source: $SOURCE"
+            echo "- Target: $TARGET"
+            echo "- Result: FAILED"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

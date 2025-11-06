@@ -4,6 +4,11 @@ site_url: https://amattas.github.io/pydmp/
 repo_url: https://github.com/amattas/pydmp
 repo_name: amattas/pydmp
 
+extra:
+  version:
+    provider: mike
+    default: latest
+
 theme:
   name: material
   features:
@@ -21,9 +26,18 @@ plugins:
             docstring_style: google
             show_source: false
             members_order: source
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: false
+            filters:
+              - "!^_"  # Exclude private members unless documented
 
 nav:
   - Home: index.md
+  - Panel Compatibility: compatibility.md
   - Guide:
       - Getting Started: guide/getting-started.md
       - CLI: guide/cli.md
@@ -32,6 +46,13 @@ nav:
       - Migration: guide/migration.md
   - API Reference:
       - Panel: api/panel.md
-      - Entities: api/entities.md
-      - Protocol & Crypto: api/protocol.md
+      - Entities:
+          - Area: api/entities/area.md
+          - Zone: api/entities/zone.md
+          - Output: api/entities/output.md
+          - User Code: api/entities/user.md
+          - User Profile: api/entities/profile.md
+      - Protocol:
+          - Protocol: api/protocol.md
+          - Encryption: api/protocol/encryption.md
       - Realtime Server: api/status.md

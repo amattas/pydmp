@@ -18,14 +18,14 @@ panel:
 ```
 
 Global options:
-- `--config, -c PATH` — path to YAML file (default: `config.yaml`)
-- `--quiet, -q` — reduce logs (WARNING)
-- `--debug, -d` — debug logs (overrides other flags)
-- `--version, -v` — show version and exit
-- `--help, -h` — show help
+- `--config, -c PATH` - path to YAML file (default: `config.yaml`)
+- `--quiet, -q` - reduce logs (WARNING)
+- `--debug, -d` - debug logs (overrides other flags)
+- `--version, -v` - show version and exit
+- `--help, -h` - show help
 
 Common option:
-- `--json, -j` — output JSON instead of human‑readable text (where applicable). For `listen`, `--json` outputs newline‑delimited JSON (NDJSON).
+- `--json, -j` - output JSON instead of human-readable text (where applicable). For `listen`, `--json` outputs newline-delimited JSON (NDJSON).
 
 ## Commands
 
@@ -41,20 +41,20 @@ Print areas and zones separately.
 pydmp arm "1,2,3" [--bypass-faulted|-b] [--force-arm|-f] [--instant|-i/--no-instant] [--json|-j]
 pydmp disarm <AREA> [--json|-j]
 ```
-`arm` accepts a comma‑separated list of areas and sends a single `!C` command. When `--instant` is provided, a third `Y/N` flag is appended to `!C`. `disarm` takes a single area and sends `!O`.
+`arm` accepts a comma-separated list of areas and sends a single `!C` command. When `--instant` is provided, a third `Y/N` flag is appended to `!C`. `disarm` takes a single area and sends `!O`.
 
 ### Zones
 ```bash
 pydmp set-zone-bypass <ZONE> [--json|-j]
 pydmp set-zone-restore <ZONE> [--json|-j]
 ```
-Sends `!X` or `!Y` for a 3‑digit zone number (e.g., `005`).
+Sends `!X` or `!Y` for a 3-digit zone number (e.g., `005`).
 
 ### Outputs
 ```bash
 pydmp output <OUTPUT> on|off|pulse|toggle [--json|-j]
 ```
-Controls a 3‑digit output (`!Q001S`, `!Q001O`, `!Q001P`). Toggle flips between on and off.
+Controls a 3-digit output (`!Q001S`, `!Q001O`, `!Q001P`). Toggle flips between on and off.
 
 ### Sensor Reset
 ```bash
@@ -67,13 +67,13 @@ Sends `!E001`.
 pydmp get-users [--json|-j]
 pydmp get-profiles [--json|-j]
 ```
-Fetches and prints decrypted user codes and user profiles. User code decryption uses the LFSR algorithm.
+Fetches and prints decrypted user codes and user profiles. User code decryption uses the LFSR algorithm. See [Encryption & User Data](encryption.md) for details on the decryption process.
 
 ### Realtime Status Listener
 ```bash
 pydmp listen [--host|-H 127.0.0.1] [--port|-p 5001] [--duration|-t 0] [--json|-j]
 ```
-Starts the S3 listener and prints parsed events. Use `Ctrl+C` to stop or `--duration` to exit after N seconds. With `--json`, each event is printed as a single line of JSON (NDJSON).
+Starts the S3 listener and prints parsed events. Use `Ctrl+C` to stop or `--duration` to exit after N seconds. With `--json`, each event is printed as a single line of JSON (NDJSON). See [Realtime Status (S3)](realtime-status.md) for more information on event types and parsing.
 
 ## Examples
 ```bash
@@ -102,6 +102,6 @@ pydmp listen --json --duration 10 | jq
 ```
 
 ## Notes
-- The CLI uses the same async APIs. Commands serialize on a single connection with built‑in rate limiting.
+- The CLI uses the same async APIs. Commands serialize on a single connection with built-in rate limiting.
 - Some panels accept a blank/placeholder key for `!V2` auth; otherwise configure a valid `remote_key`.
-- Only user‑code replies (`*P=`) are obfuscated; normal commands/status are plain ASCII.
+- Only user-code replies (`*P=`) are obfuscated; normal commands/status are plain ASCII.

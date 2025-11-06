@@ -1,0 +1,146 @@
+name: Create Release Draft
+
+on:
+  create:
+    branches:
+      - 'release/**'
+
+jobs:
+  create-draft-release:
+    name: Create Draft Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/release/') && !endsWith(github.ref, '/latest')
+    permissions:
+      contents: write
+    steps:
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          VERSION="${BRANCH_NAME#release/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          TAG="v${{ steps.extract_version.outputs.version }}"
+          if gh release view "$TAG" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release $TAG already exists, skipping creation"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release $TAG does not exist, will create"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout repository
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Generate release notes
+        if: steps.check_release.outputs.exists == 'false'
+        id: release_notes
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+
+          # Check if this is a pre-release
+          if [[ "$VERSION" =~ -[a-zA-Z] ]]; then
+            IS_PRERELEASE="true"
+            RELEASE_TYPE="Pre-release"
+          else
+            IS_PRERELEASE="false"
+            RELEASE_TYPE="Release"
+          fi
+
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+          # Generate release notes
+          cat > release_notes.md <<EOF
+          ## PyDMP $VERSION
+
+          **$RELEASE_TYPE for version $VERSION**
+
+          ### What's Changed
+
+          <!-- Add your release notes here -->
+
+          ### Installation
+
+          \`\`\`bash
+          pip install pydmp==$VERSION
+          \`\`\`
+
+          ### Documentation
+
+          - [Full Documentation](https://amattas.github.io/pydmp/)
+          - [API Reference](https://amattas.github.io/pydmp/api/)
+
+          ### Release Checklist
+
+          - [ ] Review and update release notes above
+          - [ ] Verify all tests pass
+          - [ ] Update CHANGELOG.md if needed
+          - [ ] Publish release (removes draft status)
+          - [ ] Merge to \`release/latest\` to publish to PyPI
+
+          ---
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/...v$VERSION
+          EOF
+
+          echo "Release notes generated for $VERSION ($RELEASE_TYPE)"
+
+      - name: Set up Python
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build distribution packages
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          python -m build
+          echo "Built packages:"
+          ls -lh dist/
+
+      - name: Create draft release
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.extract_version.outputs.tag }}"
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          IS_PRERELEASE="${{ steps.release_notes.outputs.is_prerelease }}"
+
+          PRERELEASE_FLAG=""
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            --draft \
+            $PRERELEASE_FLAG \
+            --title "PyDMP $VERSION" \
+            --notes-file release_notes.md \
+            --target "${{ github.ref_name }}" \
+            dist/*
+
+          echo "Draft release created: $TAG"
+          echo "Attached distribution packages:"
+          ls -1 dist/
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Comment on success
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          echo "✓ Draft release created for ${{ steps.extract_version.outputs.tag }}"
+          echo "✓ View at: https://github.com/${{ github.repository }}/releases"

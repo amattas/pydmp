@@ -1,12 +1,14 @@
 # PyDMP
 
-PyDMP is a platform‑agnostic Python library to control DMP (Digital Monitoring Products) alarm panels over TCP.
+PyDMP is a platform-agnostic Python library for controlling DMP (Digital Monitoring Products) alarm panels over TCP/IP. Built for developers who need reliable, straightforward access to DMP systems without vendor lock-in.
 
-- Async and sync APIs
-- High‑level entities (Panel, Areas, Zones, Outputs)
-- Protocol encoder/decoder with rate limiting and single-connection guard
-- Realtime Serial 3 (S3) status server with callbacks
-- User code decryption and profile parsing
+**Key Features:**
+
+- **Dual APIs**: Choose async for modern applications or sync for simple scripts
+- **High-level abstractions**: Work with panels, areas, zones, and outputs instead of raw protocol commands
+- **Built-in rate limiting**: Automatic command throttling prevents panel overload
+- **Real-time events**: Serial 3 (S3) status server with event parsing and callbacks
+- **Type safety**: Full type hints throughout the codebase
 
 ## Installation
 
@@ -63,8 +65,10 @@ asyncio.run(run())
 
 ## Where to Next
 
-- Guide → Getting Started covers install, connect, command flow
-- Guide → Realtime Status shows S3 listener + parsing
-- Guide → Encryption explains user code decryption and remote key behavior
-- Guide → Migration covers recent breaking API changes
-- API Reference documents all classes and methods with type hints
+- [Getting Started](guide/getting-started.md) - Installation, connection, and command flow
+- [Panel Compatibility](compatibility.md) - Tested panels and compatibility reports
+- [CLI Guide](guide/cli.md) - Command-line interface usage
+- [Realtime Status (S3)](guide/realtime-status.md) - S3 listener and event parsing
+- [Encryption & User Data](guide/encryption.md) - User code decryption and remote key behavior
+- [Migration Guide](guide/migration.md) - Breaking API changes and upgrade notes
+- [API Reference](api/panel.md) - Complete API documentation for Panel, Entities, Protocol, and more

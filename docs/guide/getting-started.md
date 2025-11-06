@@ -1,12 +1,14 @@
 # Getting Started
 
-This guide walks through connecting to a panel, reading status, and sending commands.
+This guide walks you through connecting to your DMP panel, reading status, and sending commands.
 
-## Concepts
+## Core Concepts
 
-- One connection per panel: PyDMP guards against multiple active connections to the same host/port/account.
-- Serialized I/O: Commands are sent one at a time with rate limiting (0.3s) to match panel expectations.
-- Entities: Areas (partitions), Zones (lines), Outputs (relays) are high‑level abstractions.
+Before diving in, here are a few key principles that shape how PyDMP works:
+
+- **Single connection per panel**: PyDMP prevents multiple simultaneous connections to the same panel, protecting against state conflicts
+- **Automatic rate limiting**: Commands are queued and sent one at a time with 0.3-second spacing to match panel expectations
+- **Entity-based design**: Work with Areas (partitions), Zones (sensors), and Outputs (relays) rather than raw protocol strings
 
 ## Connect and Status
 
@@ -46,7 +48,7 @@ await o.pulse()
 
 ## Realtime Status
 
-Use the realtime S3 server to receive events as they happen. See the dedicated page for details.
+Use the realtime S3 server to receive events as they happen. See the [Realtime Status (S3)](realtime-status.md) guide for details.
 
 ```python
 from pydmp import DMPStatusServer, parse_s3_message

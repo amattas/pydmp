@@ -97,7 +97,7 @@ panel.disconnect()
 ### Panel Control
 
 ```python
-# Connect to panel
+# Connect to panel (side-effect free)
 await panel.connect(host, account, remote_key)
 
 # Get entities
@@ -105,7 +105,7 @@ areas = await panel.get_areas()  # List[Area]
 zones = await panel.get_zones()  # List[Zone]
 outputs = await panel.get_outputs()  # List[Output]
 
-# Update status
+# Update status (explicit)
 await panel.update_status()
 
 # Disconnect
@@ -175,6 +175,10 @@ panel:
   remote_key: "YOUR_KEY"
 ```
 
+JSON output
+
+- Most commands support `--json` to emit machine-readable JSON. The default output is a human-friendly table/message format. The `listen` command streams newline-delimited JSON (NDJSON) when `--json` is provided.
+
 ### Commands
 
 ```bash
@@ -197,6 +201,12 @@ pydmp output 1 on
 pydmp output 2 off
 pydmp output 3 pulse
 pydmp output 4 toggle
+
+# JSON output examples
+pydmp status --json
+pydmp users --json
+pydmp profiles --json
+pydmp listen --json --duration 10 | jq
 ```
 
 ## DMP Protocol Details

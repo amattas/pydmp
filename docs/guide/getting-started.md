@@ -15,7 +15,7 @@ from pydmp import DMPPanel
 
 panel = DMPPanel()
 await panel.connect(host="192.168.1.100", account="00001", remote_key="YOURKEY")
-await panel.update_status()
+await panel.update_status()  # connect() is side-effect free; call explicit updates as needed
 
 areas = await panel.get_areas()   # List[Area]
 zones = await panel.get_zones()   # List[Zone]

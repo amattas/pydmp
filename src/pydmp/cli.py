@@ -524,8 +524,19 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                 table.add_column("Name", style="magenta")
                 table.add_column("Code", style="yellow")
                 table.add_column("PIN", style="yellow")
+                table.add_column("Start", style="yellow")
+                table.add_column("End", style="yellow")
+                table.add_column("Flags", style="yellow")
                 for u in users:
-                    table.add_row(u.number, u.name or "", u.code, u.pin)
+                    table.add_row(
+                        u.number,
+                        u.name or "",
+                        u.code,
+                        u.pin,
+                        (u.start_date or ""),
+                        (u.end_date or ""),
+                        (u.flags or ""),
+                    )
                 console.print(table)
             else:
                 from dataclasses import asdict

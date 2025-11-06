@@ -62,9 +62,14 @@ class UserCode:
     code: str
     pin: str
     profiles: tuple[str, str, str, str]
-    temp_date: str
-    exp_date: str
+    # Historically parsed fields; see start_date/end_date for clarified meaning
+    temp_date: str  # legacy 6-digit field; same as end_date (DDMMYY)
+    exp_date: str   # legacy 4-char field; often '----' on observed panels
     name: str
+    # Clarified/additional fields parsed from the trailing plaintext segment
+    start_date: str | None = None   # 6 digits DDMMYY; start of access
+    end_date: str | None = None     # 6 digits DDMMYY; end of access
+    flags: str | None = None        # 3 chars (e.g., 'YNN')
 
 
 @dataclass
@@ -335,9 +340,27 @@ class DMPProtocol:
             p2 = plain[25:28]
             p3 = plain[28:31]
             p4 = plain[31:34]
-            temp = plain[34:40]
-            exp = plain[40:44]
-            name = plain[44:]
+            # End date (DDMMYY) appears in decrypted block; panel also includes a start date in the trailing plaintext
+            end_date_ddmmyy = plain[34:40]
+            legacy_exp = plain[40:44]
+            tail = plain[44:]
+            flags = None
+            start_date_ddmmyy = None
+            name = ""
+            if tail:
+                # Observed tail layout: [flags(3)][start_date(6)][name]
+                # Only treat as such if it matches pattern [Y/N]{3}[0-9]{6}
+                maybe_flags = tail[0:3] if len(tail) >= 3 else ""
+                maybe_date = tail[3:9] if len(tail) >= 9 else ""
+                if len(maybe_flags) == 3 and all(c in "YN" for c in maybe_flags) and len(maybe_date) == 6 and maybe_date.isdigit():
+                    flags = maybe_flags
+                    start_date_ddmmyy = maybe_date
+                    name = tail[9:]
+                else:
+                    name = tail
+            # Populate legacy fields for backward compatibility
+            temp = end_date_ddmmyy
+            exp = legacy_exp
             last_number = num
             users.append(
                 UserCode(
@@ -347,6 +370,9 @@ class DMPProtocol:
                     profiles=(p1, p2, p3, p4),
                     temp_date=temp,
                     exp_date=exp,
+                    start_date=start_date_ddmmyy,
+                    end_date=end_date_ddmmyy,
+                    flags=flags,
                     name=name,
                 )
             )

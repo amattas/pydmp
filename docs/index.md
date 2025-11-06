@@ -28,7 +28,7 @@ async def main():
     panel = DMPPanel()
     await panel.connect("192.168.1.100", "00001", "YOURKEY")
 
-    # Pull status
+    # Pull status (connect() is side-effect free)
     await panel.update_status()
     areas = await panel.get_areas()
     zones = await panel.get_zones()

@@ -13,13 +13,13 @@ PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP
 
 ## Features
 
-- ✅ **Low-level protocol communication** with DMP panels
-- ✅ **High-level abstractions** (panels, areas, zones, outputs)
-- ✅ **Both sync and async APIs** with automatic rate limiting
-- ✅ **Full type hints** and comprehensive error handling
-- ✅ **LFSR encryption** for user codes
-- ✅ **CLI tool** for command-line control
-- ✅ **Platform-independent** - not tied to any home automation system
+- Low-level protocol communication with DMP panels
+- High-level abstractions (panels, areas, zones, outputs)
+- Both sync and async APIs with automatic rate limiting
+- Full type hints and comprehensive error handling
+- LFSR encryption for user codes
+- CLI tool for command-line control
+- Platform-independent — not tied to any home automation system
 
 ## Installation
 
@@ -42,6 +42,28 @@ For development with tests:
 ```bash
 pip install -e ".[dev]"
 ```
+
+## CLI Overview
+
+PyDMP includes a CLI for common operations. See the full guide: docs/guide/cli.md
+
+- Global options
+  - `--config, -c PATH` — path to YAML file (default: `config.yaml`)
+  - `--verbose, -v` — verbose logging (DEBUG)
+  - `--quiet, -q` — reduced logging (WARNING)
+  - `--debug, -d` — debug logging (overrides other flags)
+  - `--version, -V` — show version and exit
+  - `--help, -h` — show help
+
+- Common option
+  - `--json, -j` — JSON output where supported (for `listen`, outputs NDJSON)
+
+- Command sections
+  - Panel Control: `arm`, `disarm`, `sensor-reset`
+  - Status & Query: `get-areas`, `get-zones`, `get-outputs`, `get-users`, `get-profiles`, `check-code`
+  - Zones: `set-zone-bypass`, `set-zone-restore`
+  - Outputs: `output`, `set-output`
+  - Realtime: `listen`
 
 ## Quick Start
 

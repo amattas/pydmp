@@ -28,6 +28,44 @@ console = Console()
 _LOG = logging.getLogger(__name__)
 
 
+class SectionedGroup(click.Group):
+    """Click Group that renders commands in named sections for --help."""
+
+    def __init__(self, *args, sections: list[tuple[str, list[str]]] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._sections: list[tuple[str, list[str]]] = sections or []
+
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:  # type: ignore[override]
+        if not self.commands:
+            return
+        # If sections provided, render in groups
+        if self._sections:
+            for title, names in self._sections:
+                with formatter.section(title):
+                    rows: list[tuple[str, str]] = []
+                    for name in names:
+                        cmd = self.get_command(ctx, name)
+                        if cmd is None or cmd.hidden:
+                            continue
+                        rows.append((name, cmd.get_short_help_str()))
+                    if rows:
+                        formatter.write_dl(rows)
+            # Include any commands not listed explicitly
+            other_rows: list[tuple[str, str]] = []
+            for name, cmd in sorted(self.commands.items()):
+                if any(name in names for _, names in self._sections):
+                    continue
+                if cmd.hidden:
+                    continue
+                other_rows.append((name, cmd.get_short_help_str()))
+            if other_rows:
+                with formatter.section("Other Commands"):
+                    formatter.write_dl(other_rows)
+            return
+        # Fallback to default flat list
+        super().format_commands(ctx, formatter)
+
+
 def _fmt_ddmmyy(value: str | None) -> str:
     """Format DDMMYY into a human-readable date like '31 Jul 2025'.
 
@@ -117,8 +155,18 @@ def _normalize_config(raw: Any) -> dict | None:
     return None
 
 
-@click.group()
-@click.version_option(version=__version__)
+@click.group(
+    cls=SectionedGroup,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    sections=[
+        ("Panel Control", ["arm", "disarm", "sensor-reset"]),
+        ("Status & Query", ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"]),
+        ("Zones", ["set-zone-bypass", "set-zone-restore"]),
+        ("Outputs", ["output", "set-output"]),
+        ("Realtime", ["listen"]),
+    ],
+)
+@click.version_option(version=__version__, param_decls=("-V", "--version"))
 @click.option(
     "--config",
     "-c",
@@ -126,14 +174,20 @@ def _normalize_config(raw: Any) -> dict | None:
     default="config.yaml",
     help="Configuration file path",
 )
-@click.option("--debug", is_flag=True, help="Enable debug logging")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging (DEBUG)")
+@click.option("--quiet", "-q", is_flag=True, help="Reduce output (WARNING)")
+@click.option("--debug", "-d", is_flag=True, help="Enable debug logging (overrides other flags)")
 @click.pass_context
-def cli(ctx: click.Context, config: Path, debug: bool) -> None:
+def cli(ctx: click.Context, config: Path, verbose: bool, quiet: bool, debug: bool) -> None:
     """PyDMP - Control DMP alarm panels from command line."""
     # Setup logging
-    level = logging.DEBUG if debug else logging.INFO
+    level = logging.INFO
+    if quiet:
+        level = logging.WARNING
+    if verbose or debug:
+        level = logging.DEBUG
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    _LOG.debug("CLI initialized (debug=%s)", debug)
+    _LOG.debug("CLI initialized (debug=%s, verbose=%s, quiet=%s)", debug, verbose, quiet)
 
     # Load config
     ctx.ensure_object(dict)
@@ -144,12 +198,12 @@ def cli(ctx: click.Context, config: Path, debug: bool) -> None:
 # removed: get-status (use get-areas and get-zones)
 
 
-@cli.command("arm")
+@cli.command("arm", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("areas", type=str)
-@click.option("--bypass-faulted", is_flag=True, help="Bypass faulted zones")
-@click.option("--force-arm", is_flag=True, help="Force arm bad zones")
-@click.option("--instant/--no-instant", default=None, help="Remove entry/exit delays")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("--bypass-faulted", "-b", is_flag=True, help="Bypass faulted zones")
+@click.option("--force-arm", "-f", is_flag=True, help="Force arm bad zones")
+@click.option("-i", "--instant/--no-instant", default=None, help="Remove entry/exit delays")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: bool, instant: Optional[bool], as_json: bool) -> None:
     """Arm one or more areas, e.g. "1,2,3"."""
@@ -175,9 +229,9 @@ def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: boo
     asyncio.run(run())
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("area", type=int)
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
     """Disarm area."""
@@ -213,9 +267,9 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("set-zone-bypass")
+@cli.command("set-zone-bypass", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("zone", type=int)
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     """Bypass a zone."""
@@ -253,9 +307,9 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("set-zone-restore")
+@cli.command("set-zone-restore", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("zone", type=int)
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     """Restore (un-bypass) a zone."""
@@ -293,10 +347,10 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
     """Control an output."""
@@ -347,8 +401,8 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
 # removed: disarm-areas (use multiple calls to 'disarm' or add back if needed)
 
 
-@cli.command("get-users")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("get-users", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def list_users(ctx: click.Context, as_json: bool) -> None:
     """List panel user codes (decrypted)."""
@@ -397,8 +451,8 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("get-profiles")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("get-profiles", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def list_profiles(ctx: click.Context, as_json: bool) -> None:
     """List user profiles."""
@@ -445,8 +499,8 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("get-outputs")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("get-outputs", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def list_outputs(ctx: click.Context, as_json: bool) -> None:
     """List outputs (1-4) and last-known state."""
@@ -485,8 +539,8 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("sensor-reset")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("sensor-reset", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def sensor_reset(ctx: click.Context, as_json: bool) -> None:
     """Send sensor reset (!E001)."""
@@ -518,10 +572,10 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("check-code")
+@cli.command("check-code", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("code", type=str)
-@click.option("--include-pin/--no-include-pin", default=True, show_default=True, help="Match PIN as well as code")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@click.option("-p", "--include-pin/--no-include-pin", default=True, show_default=True, help="Match PIN as well as code")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bool) -> None:
     """Check if a code or PIN exists in the panel."""
@@ -554,11 +608,11 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
     asyncio.run(run())
 
 
-@cli.command("listen")
-@click.option("--host", default="0.0.0.0", show_default=True, help="Listen host")
-@click.option("--port", default=5001, show_default=True, type=int, help="Listen port")
-@click.option("--duration", default=0, type=int, help="Seconds to run (0=until Ctrl+C)")
-@click.option("--json", "as_json", is_flag=True, help="Output events as JSON (NDJSON)")
+@cli.command("listen", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--host", "-H", default="0.0.0.0", show_default=True, help="Listen host")
+@click.option("--port", "-p", default=5001, show_default=True, type=int, help="Listen port")
+@click.option("--duration", "-t", default=0, type=int, help="Seconds to run (0=until Ctrl+C)")
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output events as JSON (NDJSON)")
 def listen(host: str, port: int, duration: int, as_json: bool) -> None:
     """Run realtime S3 status server and print parsed events."""
 
@@ -589,8 +643,8 @@ def listen(host: str, port: int, duration: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("get-areas")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("get-areas", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
     """List areas and their state."""
@@ -626,8 +680,8 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("get-zones")
-@click.option("--json", "as_json", is_flag=True, help="Output JSON instead of text")
+@cli.command("get-zones", context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
     """List zones and their state."""
@@ -668,7 +722,7 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("set-output")
+@cli.command("set-output", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
 @click.pass_context

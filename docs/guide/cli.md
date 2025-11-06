@@ -18,85 +18,82 @@ panel:
 ```
 
 Global options:
-- `--config/-c PATH` — path to YAML file (default: `config.yaml`)
-- `--debug` — verbose logs
-Common flag:
-- `--json` — output JSON instead of human-readable text (where applicable). For `listen`, `--json` outputs newline-delimited JSON (NDJSON).
+- `--config, -c PATH` — path to YAML file (default: `config.yaml`)
+- `--verbose, -v` — verbose logs (DEBUG)
+- `--quiet, -q` — reduce logs (WARNING)
+- `--debug, -d` — debug logs (overrides other flags)
+- `--version, -V` — show version and exit
+- `--help, -h` — show help
+
+Common option:
+- `--json, -j` — output JSON instead of human‑readable text (where applicable). For `listen`, `--json` outputs newline‑delimited JSON (NDJSON).
 
 ## Commands
 
 ### Areas & Zones
 ```bash
-pydmp get-areas [--json]
-pydmp get-zones [--json]
+pydmp get-areas [--json|-j]
+pydmp get-zones [--json|-j]
 ```
 Print areas and zones separately.
 
-### Arm/Disarm (single area)
+### Arm/Disarm
 ```bash
-pydmp arm-away <AREA> [--bypass-faulted] [--force-arm] [--json]
-pydmp arm-stay <AREA> [--bypass-faulted] [--force-arm] [--json]
-pydmp disarm <AREA> [--json]
+pydmp arm "1,2,3" [--bypass-faulted|-b] [--force-arm|-f] [--instant|-i/--no-instant] [--json|-j]
+pydmp disarm <AREA> [--json|-j]
 ```
-Sends `!C` with two flags by default; see multi‑area for the optional “instant” flag.
-
-### Arm/Disarm (multiple areas)
-```bash
-pydmp arm-areas "1,2,3" [--bypass-faulted] [--force-arm] [--instant/--no-instant] [--json]
-pydmp disarm-areas "1,2,3" [--json]
-```
-Concatenates the area numbers (e.g., `010203`) and sends a single `!C`/`!O` command. When `--instant` is provided, a third `Y/N` flag is appended to `!C`.
+`arm` accepts a comma‑separated list of areas and sends a single `!C` command. When `--instant` is provided, a third `Y/N` flag is appended to `!C`. `disarm` takes a single area and sends `!O`.
 
 ### Zones
 ```bash
-pydmp bypass-zone <ZONE> [--json]
-pydmp restore-zone <ZONE> [--json]
+pydmp set-zone-bypass <ZONE> [--json|-j]
+pydmp set-zone-restore <ZONE> [--json|-j]
 ```
 Sends `!X` or `!Y` for a 3‑digit zone number (e.g., `005`).
 
 ### Outputs
 ```bash
-pydmp output <OUTPUT> on|off|pulse|toggle [--json]
+pydmp output <OUTPUT> on|off|pulse|toggle [--json|-j]
 ```
 Controls a 3‑digit output (`!Q001S`, `!Q001O`, `!Q001P`). Toggle flips between on and off.
 
 ### Sensor Reset
 ```bash
-pydmp sensor-reset [--json]
+pydmp sensor-reset [--json|-j]
 ```
 Sends `!E001`.
 
 ### Users & Profiles
 ```bash
-pydmp users [--json]
-pydmp profiles [--json]
+pydmp get-users [--json|-j]
+pydmp get-profiles [--json|-j]
 ```
-Fetches and prints decrypted user codes and user profiles. User code decryption uses the LFSR algorithm; mixing with a remote key is applied when provided and hex‑parsable.
+Fetches and prints decrypted user codes and user profiles. User code decryption uses the LFSR algorithm.
 
 ### Realtime Status Listener
 ```bash
-pydmp listen [--host 0.0.0.0] [--port 5001] [--duration 0] [--json]
+pydmp listen [--host|-H 0.0.0.0] [--port|-p 5001] [--duration|-t 0] [--json|-j]
 ```
 Starts the S3 listener and prints parsed events. Use `Ctrl+C` to stop or `--duration` to exit after N seconds. With `--json`, each event is printed as a single line of JSON (NDJSON).
 
 ## Examples
 ```bash
-# View status with a custom config and debug logs
-pydmp --debug --config panel.yaml status
+# View areas with a custom config and debug logs
+pydmp --debug --config panel.yaml get-areas
 
-# Arm area 1 away (bypass faulted)
-pydmp arm-away 1 --bypass-faulted
+# Arm area 1 (bypass faulted)
+pydmp arm "1" --bypass-faulted
 
 # Arm areas 1 and 2 with instant
-pydmp arm-areas "1,2" --instant
+pydmp arm "1,2" --instant
 
 # Bypass zone 5, pulse output 3
-pydmp bypass-zone 5
+pydmp set-zone-bypass 5
 pydmp output 3 pulse
 
 # Fetch users and profiles (JSON)
-pydmp users --json
-pydmp profiles --json
+pydmp get-users --json
+pydmp get-profiles --json
 
 # Listen for realtime events on port 6001 for 5 minutes
 pydmp listen --port 6001 --duration 300

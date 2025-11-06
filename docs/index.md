@@ -4,7 +4,7 @@ PyDMP is a platform‑agnostic Python library to control DMP (Digital Monitoring
 
 - Async and sync APIs
 - High‑level entities (Panel, Areas, Zones, Outputs)
-- Protocol encoder/decoder with rate limiting and single‑connection guard
+- Protocol encoder/decoder with rate limiting and single-connection guard
 - Realtime Serial 3 (S3) status server with callbacks
 - User code decryption and profile parsing
 

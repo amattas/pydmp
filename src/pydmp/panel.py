@@ -1,5 +1,6 @@
 """High-level async panel controller."""
 
+import asyncio
 import logging
 from typing import Any
 
@@ -13,6 +14,10 @@ from .protocol import StatusResponse
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
+
+
+# Active connection guard: one connection per (host, port, account)
+_ACTIVE_CONNECTIONS: set[tuple[str, int, str]] = set()
 
 
 class DMPPanel:
@@ -59,11 +64,27 @@ class DMPPanel:
 
         _LOGGER.info(f"Connecting to panel at {host}:{self.port}")
 
+        # Guard against multiple active connections to the same panel
+        key = (host, self.port, account)
+        if key in _ACTIVE_CONNECTIONS:
+            raise DMPConnectionError(
+                f"Active connection already exists for {host}:{self.port} account {account}. "
+                "Only one connection is allowed."
+            )
+
         self._connection = DMPConnection(host, account, remote_key, self.port, self.timeout)
         await self._connection.connect()
 
+        # Register active connection
+        _ACTIVE_CONNECTIONS.add(key)
+
         # Initial status update to discover areas/zones
-        await self.update_status()
+        try:
+            await self.update_status()
+        except Exception:
+            # On initialization failure, clean up and re-raise
+            await self.disconnect()
+            raise
 
         _LOGGER.info("Panel connected and initialized")
 
@@ -75,6 +96,14 @@ class DMPPanel:
         _LOGGER.info("Disconnecting from panel")
         # Stop keep-alive loop if running
         await self.stop_keepalive()
+        # Cleanup active connection guard
+        try:
+            if self._connection:
+                key = (self._connection.host, self._connection.port, self._connection.account)
+                _ACTIVE_CONNECTIONS.discard(key)
+        except Exception:
+            pass
+
         await self._connection.disconnect()
         self._connection = None
 

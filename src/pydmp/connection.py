@@ -48,6 +48,7 @@ class DMPConnection:
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
         self._last_command_time = 0.0
+        self._send_lock = asyncio.Lock()
 
         _LOGGER.debug(f"Connection initialized for {host}:{port}, account {account}")
 
@@ -130,18 +131,20 @@ class DMPConnection:
         if not self.is_connected:
             raise DMPConnectionError("Not connected to panel")
 
-        # Rate limiting
-        await self._rate_limit()
+        # Serialize all sends to ensure one-at-a-time messaging to the panel
+        async with self._send_lock:
+            # Rate limiting between commands
+            await self._rate_limit()
 
-        # Encode command
-        encoded = self.protocol.encode_command(command, **kwargs)
+            # Encode command
+            encoded = self.protocol.encode_command(command, **kwargs)
 
-        # Send and receive
-        await self._send_raw(encoded)
-        response = await self._receive()
+            # Send and receive
+            await self._send_raw(encoded)
+            response = await self._receive()
 
-        # Decode response
-        return self.protocol.decode_response(response)
+            # Decode response
+            return self.protocol.decode_response(response)
 
     async def _authenticate(self) -> None:
         """Authenticate with panel.

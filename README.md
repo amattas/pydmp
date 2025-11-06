@@ -65,6 +65,18 @@ PyDMP includes a CLI for common operations. See the full guide: docs/guide/cli.m
   - Outputs: `output`, `set-output`
   - Realtime: `listen`
 
+## Development: Formatting with pre-commit
+
+This repository uses Black for code formatting. To avoid formatting failures in CI, install and enable pre‑commit hooks:
+
+```bash
+pip install -e ".[dev]"           # installs black and pre-commit
+pre-commit install                 # installs the git hook
+pre-commit run -a                  # optional: format all files once
+```
+
+Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-version = py310`).
+
 ## Quick Start
 
 ### Async API (Recommended)

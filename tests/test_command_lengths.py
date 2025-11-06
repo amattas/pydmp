@@ -39,10 +39,22 @@ def _prot() -> DMPProtocol:
         (DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"}, "@    1?WB**Y001\r"),
         (DMPCommand.GET_ZONE_STATUS_CONT.value, {}, "@    1?WB\r"),
         # Area control: arm (2-digit area), with and without instant flag
-        (DMPCommand.ARM.value, {"area": "01", "bypass": "N", "force": "N", "instant": ""}, "@    1!C01,NN\r"),
-        (DMPCommand.ARM.value, {"area": "01", "bypass": "Y", "force": "N", "instant": "Y"}, "@    1!C01,YNY\r"),
+        (
+            DMPCommand.ARM.value,
+            {"area": "01", "bypass": "N", "force": "N", "instant": ""},
+            "@    1!C01,NN\r",
+        ),
+        (
+            DMPCommand.ARM.value,
+            {"area": "01", "bypass": "Y", "force": "N", "instant": "Y"},
+            "@    1!C01,YNY\r",
+        ),
         # Multi-area: concatenate two-digit areas
-        (DMPCommand.ARM.value, {"area": "0102", "bypass": "N", "force": "N", "instant": ""}, "@    1!C0102,NN\r"),
+        (
+            DMPCommand.ARM.value,
+            {"area": "0102", "bypass": "N", "force": "N", "instant": ""},
+            "@    1!C0102,NN\r",
+        ),
         (DMPCommand.DISARM.value, {"area": "01"}, "@    1!O01\r"),
         (DMPCommand.DISARM.value, {"area": "0102"}, "@    1!O0102\r"),
         # Zone control (3-digit)
@@ -60,4 +72,3 @@ def test_command_payloads_and_lengths(cmd: str, kwargs: dict, expected: str) -> 
     # Verify framing: starts with '@', has 5-char account and ends with CR
     assert expected.startswith("@") and expected.endswith("\r")
     assert expected[1:6] == "    1"
-

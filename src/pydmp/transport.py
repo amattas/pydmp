@@ -114,7 +114,11 @@ class DMPTransport:
                         break
                     data += chunk
                     try:
-                        _LOGGER.debug("<<< chunk %d bytes: %r", len(chunk), chunk.decode("utf-8", errors="replace"))
+                        _LOGGER.debug(
+                            "<<< chunk %d bytes: %r",
+                            len(chunk),
+                            chunk.decode("utf-8", errors="replace"),
+                        )
                     except Exception:
                         _LOGGER.debug("<<< chunk %d bytes: %r", len(chunk), chunk)
                 except asyncio.TimeoutError:

@@ -80,6 +80,7 @@ def _fmt_ddmmyy(value: str | None) -> str:
     year = 2000 + yy if yy <= 79 else 1900 + yy
     try:
         import datetime as _dt
+
         dt = _dt.date(year, mm, dd)
         return dt.strftime("%d %b %Y")
     except Exception:
@@ -138,7 +139,9 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(p.get("host", "")),
             "account": str(p.get("account", "")),
             "remote_key": str(p.get("remote_key", "")),
-            "port": int(p.get("port", DEFAULT_PORT)) if str(p.get("port", "")).strip() != "" else DEFAULT_PORT,
+            "port": int(p.get("port", DEFAULT_PORT))
+            if str(p.get("port", "")).strip() != ""
+            else DEFAULT_PORT,
             "timeout": float(p.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -148,7 +151,9 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(data.get("host", "")),
             "account": str(data.get("account", "")),
             "remote_key": str(data.get("remote_key", "")),
-            "port": int(data.get("port", DEFAULT_PORT)) if str(data.get("port", "")).strip() != "" else DEFAULT_PORT,
+            "port": int(data.get("port", DEFAULT_PORT))
+            if str(data.get("port", "")).strip() != ""
+            else DEFAULT_PORT,
             "timeout": float(data.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -160,7 +165,10 @@ def _normalize_config(raw: Any) -> dict | None:
     context_settings={"help_option_names": ["-h", "--help"]},
     sections=[
         ("Panel Control", ["arm", "disarm", "sensor-reset"]),
-        ("Status & Query", ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"]),
+        (
+            "Status & Query",
+            ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"],
+        ),
         ("Zones", ["set-zone-bypass", "set-zone-restore"]),
         ("Outputs", ["output", "set-output"]),
         ("Realtime", ["listen"]),
@@ -205,7 +213,14 @@ def cli(ctx: click.Context, config: Path, verbose: bool, quiet: bool, debug: boo
 @click.option("-i", "--instant/--no-instant", default=None, help="Remove entry/exit delays")
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: bool, instant: Optional[bool], as_json: bool) -> None:
+def arm_cmd(
+    ctx: click.Context,
+    areas: str,
+    bypass_faulted: bool,
+    force_arm: bool,
+    instant: Optional[bool],
+    as_json: bool,
+) -> None:
     """Arm one or more areas, e.g. "1,2,3"."""
     area_list = [int(a.strip()) for a in areas.split(",") if a.strip()]
     config = ctx.obj["config"]
@@ -214,15 +229,38 @@ def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: boo
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             if not as_json:
-                console.print(f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})[/cyan]")
-            _LOG.info("CLI: arming areas %s (bypass=%s, force=%s, instant=%s)", area_list, bypass_faulted, force_arm, instant)
-            await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
+                console.print(
+                    f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})[/cyan]"
+                )
+            _LOG.info(
+                "CLI: arming areas %s (bypass=%s, force=%s, instant=%s)",
+                area_list,
+                bypass_faulted,
+                force_arm,
+                instant,
+            )
+            await panel.arm_areas(
+                area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant
+            )
             if not as_json:
                 console.print(f"[green]Areas {area_list} armed[/green]")
             else:
-                click.echo(json.dumps({"ok": True, "action": "arm", "areas": area_list, "bypass_faulted": bypass_faulted, "force_arm": force_arm, "instant": instant}))
+                click.echo(
+                    json.dumps(
+                        {
+                            "ok": True,
+                            "action": "arm",
+                            "areas": area_list,
+                            "bypass_faulted": bypass_faulted,
+                            "force_arm": force_arm,
+                            "instant": instant,
+                        }
+                    )
+                )
         finally:
             await panel.disconnect()
 
@@ -240,7 +278,9 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel(
+            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
+        )
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -279,14 +319,20 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             if not as_json:
                 console.print(f"[cyan]Bypassing zone {zone}[/cyan]")
             _LOG.info("CLI: bypassing zone %s", zone)
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
+                detail = (
+                    panel._protocol.last_nak_detail
+                    if hasattr(panel, "_protocol") and panel._protocol
+                    else ""
+                )
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -319,14 +365,20 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             if not as_json:
                 console.print(f"[cyan]Restoring zone {zone}[/cyan]")
             _LOG.info("CLI: restoring zone %s", zone)
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
+                detail = (
+                    panel._protocol.last_nak_detail
+                    if hasattr(panel, "_protocol") and panel._protocol
+                    else ""
+                )
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -359,7 +411,9 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel(
+            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
+        )
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -381,7 +435,9 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             if not as_json:
                 console.print(f"[green]Output {output} set to {action}[/green]")
             else:
-                click.echo(json.dumps({"ok": True, "action": "output", "output": output, "mode": action}))
+                click.echo(
+                    json.dumps({"ok": True, "action": "output", "output": output, "mode": action})
+                )
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
@@ -412,7 +468,9 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             users = await panel.get_user_codes()
             if not as_json:
                 table = Table(title="Users")
@@ -438,6 +496,7 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                 console.print(table)
             else:
                 from dataclasses import asdict
+
                 click.echo(json.dumps({"ok": True, "users": [asdict(u) for u in users]}))
         except Exception as e:
             if as_json:
@@ -462,7 +521,9 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             profiles = await panel.get_user_profiles()
             if not as_json:
                 table = Table(title="Profiles")
@@ -486,6 +547,7 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
                 console.print(table)
             else:
                 from dataclasses import asdict
+
                 click.echo(json.dumps({"ok": True, "profiles": [asdict(p) for p in profiles]}))
         except Exception as e:
             if as_json:
@@ -510,7 +572,9 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             # Fetch current status
             await panel.update_output_status()
             outputs = await panel.get_outputs()
@@ -550,7 +614,9 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             if not as_json:
                 console.print("[cyan]Sending sensor reset[/cyan]")
             _LOG.info("CLI: sensor reset")
@@ -574,7 +640,13 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
 
 @cli.command("check-code", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("code", type=str)
-@click.option("-p", "--include-pin/--no-include-pin", default=True, show_default=True, help="Match PIN as well as code")
+@click.option(
+    "-p",
+    "--include-pin/--no-include-pin",
+    default=True,
+    show_default=True,
+    help="Match PIN as well as code",
+)
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
 def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bool) -> None:
@@ -585,7 +657,9 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             user = await panel.check_code(code, include_pin=include_pin)
             if not as_json:
                 if user:
@@ -594,7 +668,12 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
                     console.print("[red]No match[/red]")
             else:
                 from dataclasses import asdict
-                click.echo(json.dumps({"ok": True, "found": bool(user), "user": (asdict(user) if user else None)}))
+
+                click.echo(
+                    json.dumps(
+                        {"ok": True, "found": bool(user), "user": (asdict(user) if user else None)}
+                    )
+                )
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
@@ -622,9 +701,12 @@ def listen(host: str, port: int, duration: int, as_json: bool) -> None:
         def on_event(msg):
             evt = parse_s3_message(msg)
             if not as_json:
-                console.print(f"[blue]{evt.category}[/blue] {evt.type_code} a={evt.area} z={evt.zone} v={evt.device} {evt.system_text or ''}")
+                console.print(
+                    f"[blue]{evt.category}[/blue] {evt.type_code} a={evt.area} z={evt.zone} v={evt.device} {evt.system_text or ''}"
+                )
             else:
                 from dataclasses import asdict
+
                 # Emit newline-delimited JSON events
                 click.echo(json.dumps(asdict(evt)))
 
@@ -653,12 +735,16 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel(
+            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
+        )
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
             _LOG.info("CLI: get-zones connect")
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             await panel.update_status()
             areas = await panel.get_areas()
             if as_json:
@@ -672,7 +758,9 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
             for area in areas:
                 state_style = "green" if area.is_disarmed else "red"
                 state_text = AREA_STATUS.get(area.state, area.state)
-                table.add_row(str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]")
+                table.add_row(
+                    str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]"
+                )
             console.print(table)
         finally:
             await panel.disconnect()
@@ -690,12 +778,16 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel(
+            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
+        )
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
             _LOG.info("CLI: get-areas connect")
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
+            await panel.connect(
+                panel_config["host"], panel_config["account"], panel_config["remote_key"]
+            )
             await panel.update_status()
             zones = await panel.get_zones()
             if as_json:
@@ -714,7 +806,14 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
                 state_text = ZONE_STATUS.get(zone.state, zone.state)
                 bypassed = "Y" if zone.is_bypassed else ""
                 fault = "Y" if zone.has_fault else ""
-                table.add_row(str(zone.number), zone.name, zone.state, f"[{state_style}]{state_text}[/{state_style}]", bypassed, fault)
+                table.add_row(
+                    str(zone.number),
+                    zone.name,
+                    zone.state,
+                    f"[{state_style}]{state_text}[/{state_style}]",
+                    bypassed,
+                    fault,
+                )
             console.print(table)
         finally:
             await panel.disconnect()
@@ -733,7 +832,9 @@ def set_output(ctx: click.Context, output: int, action: str) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
+        panel = DMPPanel(
+            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
+        )
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]

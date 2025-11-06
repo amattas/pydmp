@@ -14,7 +14,9 @@ class FakeConnection:
         self.is_connected = True
         self.calls = []
         self.response_map = response_map or {}
-        self.host = "h"; self.port = 0; self.account = "a"
+        self.host = "h"
+        self.port = 0
+        self.account = "a"
 
     async def send_command(self, cmd: str, **kwargs):
         self.calls.append((cmd, kwargs))

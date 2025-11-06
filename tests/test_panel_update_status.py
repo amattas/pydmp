@@ -12,7 +12,9 @@ class FakeConnection:
         self.is_connected = True
         self._responses = list(responses)
         self.calls = []
-        self.host = "h"; self.port = 0; self.account = "a"
+        self.host = "h"
+        self.port = 0
+        self.account = "a"
 
     async def send_command(self, cmd: str, **kwargs):
         self.calls.append((cmd, kwargs))
@@ -79,6 +81,7 @@ async def test_single_connection_guard(monkeypatch):
     panel_mod._ACTIVE_CONNECTIONS.add(key)
     try:
         p = DMPPanel()
+
         # Prevent real DMPConnection.connect and update_status
         class NoopConn:
             async def connect(self):
@@ -95,4 +98,3 @@ async def test_single_connection_guard(monkeypatch):
             await p.connect("127.0.0.1", "00001", "KEY")
     finally:
         panel_mod._ACTIVE_CONNECTIONS.discard(key)
-

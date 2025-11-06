@@ -1,0 +1,9 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        name: black (code formatter)
+        additional_dependencies: []
+        # Black reads configuration from pyproject.toml
+

@@ -46,7 +46,7 @@ class DMPCrypto:
         # System seed (for remote link)
         # For remote: system_seed = remote_key[0:2] XOR remote_key[6:8]
         system_seed = 0
-        rk = (self.remote_key or "")
+        rk = self.remote_key or ""
         if len(rk) >= 8:
             try:
                 a = int(rk[0:2], 16)

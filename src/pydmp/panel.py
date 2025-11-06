@@ -6,6 +6,7 @@ from typing import Any
 
 from .area import Area
 from .transport import DMPTransport
+
 # Backward-compat alias for tests expecting DMPConnection symbol in this module
 DMPConnection = DMPTransport
 from .const.commands import DMPCommand
@@ -148,9 +149,7 @@ class DMPPanel:
         # Subsequent: ?WB (continuation)
         commands: list[tuple[str, dict[str, Any]]] = [
             (DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"})
-        ] + [
-            (DMPCommand.GET_ZONE_STATUS_CONT.value, {})
-        ] * 10
+        ] + [(DMPCommand.GET_ZONE_STATUS_CONT.value, {})] * 10
 
         responses: list[StatusResponse] = []
         for cmd, params in commands:
@@ -170,9 +169,7 @@ class DMPPanel:
         for area_num_str, area_status in all_areas.items():
             area_num = int(area_num_str)
             if area_num not in self._areas:
-                self._areas[area_num] = Area(
-                    self, area_num, area_status.name, area_status.state
-                )
+                self._areas[area_num] = Area(self, area_num, area_status.name, area_status.state)
             else:
                 self._areas[area_num].update_state(area_status.state, area_status.name)
 
@@ -186,9 +183,7 @@ class DMPPanel:
             else:
                 self._zones[zone_num].update_state(zone_status.state, zone_status.name)
 
-        _LOGGER.info(
-            f"Status updated: {len(self._areas)} areas, {len(self._zones)} zones"
-        )
+        _LOGGER.info(f"Status updated: {len(self._areas)} areas, {len(self._zones)} zones")
 
     async def get_areas(self) -> list[Area]:
         """Get all areas.
@@ -322,9 +317,7 @@ class DMPPanel:
 
         commands: list[tuple[str, dict[str, Any]]] = [
             (DMPCommand.GET_OUTPUT_STATUS.value, {"output": "001"})
-        ] + [
-            (DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})
-        ] * 5
+        ] + [(DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})] * 5
 
         outputs: dict[str, Any] = {}
         for cmd, params in commands:
@@ -353,7 +346,9 @@ class DMPPanel:
             # Map mode to the Output state semantics used in Output
             mode = out.mode
             if mode == "O":
-                self._outputs[num]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
+                self._outputs[
+                    num
+                ]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
             # Use Output.update_state mapping via set_mode semantics
             # Set internal state directly based on mode
             if mode == "O":
@@ -386,9 +381,7 @@ class DMPPanel:
         pages = 0
         while pages < max_pages:
             pages += 1
-            resp = await self._send_command(
-                DMPCommand.GET_USER_CODES.value, user=start
-            )
+            resp = await self._send_command(DMPCommand.GET_USER_CODES.value, user=start)
             if not isinstance(resp, UserCodesResponse):
                 break
 
@@ -421,9 +414,7 @@ class DMPPanel:
         pages = 0
         while pages < max_pages:
             pages += 1
-            resp = await self._send_command(
-                DMPCommand.GET_USER_PROFILES.value, profile=start
-            )
+            resp = await self._send_command(DMPCommand.GET_USER_PROFILES.value, profile=start)
             if not isinstance(resp, UserProfilesResponse):
                 break
 
@@ -457,7 +448,9 @@ class DMPPanel:
                 if pin:
                     self._user_cache_by_pin[pin] = u
 
-    async def check_code(self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True) -> UserCode | None:
+    async def check_code(
+        self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True
+    ) -> UserCode | None:
         """Check if a user code (or PIN) exists in the panel.
 
         Args:

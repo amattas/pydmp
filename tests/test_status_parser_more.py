@@ -51,7 +51,7 @@ def test_parse_schedules_holidays_equipment_and_qualifier():
 
 
 def test_parse_system_message():
-    ms = _msg("Zs", None, ["Zs", 's 072'])
+    ms = _msg("Zs", None, ["Zs", "s 072"])
     evts = parse_s3_message(ms)
     assert evts.category == DMPEventType.SYSTEM_MESSAGE
     assert evts.system_code == "072"

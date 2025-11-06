@@ -12,4 +12,3 @@ class UserProfile:
     menu_options: str
     rearm_delay: str
     name: str
-

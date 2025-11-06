@@ -55,9 +55,7 @@ class Zone:
         """Get current state."""
         return self._state
 
-    def update_state(
-        self, state: str, name: str | None = None
-    ) -> None:
+    def update_state(self, state: str, name: str | None = None) -> None:
         """Update zone state from status response.
 
         Args:

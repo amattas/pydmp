@@ -70,15 +70,11 @@ class OutputsResponse:
     outputs: dict[str, OutputStatus]
 
 
-
-
 @dataclass
 class UserCodesResponse:
     users: list[UserCode]
     has_more: bool
     last_number: str | None
-
-
 
 
 @dataclass
@@ -135,7 +131,9 @@ class DMPProtocol:
             formatted_command = command.format(**kwargs)
 
             # Build full message: @[ACCOUNT][COMMAND]\r
-            message = f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
+            message = (
+                f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
+            )
 
             _LOGGER.debug(f"Encoded command: {message.strip()}")
             return message.encode()
@@ -143,7 +141,9 @@ class DMPProtocol:
         except (KeyError, ValueError) as e:
             raise DMPProtocolError(f"Failed to encode command: {e}") from e
 
-    def decode_response(self, response: bytes) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
+    def decode_response(
+        self, response: bytes
+    ) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
         """Decode response from panel.
 
         Args:
@@ -191,13 +191,17 @@ class DMPProtocol:
                 ack_pos = -1
                 ack_nak_char = ""
                 for i in range(6, min(len(line), 12)):
-                    if line[i:i+1] in (DMPResponse.ACK.value, DMPResponse.NAK.value):
+                    if line[i : i + 1] in (DMPResponse.ACK.value, DMPResponse.NAK.value):
                         ack_pos = i
-                        ack_nak_char = line[i:i+1]
+                        ack_nak_char = line[i : i + 1]
                         break
 
                 # Command starts right after ACK/NAK; may be '!X' or short 'X'
-                cmd_with_prefix = line[ack_pos+1:ack_pos+3] if ack_pos != -1 and len(line) > ack_pos+2 else ""
+                cmd_with_prefix = (
+                    line[ack_pos + 1 : ack_pos + 3]
+                    if ack_pos != -1 and len(line) > ack_pos + 2
+                    else ""
+                )
 
                 # Authentication/disconnect response (!V)
                 if cmd_with_prefix == "!V":
@@ -207,9 +211,12 @@ class DMPProtocol:
                 # Some panels return '+!X' style, others '+X' (or '-XU' on errors).
                 # Handle both forms.
                 if (
-                    (len(cmd_with_prefix) == 2 and cmd_with_prefix[0] == "!" and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]) or
-                    (len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"])  # short form
-                ):
+                    len(cmd_with_prefix) == 2
+                    and cmd_with_prefix[0] == "!"
+                    and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]
+                ) or (
+                    len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"]
+                ):  # short form
                     if ack_nak_char == DMPResponse.ACK.value:
                         return "ACK"
                     elif ack_nak_char == DMPResponse.NAK.value:
@@ -217,7 +224,7 @@ class DMPProtocol:
                         detail = ""
                         # Prefer the 2-char window after ACK/NAK
                         if len(line) >= ack_pos + 3:
-                            short = line[ack_pos+1:ack_pos+3]
+                            short = line[ack_pos + 1 : ack_pos + 3]
                             if short[0:1] in ["C", "O", "X", "Y", "Q"]:
                                 detail = short
                         # Fallback to '!X' form (take letter only)
@@ -316,9 +323,7 @@ class DMPProtocol:
                 else:
                     state = "unknown"
 
-                response.areas[area_num] = AreaStatus(
-                    number=area_num, state=state, name=name
-                )
+                response.areas[area_num] = AreaStatus(number=area_num, state=state, name=name)
 
             elif item_type == "L":
                 # Zone: L[XXX][State][Name]
@@ -398,7 +403,12 @@ class DMPProtocol:
                 # Only treat as such if it matches pattern [Y/N]{3}[0-9]{6}
                 maybe_flags = tail[0:3] if len(tail) >= 3 else ""
                 maybe_date = tail[3:9] if len(tail) >= 9 else ""
-                if len(maybe_flags) == 3 and all(c in "YN" for c in maybe_flags) and len(maybe_date) == 6 and maybe_date.isdigit():
+                if (
+                    len(maybe_flags) == 3
+                    and all(c in "YN" for c in maybe_flags)
+                    and len(maybe_date) == 6
+                    and maybe_date.isdigit()
+                ):
                     flags = maybe_flags
                     start_date_ddmmyy = maybe_date
                     name = tail[9:]

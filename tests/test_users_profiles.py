@@ -10,7 +10,18 @@ def test_decode_user_codes_single_entry():
 
     # number(4)=0001, code(12)=1234FFFF0000, pin(6)=1111FF, P1..P4=001,002,003,004,
     # temp(6)=010122, exp(4)=0900, name='USER'
-    plain = "0001" + "1234FFFFFF00"[:12] + "1111FF" + "001" + "002" + "003" + "004" + "010122" + "0900" + "USER"
+    plain = (
+        "0001"
+        + "1234FFFFFF00"[:12]
+        + "1111FF"
+        + "001"
+        + "002"
+        + "003"
+        + "004"
+        + "010122"
+        + "0900"
+        + "USER"
+    )
     enc = proto.crypto.encrypt_string(plain)
 
     payload = f"@    1+*P={enc}\x1e\r".encode("utf-8")

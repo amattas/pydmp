@@ -76,6 +76,6 @@ class DMPTransportSync:
     def __exit__(self, *args: Any) -> None:
         self.disconnect()
 
+
 # Back-compat alias
 DMPConnectionSync = DMPTransportSync
-

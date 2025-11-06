@@ -87,9 +87,9 @@ class Output:
             DMPOutputError: If command fails
         """
         try:
-            _LOGGER.info(f"Setting output {self.number} to mode {mode}")
+            _LOGGER.info("Setting output %s to mode %s", self.number, mode)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.OUTPUT.value,
                 output=self.formatted_number,
                 mode=mode
@@ -108,7 +108,7 @@ class Output:
             elif mode == "M":
                 self._state = DMPRealTimeStatusEvent.OUTPUT_ON.value
 
-            _LOGGER.info(f"Output {self.number} set to mode {mode} successfully")
+            _LOGGER.info("Output %s set to mode %s", self.number, mode)
 
         except Exception as e:
             raise DMPOutputError(f"Failed to set output {self.number} mode: {e}") from e

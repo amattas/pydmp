@@ -25,6 +25,7 @@ from .const.strings import AREA_STATUS, ZONE_STATUS, OUTPUT_STATUS
 from .status_parser import parse_s3_message
 
 console = Console()
+_LOG = logging.getLogger(__name__)
 
 
 def _fmt_ddmmyy(value: str | None) -> str:
@@ -131,9 +132,8 @@ def cli(ctx: click.Context, config: Path, debug: bool) -> None:
     """PyDMP - Control DMP alarm panels from command line."""
     # Setup logging
     level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    _LOG.debug("CLI initialized (debug=%s)", debug)
 
     # Load config
     ctx.ensure_object(dict)
@@ -162,10 +162,11 @@ def arm_cmd(ctx: click.Context, areas: str, bypass_faulted: bool, force_arm: boo
         try:
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
-                console.print(f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})...[/cyan]")
+                console.print(f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})[/cyan]")
+            _LOG.info("CLI: arming areas %s (bypass=%s, force=%s, instant=%s)", area_list, bypass_faulted, force_arm, instant)
             await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
             if not as_json:
-                console.print(f"[green]Areas {area_list} armed successfully[/green]")
+                console.print(f"[green]Areas {area_list} armed[/green]")
             else:
                 click.echo(json.dumps({"ok": True, "action": "arm", "areas": area_list, "bypass_faulted": bypass_faulted, "force_arm": force_arm, "instant": instant}))
         finally:
@@ -191,17 +192,19 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
             )
             if not as_json:
-                console.print(f"[cyan]Disarming area {area}...[/cyan]")
+                console.print(f"[cyan]Disarming area {area}[/cyan]")
+            _LOG.info("CLI: disarming area %s", area)
             # Avoid status fetch: disarm directly via panel API
             await panel.disarm_areas([area])
             if not as_json:
-                console.print(f"[green]Area {area} disarmed successfully[/green]")
+                console.print(f"[green]Area {area} disarmed[/green]")
             else:
                 click.echo(json.dumps({"ok": True, "action": "disarm", "area": area}))
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
+                _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
             raise SystemExit(1)
         finally:
@@ -224,11 +227,12 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
         try:
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
-                console.print(f"[cyan]Bypassing zone {zone}...[/cyan]")
+                console.print(f"[cyan]Bypassing zone {zone}[/cyan]")
+            _LOG.info("CLI: bypassing zone %s", zone)
             # Send direct command without forcing a status fetch
-            resp = await panel._connection.send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
+            resp = await panel._send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = panel._connection.protocol.last_nak_detail or ""
+                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -236,10 +240,11 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
                 if as_json:
                     click.echo(json.dumps({"ok": False, "error": msg}))
                 else:
+                    _LOG.error("CLI: %s", msg)
                     console.print(f"[red]{msg}[/red]")
                 raise SystemExit(1)
             if not as_json:
-                console.print(f"[green]Zone {zone} bypassed successfully[/green]")
+                console.print(f"[green]Zone {zone} bypassed[/green]")
             else:
                 click.echo(json.dumps({"ok": True, "action": "set-zone-bypass", "zone": zone}))
         finally:
@@ -262,11 +267,12 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
         try:
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
-                console.print(f"[cyan]Restoring zone {zone}...[/cyan]")
+                console.print(f"[cyan]Restoring zone {zone}[/cyan]")
+            _LOG.info("CLI: restoring zone %s", zone)
             # Send direct command without forcing a status fetch
-            resp = await panel._connection.send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
+            resp = await panel._send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = panel._connection.protocol.last_nak_detail or ""
+                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -274,10 +280,11 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
                 if as_json:
                     click.echo(json.dumps({"ok": False, "error": msg}))
                 else:
+                    _LOG.error("CLI: %s", msg)
                     console.print(f"[red]{msg}[/red]")
                 raise SystemExit(1)
             if not as_json:
-                console.print(f"[green]Zone {zone} restored successfully[/green]")
+                console.print(f"[green]Zone {zone} restored[/green]")
             else:
                 click.echo(json.dumps({"ok": True, "action": "set-zone-restore", "zone": zone}))
         finally:
@@ -305,7 +312,8 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             )
             output_obj = await panel.get_output(output)
             if not as_json:
-                console.print(f"[cyan]Setting output {output} to {action}...[/cyan]")
+                console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
+            _LOG.info("CLI: set output %s to %s", output, action)
 
             if action == "on":
                 await output_obj.turn_on()
@@ -317,13 +325,14 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
                 await output_obj.toggle()
 
             if not as_json:
-                console.print(f"[green]Output {output} {action} successfully[/green]")
+                console.print(f"[green]Output {output} set to {action}[/green]")
             else:
                 click.echo(json.dumps({"ok": True, "action": "output", "output": output, "mode": action}))
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
+                _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
             raise SystemExit(1)
         finally:
@@ -359,7 +368,8 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                 table.add_column("PIN", style="yellow")
                 table.add_column("Start", style="yellow")
                 table.add_column("End", style="yellow")
-                table.add_column("Flags", style="yellow")
+                table.add_column("Active", style="yellow")
+                table.add_column("Temporary", style="yellow")
                 for u in users:
                     table.add_row(
                         u.number,
@@ -368,7 +378,8 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                         u.pin,
                         _fmt_ddmmyy(u.start_date),
                         _fmt_ddmmyy(u.end_date),
-                        (u.flags or ""),
+                        ("Y" if u.active is True else "N" if u.active is False else ""),
+                        ("Y" if u.temporary is True else "N" if u.temporary is False else ""),
                     )
                 console.print(table)
             else:
@@ -487,7 +498,8 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
         try:
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"]) 
             if not as_json:
-                console.print("[cyan]Sending sensor reset...[/cyan]")
+                console.print("[cyan]Sending sensor reset[/cyan]")
+            _LOG.info("CLI: sensor reset")
             await panel.sensor_reset()
             if not as_json:
                 console.print("[green]Sensor reset sent[/green]")
@@ -497,6 +509,7 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
+                _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
             raise SystemExit(1)
         finally:
@@ -522,7 +535,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
             user = await panel.check_code(code, include_pin=include_pin)
             if not as_json:
                 if user:
-                    console.print(f"[green]MATCH[/green]: number={user.number} name={user.name}")
+                    console.print(f"[green]Match[/green]: number={user.number} name={user.name}")
                 else:
                     console.print("[red]No match[/red]")
             else:
@@ -532,6 +545,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
+                _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
             raise SystemExit(1)
         finally:
@@ -588,7 +602,8 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
         panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
             if not as_json:
-                console.print("[cyan]Connecting to panel...[/cyan]")
+                console.print("[cyan]Connecting to panel[/cyan]")
+            _LOG.info("CLI: get-zones connect")
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             await panel.update_status()
             areas = await panel.get_areas()
@@ -624,7 +639,8 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
         panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
             if not as_json:
-                console.print("[cyan]Connecting to panel...[/cyan]")
+                console.print("[cyan]Connecting to panel[/cyan]")
+            _LOG.info("CLI: get-areas connect")
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             await panel.update_status()
             zones = await panel.get_zones()
@@ -669,7 +685,8 @@ def set_output(ctx: click.Context, output: int, action: str) -> None:
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
             )
             output_obj = await panel.get_output(output)
-            console.print(f"[cyan]Setting output {output} to {action}...[/cyan]")
+            console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
+            _LOG.info("CLI: set-output %s %s", output, action)
             if action == "on":
                 await output_obj.turn_on()
             elif action == "off":
@@ -678,7 +695,7 @@ def set_output(ctx: click.Context, output: int, action: str) -> None:
                 await output_obj.pulse()
             elif action == "toggle":
                 await output_obj.toggle()
-            console.print(f"[green]Output {output} {action} successfully[/green]")
+            console.print(f"[green]Output {output} set to {action}[/green]")
         finally:
             await panel.disconnect()
 

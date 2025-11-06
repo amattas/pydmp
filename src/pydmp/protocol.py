@@ -24,6 +24,8 @@ from .const.responses import (
 )
 from .crypto import DMPCrypto
 from .exceptions import DMPInvalidResponseError, DMPProtocolError
+from .user import UserCode
+from .profile import UserProfile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,22 +70,6 @@ class OutputsResponse:
     outputs: dict[str, OutputStatus]
 
 
-@dataclass
-class UserCode:
-    """Decrypted user code record."""
-
-    number: str
-    code: str
-    pin: str
-    profiles: tuple[str, str, str, str]
-    # Historically parsed fields; see start_date/end_date for clarified meaning
-    temp_date: str  # legacy 6-digit field; same as end_date (DDMMYY)
-    exp_date: str   # legacy 4-char field; often '----' on observed panels
-    name: str
-    # Clarified/additional fields parsed from the trailing plaintext segment
-    start_date: str | None = None   # 6 digits DDMMYY; start of access
-    end_date: str | None = None     # 6 digits DDMMYY; end of access
-    flags: str | None = None        # 3 chars (e.g., 'YNN')
 
 
 @dataclass
@@ -93,17 +79,6 @@ class UserCodesResponse:
     last_number: str | None
 
 
-@dataclass
-class UserProfile:
-    """User profile record (not encrypted)."""
-
-    number: str
-    areas_mask: str
-    access_areas_mask: str
-    output_group: str
-    menu_options: str
-    rearm_delay: str
-    name: str
 
 
 @dataclass
@@ -444,6 +419,8 @@ class DMPProtocol:
                     start_date=start_date_ddmmyy,
                     end_date=end_date_ddmmyy,
                     flags=flags,
+                    active=(flags[0] == "Y") if flags else None,
+                    temporary=(flags[2] == "Y") if flags else None,
                     name=name,
                 )
             )

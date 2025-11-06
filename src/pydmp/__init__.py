@@ -28,8 +28,8 @@ Example (Sync):
 
 from . import const, exceptions
 from .area import Area, AreaSync
-from .connection import DMPConnection
-from .connection_sync import DMPConnectionSync
+from .transport import DMPTransport
+from .transport_sync import DMPTransportSync, DMPConnectionSync
 from .crypto import DMPCrypto
 from .output import Output, OutputSync
 from .panel import DMPPanel
@@ -53,7 +53,8 @@ __all__ = [
     "Output",
     "OutputSync",
     # Low-level API (advanced use)
-    "DMPConnection",
+    "DMPTransport",
+    "DMPTransportSync",
     "DMPConnectionSync",
     "DMPProtocol",
     "DMPStatusServer",
@@ -67,3 +68,6 @@ __all__ = [
     # Version
     "__version__",
 ]
+
+# Backward compatibility alias
+DMPConnection = DMPTransport

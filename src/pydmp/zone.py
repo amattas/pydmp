@@ -109,16 +109,16 @@ class Zone:
             DMPZoneError: If bypass fails
         """
         try:
-            _LOGGER.info(f"Bypassing zone {self.number}")
+            _LOGGER.info("Bypassing zone %s", self.number)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.BYPASS_ZONE.value, zone=self.formatted_number
             )
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected bypass command for zone {self.number}")
 
-            _LOGGER.info(f"Zone {self.number} bypassed successfully")
+            _LOGGER.info("Zone %s bypassed", self.number)
 
         except Exception as e:
             raise DMPZoneError(f"Failed to bypass zone {self.number}: {e}") from e
@@ -130,16 +130,16 @@ class Zone:
             DMPZoneError: If restore fails
         """
         try:
-            _LOGGER.info(f"Restoring zone {self.number}")
+            _LOGGER.info("Restoring zone %s", self.number)
 
-            response = await self.panel._connection.send_command(
+            response = await self.panel._send_command(
                 DMPCommand.RESTORE_ZONE.value, zone=self.formatted_number
             )
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected restore command for zone {self.number}")
 
-            _LOGGER.info(f"Zone {self.number} restored successfully")
+            _LOGGER.info("Zone %s restored", self.number)
 
         except Exception as e:
             raise DMPZoneError(f"Failed to restore zone {self.number}: {e}") from e

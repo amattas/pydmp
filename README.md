@@ -245,13 +245,16 @@ pydmp listen --json --duration 10 | jq
 
 ```
 pydmp/
-├── connection.py         # Async TCP connection
-├── connection_sync.py    # Sync TCP connection
+├── transport.py         # Async TCP transport (raw bytes I/O)
+├── transport_sync.py    # Sync wrapper (transport + protocol)
 ├── protocol.py          # DMP protocol encoder/decoder
 ├── crypto.py            # LFSR encryption
-├── queue.py             # Command queue with rate limiting
 ├── panel.py             # Async panel controller
 ├── panel_sync.py        # Sync panel controller
+├── status_server.py     # Serial 3 (S3) realtime listener
+├── status_parser.py     # Parse S3 Z-frames to typed events
+├── user.py              # User code model
+├── profile.py           # User profile model
 ├── area.py              # Area abstraction
 ├── zone.py              # Zone abstraction
 ├── output.py            # Output abstraction

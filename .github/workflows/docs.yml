@@ -56,13 +56,7 @@ jobs:
             echo "alias=latest" >> $GITHUB_OUTPUT
             echo "update_aliases=true" >> $GITHUB_OUTPUT
             echo "set_default=true" >> $GITHUB_OUTPUT
-          elif [[ "$BRANCH_NAME" == "release/stable" ]]; then
-            # Stable release: extract version from code
-            VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from pydmp import __version__; print(__version__)")
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "alias=stable" >> $GITHUB_OUTPUT
-            echo "update_aliases=true" >> $GITHUB_OUTPUT
-            echo "set_default=false" >> $GITHUB_OUTPUT
+# (Removed logic for release/stable branch to match allowed branch patterns)
           elif [[ "$BRANCH_NAME" =~ ^release/(.+)$ ]]; then
             # Specific release branch: use version from branch name
             VERSION="${BASH_REMATCH[1]}"

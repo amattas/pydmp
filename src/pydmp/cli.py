@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 try:
     import click
@@ -17,12 +17,12 @@ except ImportError:
     sys.exit(1)
 
 from . import __version__
-from .panel import DMPPanel
 from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
-from .status_server import DMPStatusServer
-from .const.strings import AREA_STATUS, ZONE_STATUS, OUTPUT_STATUS
+from .const.strings import AREA_STATUS, OUTPUT_STATUS, ZONE_STATUS
+from .panel import DMPPanel
 from .status_parser import parse_s3_message
+from .status_server import DMPStatusServer
 
 console = Console()
 _LOG = logging.getLogger(__name__)
@@ -139,9 +139,11 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(p.get("host", "")),
             "account": str(p.get("account", "")),
             "remote_key": str(p.get("remote_key", "")),
-            "port": int(p.get("port", DEFAULT_PORT))
-            if str(p.get("port", "")).strip() != ""
-            else DEFAULT_PORT,
+            "port": (
+                int(p.get("port", DEFAULT_PORT))
+                if str(p.get("port", "")).strip() != ""
+                else DEFAULT_PORT
+            ),
             "timeout": float(p.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -151,9 +153,11 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(data.get("host", "")),
             "account": str(data.get("account", "")),
             "remote_key": str(data.get("remote_key", "")),
-            "port": int(data.get("port", DEFAULT_PORT))
-            if str(data.get("port", "")).strip() != ""
-            else DEFAULT_PORT,
+            "port": (
+                int(data.get("port", DEFAULT_PORT))
+                if str(data.get("port", "")).strip() != ""
+                else DEFAULT_PORT
+            ),
             "timeout": float(data.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -218,7 +222,7 @@ def arm_cmd(
     areas: str,
     bypass_faulted: bool,
     force_arm: bool,
-    instant: Optional[bool],
+    instant: bool | None,
     as_json: bool,
 ) -> None:
     """Arm one or more areas, e.g. "1,2,3"."""
@@ -234,7 +238,9 @@ def arm_cmd(
             )
             if not as_json:
                 console.print(
-                    f"[cyan]Arming areas {area_list} (bypass={bypass_faulted}, force={force_arm}, instant={instant})[/cyan]"
+                    f"[cyan]Arming areas {area_list} "
+                    f"(bypass={bypass_faulted}, force={force_arm}, "
+                    f"instant={instant})[/cyan]"
                 )
             _LOG.info(
                 "CLI: arming areas %s (bypass=%s, force=%s, instant=%s)",
@@ -702,7 +708,9 @@ def listen(host: str, port: int, duration: int, as_json: bool) -> None:
             evt = parse_s3_message(msg)
             if not as_json:
                 console.print(
-                    f"[blue]{evt.category}[/blue] {evt.type_code} a={evt.area} z={evt.zone} v={evt.device} {evt.system_text or ''}"
+                    f"[blue]{evt.category}[/blue] {evt.type_code} "
+                    f"a={evt.area} z={evt.zone} v={evt.device} "
+                    f"{evt.system_text or ''}"
                 )
             else:
                 from dataclasses import asdict

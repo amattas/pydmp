@@ -4,12 +4,12 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .exceptions import DMPAreaError, DMPInvalidParameterError
 from .const.responses import (
     AREA_STATUS_ARMED_AWAY,
     AREA_STATUS_ARMED_STAY,
     AREA_STATUS_DISARMED,
 )
+from .exceptions import DMPAreaError, DMPInvalidParameterError
 
 if TYPE_CHECKING:
     from .panel import DMPPanel

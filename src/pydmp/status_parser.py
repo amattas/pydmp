@@ -7,21 +7,20 @@ fields from pydmp.const, making it easier to act on realtime events.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
-from .status_server import S3Message
 from .const.events import (
-    DMPEventType,
     DMPArmingEvent,
-    DMPRealTimeStatusEvent,
-    DMPZoneEvent,
-    DMPUserCodeEvent,
-    DMPScheduleEvent,
-    DMPHolidayEvent,
     DMPEquipmentEvent,
+    DMPEventType,
+    DMPHolidayEvent,
     DMPQualifierEvent,
+    DMPRealTimeStatusEvent,
+    DMPScheduleEvent,
+    DMPUserCodeEvent,
+    DMPZoneEvent,
 )
 from .const.strings import SYSTEM_MESSAGES
+from .status_server import S3Message
 
 
 @dataclass
@@ -32,22 +31,22 @@ class ParsedEvent:
     """
 
     account: str
-    category: Optional[DMPEventType]
-    type_code: Optional[str]
+    category: DMPEventType | None
+    type_code: str | None
     code_enum: object | None  # one of the DMP*Event enums above, when applicable
-    area: Optional[str]
-    area_name: Optional[str]
-    zone: Optional[str]
-    zone_name: Optional[str]
-    device: Optional[str]
-    device_name: Optional[str]
-    system_code: Optional[str]
-    system_text: Optional[str]
+    area: str | None
+    area_name: str | None
+    zone: str | None
+    zone_name: str | None
+    device: str | None
+    device_name: str | None
+    system_code: str | None
+    system_text: str | None
     fields: list[str]
     raw: str
 
 
-def _get_field(fields: list[str], key: str) -> Optional[str]:
+def _get_field(fields: list[str], key: str) -> str | None:
     prefix = f"{key} "
     for f in fields:
         if f.startswith(prefix):
@@ -55,7 +54,7 @@ def _get_field(fields: list[str], key: str) -> Optional[str]:
     return None
 
 
-def _split_number_name(value: str) -> Tuple[str, Optional[str]]:
+def _split_number_name(value: str) -> tuple[str, str | None]:
     if '"' in value:
         num, name = value.split('"', 1)
         return num.strip(), name.strip()
@@ -70,7 +69,7 @@ def parse_s3_message(msg: S3Message) -> ParsedEvent:
     """
 
     # Map category
-    category: Optional[DMPEventType]
+    category: DMPEventType | None
     try:
         category = DMPEventType(msg.definition)
     except ValueError:
@@ -82,12 +81,12 @@ def parse_s3_message(msg: S3Message) -> ParsedEvent:
     device_raw = _get_field(msg.fields, "v")
     system_code = _get_field(msg.fields, "s")
 
-    area_num: Optional[str] = None
-    area_name: Optional[str] = None
-    zone_num: Optional[str] = None
-    zone_name: Optional[str] = None
-    device_num: Optional[str] = None
-    device_name: Optional[str] = None
+    area_num: str | None = None
+    area_name: str | None = None
+    zone_num: str | None = None
+    zone_name: str | None = None
+    device_num: str | None = None
+    device_name: str | None = None
 
     if area_raw is not None:
         area_num, area_name = _split_number_name(area_raw)
@@ -132,7 +131,7 @@ def parse_s3_message(msg: S3Message) -> ParsedEvent:
             code_enum = None
 
     # System message text (Zs)
-    system_text: Optional[str] = None
+    system_text: str | None = None
     if category is DMPEventType.SYSTEM_MESSAGE and system_code:
         system_text = SYSTEM_MESSAGES.get(system_code)
 

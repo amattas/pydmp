@@ -29,7 +29,7 @@ class DMPCommandError(DMPError):
     """Command execution errors."""
 
 
-class DMPCommandNAK(DMPCommandError):
+class DMPCommandNAKError(DMPCommandError):
     """Command was rejected by panel (NAK response)."""
 
 

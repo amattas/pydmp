@@ -1,7 +1,4 @@
-import pytest
-
 from pydmp.protocol import DMPProtocol, UserCodesResponse, UserProfilesResponse
-from pydmp.const.commands import DMPCommand
 
 
 def test_decode_user_codes_single_entry():
@@ -24,7 +21,7 @@ def test_decode_user_codes_single_entry():
     )
     enc = proto.crypto.encrypt_string(plain)
 
-    payload = f"@    1+*P={enc}\x1e\r".encode("utf-8")
+    payload = f"@    1+*P={enc}\x1e\r".encode()
     resp = proto.decode_response(payload)
     assert isinstance(resp, UserCodesResponse)
     assert len(resp.users) == 1
@@ -54,7 +51,7 @@ def test_decode_user_codes_with_flags_and_dates():
     name = "JDOE"
     plain = num + code + pin + p1 + p2 + p3 + p4 + end_date + legacy_exp + flags + start_date + name
     enc = proto.crypto.encrypt_string(plain)
-    payload = f"@    1+*P={enc}\x1e\r".encode("utf-8")
+    payload = f"@    1+*P={enc}\x1e\r".encode()
     resp = proto.decode_response(payload)
     assert isinstance(resp, UserCodesResponse)
     assert len(resp.users) == 1
@@ -71,7 +68,7 @@ def test_decode_user_profiles_single_entry():
     proto = DMPProtocol("1", "")
     # Minimal profile: number 001, masks, output group, menu, rearm, name
     prof = "001" + "C3000000" + "C3000000" + "001" + "MENUOPTS" + (" " * 16) + "005" + "ADMIN"
-    payload = f"@    1+*U{prof}\x1e\r".encode("utf-8")
+    payload = f"@    1+*U{prof}\x1e\r".encode()
     resp = proto.decode_response(payload)
     assert isinstance(resp, UserProfilesResponse)
     assert len(resp.profiles) == 1

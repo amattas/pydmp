@@ -1,4 +1,5 @@
 import asyncio
+
 import pytest
 
 from pydmp.status_server import DMPStatusServer
@@ -13,13 +14,13 @@ async def test_status_server_start_stop():
 
 
 def test_extract_account_helper():
-    from pydmp.status_server import DMPStatusServer as S
+    from pydmp.status_server import DMPStatusServer
 
     good = b"\x02    1Zq\\...\r"
-    assert S._extract_account(good) == "    1"
+    assert DMPStatusServer._extract_account(good) == "    1"
 
     bad = b"NoSTXHere"
-    assert S._extract_account(bad) is None
+    assert DMPStatusServer._extract_account(bad) is None
 
 
 class FakeReader:

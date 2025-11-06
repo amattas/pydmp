@@ -1,12 +1,10 @@
-import asyncio
 import pytest
 
 from pydmp.area import Area
-from pydmp.zone import Zone
+from pydmp.const.events import DMPRealTimeStatusEvent
 from pydmp.output import Output
 from pydmp.panel import DMPPanel
-from pydmp.exceptions import DMPAreaError, DMPZoneError, DMPOutputError, DMPConnectionError
-from pydmp.const.events import DMPRealTimeStatusEvent
+from pydmp.zone import Zone
 
 
 class FakeConnection:

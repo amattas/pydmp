@@ -1,9 +1,8 @@
-import asyncio
 import pytest
 
-from pydmp.status_server import DMPStatusServer
+from pydmp.const import DMPArmingEvent, DMPEventType, DMPRealTimeStatusEvent
 from pydmp.status_parser import parse_s3_message
-from pydmp.const import DMPEventType, DMPArmingEvent, DMPRealTimeStatusEvent
+from pydmp.status_server import DMPStatusServer
 
 
 class FakeWriter:

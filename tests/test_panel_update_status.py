@@ -1,10 +1,9 @@
-import asyncio
 import pytest
 
-from pydmp.panel import DMPPanel
-from pydmp.protocol import StatusResponse, AreaStatus, ZoneStatus
 from pydmp.const.commands import DMPCommand
 from pydmp.exceptions import DMPConnectionError
+from pydmp.panel import DMPPanel
+from pydmp.protocol import AreaStatus, StatusResponse, ZoneStatus
 
 
 class FakeConnection:

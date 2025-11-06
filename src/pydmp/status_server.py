@@ -14,8 +14,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Iterable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +52,6 @@ class DMPStatusServer:
     async def start(self) -> None:
         if self._server is not None:
             return
-        loop = asyncio.get_running_loop()
         self._server = await asyncio.start_server(self._handle_client, self._host, self._port)
         sockets = ", ".join(str(s.getsockname()) for s in (self._server.sockets or []))
         _LOGGER.info("S3 status server listening on %s", sockets)

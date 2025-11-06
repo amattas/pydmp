@@ -11,21 +11,21 @@ from .const.protocol import (
     ZONE_DELIMITER,
 )
 from .const.responses import (
-    DMPResponse,
     AREA_STATUS_ARMED_AWAY,
-    AREA_STATUS_DISARMED,
     AREA_STATUS_ARMED_STAY,
-    ZONE_STATUS_NORMAL,
-    ZONE_STATUS_OPEN,
-    ZONE_STATUS_SHORT,
+    AREA_STATUS_DISARMED,
     ZONE_STATUS_BYPASSED,
     ZONE_STATUS_LOW_BATTERY,
     ZONE_STATUS_MISSING,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
+    DMPResponse,
 )
 from .crypto import DMPCrypto
 from .exceptions import DMPInvalidResponseError, DMPProtocolError
-from .user import UserCode
 from .profile import UserProfile
+from .user import UserCode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -391,7 +391,8 @@ class DMPProtocol:
             p2 = plain[25:28]
             p3 = plain[28:31]
             p4 = plain[31:34]
-            # End date (DDMMYY) appears in decrypted block; panel also includes a start date in the trailing plaintext
+            # End date (DDMMYY) appears in decrypted block.
+            # Panel also includes a start date in the trailing plaintext.
             end_date_ddmmyy = plain[34:40]
             legacy_exp = plain[40:44]
             tail = plain[44:]

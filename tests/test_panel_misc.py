@@ -1,9 +1,9 @@
 import asyncio
+
 import pytest
 
 from pydmp.panel import DMPPanel
-from pydmp.protocol import StatusResponse, AreaStatus, ZoneStatus
-from pydmp.exceptions import DMPConnectionError
+from pydmp.protocol import StatusResponse
 
 
 class FakeConn:

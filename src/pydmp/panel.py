@@ -5,22 +5,28 @@ import logging
 from typing import Any
 
 from .area import Area
-from .transport import DMPTransport
-
-# Backward-compat alias for tests expecting DMPConnection symbol in this module
-DMPConnection = DMPTransport
 from .const.commands import DMPCommand
+from .const.events import DMPEventType
 from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
+from .protocol import (
+    DMPProtocol,
+    OutputsResponse,
+    StatusResponse,
+    UserCode,
+    UserCodesResponse,
+    UserProfile,
+    UserProfilesResponse,
+)
 from .status_parser import parse_s3_message
-from .const.events import DMPEventType
-from .protocol import StatusResponse, DMPProtocol
-from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
-from .protocol import OutputsResponse
+from .transport import DMPTransport
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
+
+# Backward-compat alias for tests expecting DMPConnection symbol in this module
+DMPConnection = DMPTransport
 
 
 # Active connection guard: one connection per (host, port, account)
@@ -346,9 +352,9 @@ class DMPPanel:
             # Map mode to the Output state semantics used in Output
             mode = out.mode
             if mode == "O":
-                self._outputs[
-                    num
-                ]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
+                self._outputs[num]._state = (
+                    DMPEventType.REAL_TIME_STATUS
+                )  # will set properly in next block
             # Use Output.update_state mapping via set_mode semantics
             # Set internal state directly based on mode
             if mode == "O":

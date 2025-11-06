@@ -4,15 +4,15 @@ import logging
 from typing import TYPE_CHECKING
 
 from .const.commands import DMPCommand
-from .exceptions import DMPInvalidParameterError, DMPZoneError
 from .const.responses import (
-    ZONE_STATUS_NORMAL,
-    ZONE_STATUS_OPEN,
-    ZONE_STATUS_SHORT,
     ZONE_STATUS_BYPASSED,
     ZONE_STATUS_LOW_BATTERY,
     ZONE_STATUS_MISSING,
+    ZONE_STATUS_NORMAL,
+    ZONE_STATUS_OPEN,
+    ZONE_STATUS_SHORT,
 )
+from .exceptions import DMPInvalidParameterError, DMPZoneError
 
 if TYPE_CHECKING:
     from .panel import DMPPanel
@@ -236,4 +236,4 @@ class ZoneSync:
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ZoneSync {self._zone.number}: {self._zone.name} ({self._zone.zone_type}, {self._zone.state})>"
+        return f"<ZoneSync {self._zone.number}: {self._zone.name} ({self._zone.state})>"

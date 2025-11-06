@@ -204,6 +204,3 @@ class DMPQualifierEvent(str, Enum):
     SERVICE = "DT"
     ALL_AREAS_ARMED = "AC"
     LOCAL_ALARM_OR_RESTORE = "LC"
-
-
-from .strings import SYSTEM_MESSAGES  # re-export

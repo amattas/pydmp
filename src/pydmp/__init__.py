@@ -28,15 +28,15 @@ Example (Sync):
 
 from . import const, exceptions
 from .area import Area, AreaSync
-from .transport import DMPTransport
-from .transport_sync import DMPTransportSync, DMPConnectionSync
 from .crypto import DMPCrypto
 from .output import Output, OutputSync
 from .panel import DMPPanel
 from .panel_sync import DMPPanelSync
 from .protocol import DMPProtocol
-from .status_server import DMPStatusServer, S3Message
 from .status_parser import ParsedEvent, parse_s3_message
+from .status_server import DMPStatusServer, S3Message
+from .transport import DMPTransport
+from .transport_sync import DMPConnectionSync, DMPTransportSync
 from .zone import Zone, ZoneSync
 
 __version__ = "0.1.0"

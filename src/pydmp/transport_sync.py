@@ -3,10 +3,10 @@
 import asyncio
 from typing import Any
 
-from .transport import DMPTransport
-from .const.protocol import DEFAULT_PORT
-from .protocol import StatusResponse, DMPProtocol
 from .const.commands import DMPCommand
+from .const.protocol import DEFAULT_PORT
+from .protocol import DMPProtocol, StatusResponse
+from .transport import DMPTransport
 
 
 class DMPTransportSync:

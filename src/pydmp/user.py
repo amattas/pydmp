@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Tuple
 
 
 @dataclass
@@ -9,7 +8,7 @@ class UserCode:
     number: str
     code: str
     pin: str
-    profiles: Tuple[str, str, str, str]
+    profiles: tuple[str, str, str, str]
     # Historically parsed fields; see start_date/end_date for clarified meaning
     temp_date: str  # legacy 6-digit field; same as end_date (DDMMYY)
     exp_date: str  # legacy 4-char field; often '----' on observed panels

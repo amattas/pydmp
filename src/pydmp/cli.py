@@ -190,10 +190,10 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
             )
-            area_obj = await panel.get_area(area)
             if not as_json:
                 console.print(f"[cyan]Disarming area {area}...[/cyan]")
-            await area_obj.disarm()
+            # Avoid status fetch: disarm directly via panel API
+            await panel.disarm_areas([area])
             if not as_json:
                 console.print(f"[green]Area {area} disarmed successfully[/green]")
             else:

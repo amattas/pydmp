@@ -37,7 +37,6 @@ class Zone:
             panel: Parent panel instance
             number: Zone number (1-999)
             name: Zone name
-            zone_type: Type of zone
             state: Current zone state
         """
         if not 1 <= number <= 999:
@@ -61,7 +60,6 @@ class Zone:
         Args:
             state: New state
             name: Updated name (optional)
-            zone_type: Updated type (optional)
         """
         old_state = self._state
         self._state = state

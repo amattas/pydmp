@@ -1,8 +1,8 @@
 site_name: PyDMP
 site_description: Python library for controlling DMP alarm systems
-site_url: https://github.com/yourusername/pydmp
-repo_url: https://github.com/yourusername/pydmp
-repo_name: yourusername/pydmp
+site_url: https://amattas.github.io/pydmp/
+repo_url: https://github.com/amattas/pydmp
+repo_name: amattas/pydmp
 
 theme:
   name: material

@@ -36,7 +36,7 @@ from .panel import DMPPanel
 from .panel_sync import DMPPanelSync
 from .protocol import DMPProtocol
 from .status_server import DMPStatusServer, S3Message
-from .status_parser import ParsedEvent, parse_scsvr_message
+from .status_parser import ParsedEvent, parse_s3_message
 from .zone import Zone, ZoneSync
 
 __version__ = "0.1.0"
@@ -59,7 +59,7 @@ __all__ = [
     "DMPStatusServer",
     "S3Message",
     "ParsedEvent",
-    "parse_scsvr_message",
+    "parse_s3_message",
     "DMPCrypto",
     # Submodules
     "const",

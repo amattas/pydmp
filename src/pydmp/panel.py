@@ -10,7 +10,7 @@ from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
-from .status_parser import parse_scsvr_message
+from .status_parser import parse_s3_message
 from .const.events import DMPEventType
 from .protocol import StatusResponse
 from .protocol import UserCodesResponse, UserProfilesResponse, UserCode, UserProfile
@@ -46,7 +46,6 @@ class DMPPanel:
         self._user_cache_by_code: dict[str, UserCode] = {}
         self._user_cache_by_pin: dict[str, UserCode] = {}
         self._user_cache_lock = asyncio.Lock()
-        self._user_refresh_task: Any | None = None
         self._status_callbacks: dict[Any, Any] = {}
 
         _LOGGER.debug("Panel initialized")
@@ -297,6 +296,12 @@ class DMPPanel:
 
         return self._outputs[number]
 
+    async def sensor_reset(self) -> None:
+        """Send sensor reset command to the panel (!E001)."""
+        if not self.is_connected or not self._connection:
+            raise DMPConnectionError("Not connected to panel")
+        await self._connection.send_command(DMPCommand.SENSOR_RESET.value)
+
     async def get_user_codes(self) -> list[UserCode]:
         """Retrieve all user codes from the panel (decrypting entries)."""
         if not self.is_connected or not self._connection:
@@ -395,7 +400,7 @@ class DMPPanel:
 
         async def _on_event(msg: Any) -> None:
             try:
-                evt = parse_scsvr_message(msg)
+                evt = parse_s3_message(msg)
                 if evt.category is DMPEventType.USER_CODES:
                     await self._refresh_user_cache()
             except Exception as e:

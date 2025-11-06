@@ -50,11 +50,11 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from pydmp import DMPStatusServer, parse_scsvr_message
+from pydmp import DMPStatusServer, parse_s3_message
 
 async def run():
     server = DMPStatusServer(host="0.0.0.0", port=5001)
-    server.register_callback(lambda msg: print(parse_scsvr_message(msg)))
+    server.register_callback(lambda msg: print(parse_s3_message(msg)))
     await server.start()
     await asyncio.sleep(3600)
 
@@ -67,4 +67,3 @@ asyncio.run(run())
 - Guide → Realtime Status shows S3 listener + parsing
 - Guide → Encryption explains user code decryption and remote key behavior
 - API Reference documents all classes and methods with type hints
-

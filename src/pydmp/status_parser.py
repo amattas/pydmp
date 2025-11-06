@@ -62,8 +62,8 @@ def _split_number_name(value: str) -> Tuple[str, Optional[str]]:
     return value.strip(), None
 
 
-def parse_scsvr_message(msg: S3Message) -> ParsedEvent:
-    """Convert SCSVRMessage to a structured ParsedEvent with enums.
+def parse_s3_message(msg: S3Message) -> ParsedEvent:
+    """Convert a Serial 3 (S3) message to a structured ParsedEvent with enums.
 
     This function does not mutate any panel state; it only interprets the
     incoming message. Use it inside your DMPStatusServer callbacks.

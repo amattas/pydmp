@@ -49,10 +49,10 @@ await o.pulse()
 Use the realtime S3 server to receive events as they happen. See the dedicated page for details.
 
 ```python
-from pydmp import DMPStatusServer, parse_scsvr_message
+from pydmp import DMPStatusServer, parse_s3_message
 
 server = DMPStatusServer(host="0.0.0.0", port=5001)
-server.register_callback(lambda msg: print(parse_scsvr_message(msg)))
+server.register_callback(lambda msg: print(parse_s3_message(msg)))
 await server.start()
 ```
 

@@ -19,7 +19,7 @@ from . import __version__
 from .panel import DMPPanel
 from .const.commands import DMPCommand
 from .status_server import DMPStatusServer
-from .status_parser import parse_scsvr_message
+from .status_parser import parse_s3_message
 
 console = Console()
 
@@ -418,8 +418,8 @@ def sensor_reset(ctx: click.Context) -> None:
         try:
             await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             console.print("[cyan]Sending sensor reset...[/cyan]")
-            resp = await panel._connection.send_command(DMPCommand.SENSOR_RESET.value)  # type: ignore[union-attr]
-            console.print(f"[green]Response: {resp}[/green]")
+            await panel.sensor_reset()
+            console.print("[green]Sensor reset sent[/green]")
         finally:
             await panel.disconnect()
 
@@ -461,7 +461,7 @@ def listen(host: str, port: int, duration: int) -> None:
         server = DMPStatusServer(host=host, port=port)
 
         def on_event(msg):
-            evt = parse_scsvr_message(msg)
+            evt = parse_s3_message(msg)
             console.print(f"[blue]{evt.category}[/blue] {evt.type_code} a={evt.area} z={evt.zone} v={evt.device} {evt.system_text or ''}")
 
         server.register_callback(on_event)

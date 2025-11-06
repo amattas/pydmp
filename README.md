@@ -48,7 +48,6 @@ pip install -e ".[dev]"
 ```python
 import asyncio
 from pydmp import DMPPanel
-from pydmp.const import AreaState, ZoneType
 
 async def main():
     panel = DMPPanel()
@@ -56,19 +55,19 @@ async def main():
 
     # Arm/disarm area
     areas = await panel.get_areas()
-    await areas[0].arm_away()  # No user code needed
-    await areas[0].arm_away(bypass_faulted=True)  # Bypass faulted zones
+    await areas[0].arm_away(bypass_faulted=True)  # Optional flags; instant can be set too
+    await areas[0].disarm()
 
-    # Check status
+    # Check status (raw codes: A/D/S)
     state = await areas[0].get_state()
-    if state == AreaState.ARMED_AWAY:
-        print("Armed")
+    if state == 'A':
+        print("Armed (Away)")
 
-    # Check zones
+    # Check zones (raw codes: N/O/S/X/L/M)
     zones = await panel.get_zones()
     for zone in zones:
-        if zone.zone_type == ZoneType.FIRE and zone.is_open:
-            print(f"Fire alarm: Zone {zone.number}")
+        if zone.is_open:
+            print(f"Open zone: {zone.number} - {zone.name}")
 
     await panel.disconnect()
 
@@ -79,17 +78,16 @@ asyncio.run(main())
 
 ```python
 from pydmp import DMPPanelSync
-from pydmp.const import AreaState
 
 panel = DMPPanelSync()
 panel.connect("192.168.1.100", "00001", "YOUR_KEY")
 
 areas = panel.get_areas()
-areas[0].arm_away_sync()  # No user code needed
+areas[0].arm_away_sync()
 
 state = areas[0].get_state_sync()
-if state == AreaState.ARMED_AWAY:
-    print("Armed")
+if state == 'A':
+    print("Armed (Away)")
 
 panel.disconnect()
 ```

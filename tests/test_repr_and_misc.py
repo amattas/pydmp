@@ -2,7 +2,7 @@ from pydmp.panel import DMPPanel
 from pydmp.area import Area
 from pydmp.zone import Zone
 from pydmp.output import Output
-from pydmp.status_parser import parse_scsvr_message
+from pydmp.status_parser import parse_s3_message
 from pydmp.status_server import S3Message
 
 
@@ -23,7 +23,6 @@ def test_entity_reprs():
 
 def test_status_parser_unknown_category():
     msg = S3Message(account="00001", definition="Z?", type_code=None, fields=["Z?"], raw="")
-    evt = parse_scsvr_message(msg)
+    evt = parse_s3_message(msg)
     assert evt.category is None
     assert evt.code_enum is None
-

@@ -2,7 +2,7 @@ import asyncio
 import pytest
 
 from pydmp.status_server import DMPStatusServer
-from pydmp.status_parser import parse_scsvr_message
+from pydmp.status_parser import parse_s3_message
 from pydmp.const import DMPEventType, DMPArmingEvent, DMPRealTimeStatusEvent
 
 
@@ -49,7 +49,7 @@ async def test_process_line_sends_ack_and_dispatches():
     assert writer.buffer.startswith(b"\x02" + account + b"\x06\r")
     assert "msg" in received
 
-    evt = parse_scsvr_message(received["msg"])
+    evt = parse_s3_message(received["msg"])
     assert evt.category == DMPEventType.ARMING_STATUS
     assert isinstance(evt.code_enum, DMPArmingEvent)
     assert evt.area == "01"
@@ -66,7 +66,7 @@ def test_parse_device_status():
         'v 002"OUT2',
     ]
     msg = S3Message(account="00001", definition="Zc", type_code="ON", fields=fields, raw="" )
-    evt = parse_scsvr_message(msg)
+    evt = parse_s3_message(msg)
     assert evt.category == DMPEventType.REAL_TIME_STATUS
     assert isinstance(evt.code_enum, DMPRealTimeStatusEvent)
     assert evt.device == "002"

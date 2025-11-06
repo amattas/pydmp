@@ -132,17 +132,8 @@ class DMPPanelSync:
         output = self._run(self._panel.get_output(number))
         return self._wrap_output(output)
 
-    def trigger_fire_emergency(self) -> None:
-        """Trigger fire emergency alarm."""
-        self._run(self._panel.trigger_fire_emergency())
-
-    def trigger_police_emergency(self) -> None:
-        """Trigger police emergency alarm."""
-        self._run(self._panel.trigger_police_emergency())
-
-    def trigger_medical_emergency(self) -> None:
-        """Trigger medical emergency alarm."""
-        self._run(self._panel.trigger_medical_emergency())
+    # Emergency trigger helpers were previously wired to non-existent async methods.
+    # If needed in the future, map to configured output pulses instead.
 
     def _wrap_area(self, area: Area) -> AreaSync:
         """Wrap async Area in AreaSync."""

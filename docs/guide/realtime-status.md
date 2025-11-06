@@ -6,13 +6,13 @@ PyDMP can run a lightweight TCP server that accepts Serial 3 (S3) Z‑messages p
 
 ```python
 import asyncio
-from pydmp import DMPStatusServer, parse_scsvr_message
+from pydmp import DMPStatusServer, parse_s3_message
 
 async def on_start():
     server = DMPStatusServer(host="0.0.0.0", port=5001)
 
     def on_event(msg):
-        evt = parse_scsvr_message(msg)
+        evt = parse_s3_message(msg)
         print(evt.category, evt.type_code, evt.area, evt.zone, evt.device)
 
     server.register_callback(on_event)
@@ -34,7 +34,7 @@ asyncio.run(on_start())
   - Equipment (Ze): `DMPEquipmentEvent`
   - System message (Zs): `SYSTEM_MESSAGES[code]`
 
-Use `parse_scsvr_message` to build a `ParsedEvent` with both raw codes and typed enums.
+Use `parse_s3_message` to build a `ParsedEvent` with both raw codes and typed enums.
 
 ## ACK Behavior
 

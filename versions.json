@@ -1,5 +1,12 @@
 [
   {
+    "version": "dev-5aac623",
+    "title": "dev-5aac623",
+    "aliases": [
+      "dev"
+    ]
+  },
+  {
     "version": "dev-4d96853",
     "title": "dev-4d96853",
     "aliases": []

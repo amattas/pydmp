@@ -24,6 +24,8 @@
   {
     "version": "1.0.0-alpha.1",
     "title": "1.0.0-alpha.1",
-    "aliases": []
+    "aliases": [
+      "latest"
+    ]
   }
 ]

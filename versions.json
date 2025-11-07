@@ -10,6 +10,13 @@
     "aliases": []
   },
   {
+    "version": "dev-addc53f",
+    "title": "dev-addc53f",
+    "aliases": [
+      "dev"
+    ]
+  },
+  {
     "version": "1.0.0-alpha.1",
     "title": "1.0.0-alpha.1",
     "aliases": [

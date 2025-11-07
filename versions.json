@@ -1,5 +1,12 @@
 [
   {
+    "version": "dev-e3f3505",
+    "title": "dev-e3f3505",
+    "aliases": [
+      "dev"
+    ]
+  },
+  {
     "version": "dev-bfcb439",
     "title": "dev-bfcb439",
     "aliases": []

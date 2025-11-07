@@ -44,11 +44,11 @@ jobs:
           BRANCH_NAME="${{ github.ref_name }}"
 
           if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" ]]; then
-            # Main branch: deploy as 'dev' and set as latest
+            # Main branch: deploy as 'dev' with 'dev' alias
             echo "version=dev" >> $GITHUB_OUTPUT
-            echo "alias=latest" >> $GITHUB_OUTPUT
+            echo "alias=dev" >> $GITHUB_OUTPUT
             echo "update_aliases=true" >> $GITHUB_OUTPUT
-            echo "set_default=true" >> $GITHUB_OUTPUT
+            echo "set_default=false" >> $GITHUB_OUTPUT
           elif [[ "$BRANCH_NAME" == "release/latest" ]]; then
             # Latest release: extract version from code
             VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from pydmp import __version__; print(__version__)")

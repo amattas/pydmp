@@ -21,16 +21,68 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Read project version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python - << 'PY'
+import sys
+sys.path.insert(0, 'src')
+from pydmp import __version__
+print(__version__)
+PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install packaging lib for version normalization
+        run: |
+          python -m pip install --upgrade pip
+          pip install packaging
+
+      - name: Ensure version not already on PyPI
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Version to publish: $VERSION"
+          python - << 'PY'
+import json, sys, urllib.request
+try:
+    from packaging.version import Version
+except Exception:
+    Version = None
+name = 'pydmp'
+version = '${{ steps.version.outputs.version }}'
+# Normalize PEP 440 to match PyPI keys
+if Version is not None:
+    try:
+        version = str(Version(version))
+    except Exception:
+        pass
+try:
+    with urllib.request.urlopen(f'https://pypi.org/pypi/{name}/json', timeout=10) as r:
+        data = json.load(r)
+    exists = version in data.get('releases', {})
+except Exception:
+    exists = False
+if exists:
+    print(f'Version {version} already exists on PyPI for project {name}. Bump __version__ before publishing.')
+    sys.exit(1)
+else:
+    print(f'Version {version} not found on PyPI; proceeding.')
+PY
+
       - name: Install build backend
         run: |
           python -m pip install --upgrade pip
           pip install build
 
       - name: Build sdist and wheel
-        run: python -m build
+        run: |
+          python -m build
+          echo "Built artifacts:"
+          ls -l dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          skip-existing: true
+          skip-existing: false
           packages-dir: dist/

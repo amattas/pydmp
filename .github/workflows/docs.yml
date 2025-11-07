@@ -23,6 +23,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch gh-pages branch (if exists)
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:gh-pages
+          else
+            echo "gh-pages branch does not exist yet; will be created by mike"
+          fi
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
@@ -44,11 +52,12 @@ jobs:
           BRANCH_NAME="${{ github.ref_name }}"
 
           if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" ]]; then
-            # Main branch: deploy as 'dev' and set as latest
-            echo "version=dev" >> $GITHUB_OUTPUT
-            echo "alias=latest" >> $GITHUB_OUTPUT
+            # Main branch: unique version + 'dev' alias
+            SHORT_SHA="${GITHUB_SHA::7}"
+            echo "version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+            echo "alias=dev" >> $GITHUB_OUTPUT
             echo "update_aliases=true" >> $GITHUB_OUTPUT
-            echo "set_default=true" >> $GITHUB_OUTPUT
+            echo "set_default=false" >> $GITHUB_OUTPUT
           elif [[ "$BRANCH_NAME" == "release/latest" ]]; then
             # Latest release: extract version from code
             VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from pydmp import __version__; print(__version__)")
@@ -56,10 +65,9 @@ jobs:
             echo "alias=latest" >> $GITHUB_OUTPUT
             echo "update_aliases=true" >> $GITHUB_OUTPUT
             echo "set_default=true" >> $GITHUB_OUTPUT
-# (Removed logic for release/stable branch to match allowed branch patterns)
           elif [[ "$BRANCH_NAME" =~ ^release/(.+)$ ]]; then
             # Specific release branch: use version from branch name
-            VERSION="${BASH_REMATCH[1]}"
+            VERSION=${BASH_REMATCH[1]}
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "alias=" >> $GITHUB_OUTPUT
             echo "update_aliases=false" >> $GITHUB_OUTPUT
@@ -75,7 +83,13 @@ jobs:
           ALIAS="${{ steps.version.outputs.alias }}"
           UPDATE_ALIASES="${{ steps.version.outputs.update_aliases }}"
 
-          if [[ "$UPDATE_ALIASES" == "true" && -n "$ALIAS" ]]; then
+          # If a version exists with the same name as the alias,
+          # delete it first to free the alias name.
+          if [[ -n "$ALIAS" ]]; then
+            mike delete --push "$ALIAS" || true
+          fi
+
+          if [[ "$UPDATE_ALIASES" == "true" && -n "$ALIAS" && "$ALIAS" != "$VERSION" ]]; then
             mike deploy --push --update-aliases "$VERSION" "$ALIAS"
           else
             mike deploy --push "$VERSION"

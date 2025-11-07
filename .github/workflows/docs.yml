@@ -83,6 +83,12 @@ jobs:
           ALIAS="${{ steps.version.outputs.alias }}"
           UPDATE_ALIASES="${{ steps.version.outputs.update_aliases }}"
 
+          # If a version exists with the same name as the alias,
+          # delete it first to free the alias name.
+          if [[ -n "$ALIAS" ]]; then
+            mike delete --push "$ALIAS" || true
+          fi
+
           if [[ "$UPDATE_ALIASES" == "true" && -n "$ALIAS" && "$ALIAS" != "$VERSION" ]]; then
             mike deploy --push --update-aliases "$VERSION" "$ALIAS"
           else

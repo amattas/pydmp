@@ -19,7 +19,7 @@ def test_extract_account_helper():
     # Real panel format: STX + 6 header bytes + 5 account + body
     header = b"\x02\x00\x00\x00\x00\x00\x00"
     good = header + b"    1Zq\\...\r"
-    assert DMPStatusServer._extract_account(good) == "    1"
+    assert DMPStatusServer._extract_account(good) == b"    1"
 
     bad = b"NoSTXHere"
     assert DMPStatusServer._extract_account(bad) is None

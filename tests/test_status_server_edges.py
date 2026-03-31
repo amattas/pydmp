@@ -8,10 +8,10 @@ from pydmp.status_server import DMPStatusServer
 def test_extract_account_edges():
     header = b"\x02\x00\x00\x00\x00\x00\x00"  # STX + 6 header bytes
     # Real panel frame: STX + 6 header bytes + 5 account + body
-    assert DMPStatusServer._extract_account(header + b"00001Zq\\...") == "00001"
-    assert DMPStatusServer._extract_account(header + b"    1Zq\\...") == "    1"
+    assert DMPStatusServer._extract_account(header + b"00001Zq\\...") == b"00001"
+    assert DMPStatusServer._extract_account(header + b"    1Zq\\...") == b"    1"
     # Non-Z frame (e.g. s07 check-in) still works
-    assert DMPStatusServer._extract_account(header + b"00001s07keepalive") == "00001"
+    assert DMPStatusServer._extract_account(header + b"00001s07keepalive") == b"00001"
     # No STX
     assert DMPStatusServer._extract_account(b"abcdeZ...") is None
     # Too short

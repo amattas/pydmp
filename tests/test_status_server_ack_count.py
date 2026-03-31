@@ -37,10 +37,11 @@ async def test_ack_count_multiple_frames():
         async def wait_closed(self):
             await asyncio.sleep(0)
 
-    # Two valid Z frames with STX + account + 'Z...\r'
+    # Two valid Z frames: STX + 6 header bytes + account + Z-body + CR
+    header = b"\x02\x00\x00\x00\x00\x00\x00"
     acct = b"00001"
-    z1 = b"\x02" + acct + b"Zq\\...\r"
-    z2 = b"\x02" + acct + b"Za\\...\r"
+    z1 = header + acct + b"Zq\\...\r"
+    z2 = header + acct + b"Za\\...\r"
     reader = R([z1 + z2, b""])
     writer = W()
     await srv._handle_client(reader, writer)

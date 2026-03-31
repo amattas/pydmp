@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -97,8 +96,20 @@ class DMPStatusServer:
 
     async def _process_line(self, line: bytes, writer: asyncio.StreamWriter) -> None:
         """Parse one ASCII line and send ACK if possible."""
-        # Expected format (common case): STX (0x02) + 5 acct chars + 'Z'...
+        _LOGGER.debug("[s3] raw frame (%d bytes): %s", len(line), line.hex(" "))
         account = self._extract_account(line)
+
+        # Send ACK immediately for any frame with a valid account,
+        # matching the Lua driver which ACKs before dispatching.
+        if account is not None:
+            try:
+                ack = b"\x02" + account.encode("ascii", errors="ignore") + b"\x06\r"
+                writer.write(ack)
+                await writer.drain()
+                _LOGGER.debug("[s3] sent ACK for account %r", account)
+            except Exception as e:
+                _LOGGER.debug("Failed to send ACK: %s", e)
+
         try:
             text = line.decode("utf-8", errors="replace")
         except Exception:
@@ -115,16 +126,6 @@ class DMPStatusServer:
         # Build message
         msg = self._parse_z_body(account, z_body)
 
-        # Send ACK if we have an account
-        if account is not None:
-            try:
-                ack = b"\x02" + account.encode("ascii", errors="ignore") + b"\x06\r"
-                writer.write(ack)
-                await writer.drain()
-                _LOGGER.debug("[s3] sent ACK for account %r", account)
-            except Exception as e:
-                _LOGGER.debug("Failed to send ACK: %s", e)
-
         # Dispatch to callbacks
         await self._dispatch(msg)
 
@@ -139,11 +140,11 @@ class DMPStatusServer:
 
     @staticmethod
     def _extract_account(line: bytes) -> str | None:
-        # Try to match STX + 5 ASCII chars before 'Z'
-        m = re.search(rb"\x02(.{5})Z", line)
-        if m:
+        # S3 frame format: [STX][6 header bytes][5-byte account][body]
+        # Account is at fixed byte positions 7-11 (0-indexed).
+        if len(line) >= 12 and line[0:1] == b"\x02":
             try:
-                return m.group(1).decode("ascii", errors="ignore")
+                return line[7:12].decode("ascii", errors="ignore")
             except Exception:
                 return None
         return None

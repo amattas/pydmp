@@ -16,8 +16,10 @@ async def test_status_server_start_stop():
 def test_extract_account_helper():
     from pydmp.status_server import DMPStatusServer
 
-    good = b"\x02    1Zq\\...\r"
-    assert DMPStatusServer._extract_account(good) == "    1"
+    # Real panel format: STX + 6 header bytes + 5 account + body
+    header = b"\x02\x00\x00\x00\x00\x00\x00"
+    good = header + b"    1Zq\\...\r"
+    assert DMPStatusServer._extract_account(good) == b"    1"
 
     bad = b"NoSTXHere"
     assert DMPStatusServer._extract_account(bad) is None
@@ -39,9 +41,10 @@ async def test_handle_client_multiple_lines():
     got = []
     srv.register_callback(lambda m: got.append(m))
 
+    header = b"\x02\x00\x00\x00\x00\x00\x00"
     account = b"    1"
-    line1 = b"\x02" + account + b'Za\\060\\t "BU\\z 001"Z1\\\r'
-    line2 = b"\x02" + account + b'Zq\\060\\t "OP\\a 01"AREA\\\r'
+    line1 = header + account + b'Za\\060\\t "BU\\z 001"Z1\\\r'
+    line2 = header + account + b'Zq\\060\\t "OP\\a 01"AREA\\\r'
     reader = FakeReader([line1 + line2, b""])  # both in one chunk
     writer = type(
         "W",

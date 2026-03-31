@@ -31,9 +31,11 @@ async def test_process_line_sends_ack_and_dispatches():
     server = DMPStatusServer()
 
     # Build a simple Zq (arming status) line with OP (disarmed)
+    # Real panel format: STX + 6 header bytes + 5 account + Z-body
+    header = b"\x02\x00\x00\x00\x00\x00\x00"
     account = b"    1"  # 5 chars (4 spaces + '1')
     z_body = 'Zq\\060\\t "OP\\a 01"AREA ONE\\'
-    line = b"\x02" + account + z_body.encode("utf-8")
+    line = header + account + z_body.encode("utf-8")
 
     received = {}
 

@@ -1,3 +1,5 @@
+"""Readable tests for `?WB` zone parsing and full zone snapshots."""
+
 import pytest
 
 from pydmp.core import (
@@ -13,6 +15,8 @@ from pydmp.core import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on zone logic."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -34,6 +38,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -156,11 +161,7 @@ async def test_core_panel_client_query_zones_runs_full_snapshot():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.query_zones()
@@ -222,11 +223,7 @@ async def test_transaction_query_zones_uses_area_scoped_continuations_for_large_
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await client.manager.submit(TransactionQueryZones())

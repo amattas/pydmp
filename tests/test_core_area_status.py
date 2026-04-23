@@ -1,3 +1,5 @@
+"""Readable tests for `?WA` area-status parsing and client helpers."""
+
 import pytest
 
 from pydmp.core import (
@@ -15,6 +17,8 @@ from pydmp.core import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on area logic."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -36,6 +40,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -46,7 +51,7 @@ def make_transport_factory(scripted_replies=None):
     return factory, transports
 
 
-def test_build_query_wa_transactions():
+def test_build_query_areas_transaction():
     transaction = TransactionQueryAreas()
 
     assert transaction.body == "?WA01"
@@ -174,7 +179,7 @@ def test_parse_area_status_page_rejects_malformed_records(reply):
 
 
 @pytest.mark.asyncio
-async def test_core_panel_client_query_wa():
+async def test_core_panel_client_query_areas():
     factory, transports = make_transport_factory(
         scripted_replies=[
             b"\x02@ 12345+V02012345\r",
@@ -182,14 +187,10 @@ async def test_core_panel_client_query_wa():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
-        reply = await client.query_wa()
+        reply = await client.query_areas()
         assert reply.complete is True
         assert [area.number for area in reply.areas] == ["01", "02", "03"]
         assert [area.state for area in reply.areas] == ["N", "N", "N"]
@@ -211,11 +212,7 @@ async def test_manager_applies_wa_parser_automatically():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await client.manager.submit(TransactionQueryAreas())
@@ -239,11 +236,7 @@ async def test_transaction_query_areas_pages_until_complete():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await client.manager.submit(TransactionQueryAreas())

@@ -32,6 +32,8 @@ from .secure_s import (
 # The Python string literal "\\" is one backslash, matching the on-wire byte.
 SERIAL3_FIELD_DELIMITER = "\\"
 
+# These small allowlists let us parse the obvious event shapes confidently
+# while leaving surprising traffic in raw form for later analysis.
 ZONE_EVENT_TYPE_CODES = frozenset({"BL", "FI", "BU", "SV", "PN", "EM", "A1", "A2", "CO", "VA", "HU"})
 ARMING_EVENT_TYPE_CODES = frozenset({"OP", "CL", "LA"})
 ACCESS_EVENT_TYPE_CODES = frozenset({"DA", "AA", "IA", "IT", "AP", "IC", "IL", "WP", "IN"})
@@ -201,6 +203,7 @@ PushEventParser = Callable[[str, bytes, str], object | None]
 
 
 def _compute_host_output_crc(payload: bytes) -> int:
+    """Compute the CRC used by host-output wrapped push frames."""
     crc = 0
     for byte in payload:
         crc ^= byte
@@ -213,10 +216,16 @@ def _compute_host_output_crc(payload: bytes) -> int:
 
 
 def _is_ascii_hex(value: bytes) -> bool:
+    """Return `True` when a byte string is made only of ASCII hex digits."""
     return bool(value) and all(chr(byte) in "0123456789ABCDEFabcdef" for byte in value)
 
 
 def _normalize_clear_frame(frame_bytes: bytes) -> tuple[bytes, bool, bool, bool]:
+    """Strip transport noise so the parser sees one stable clear payload.
+
+    The listener keeps track of what was removed so callers can still inspect
+    whether STX, NUL padding, or a trailing carriage return were present.
+    """
     without_nuls = frame_bytes.replace(b"\x00", b"")
     had_nuls = without_nuls != frame_bytes
     had_stx = without_nuls.startswith(b"\x02")
@@ -228,6 +237,7 @@ def _normalize_clear_frame(frame_bytes: bytes) -> tuple[bytes, bool, bool, bool]
 
 
 def _extract_account_field(normalized_frame: bytes) -> str:
+    """Pull the 5-character account field from a normalized clear frame."""
     if len(normalized_frame) < 11:
         return ""
     account_field = normalized_frame[6:11]
@@ -237,6 +247,7 @@ def _extract_account_field(normalized_frame: bytes) -> str:
 
 
 def _build_clear_ack(account: str) -> bytes:
+    """Build the plain Serial 3 ACK used on clear listener lanes."""
     digits = str(account).strip()
     if not digits.isdigit() or not 1 <= len(digits) <= 5:
         raise ValueError(f"Account must be 1..5 digits: {account!r}")
@@ -244,6 +255,11 @@ def _build_clear_ack(account: str) -> bytes:
 
 
 def _parse_host_output_wrapper(normalized_frame: bytes) -> dict[str, str | bool | None]:
+    """Parse the optional host-output wrapper that appears ahead of some pushes.
+
+    When present, this wrapper adds its own CRC and routing fields before the
+    actual Serial 3 event body.
+    """
     info: dict[str, str | bool | None] = {
         "wrapper_crc_hex": None,
         "wrapper_crc_calc": None,
@@ -280,6 +296,7 @@ def _parse_host_output_wrapper(normalized_frame: bytes) -> dict[str, str | bool 
 
 
 def _find_serial3_event_offset(normalized_frame: bytes) -> int | None:
+    """Find the start of the `Z*` event body inside a normalized frame."""
     match = re.search(rb"Z[a-z]\\\d{3}", normalized_frame)
     if match is None:
         return None
@@ -317,6 +334,7 @@ def _extract_system_code(payload: bytes, definition: str) -> str | None:
 
 
 def _extract_tag(payload: bytes, tag: bytes, width: int) -> tuple[str | None, str | None]:
+    """Extract one tagged id/name pair like `\\a 003\"AREA NAME\\`."""
     pattern = re.compile(
         rb"\\" + re.escape(tag) + rb"\s*(?P<id>\d{"
         + str(width).encode("ascii")
@@ -417,6 +435,7 @@ def _parse_time_day_segment(value: bytes | None) -> tuple[str | None, str | None
 
 
 def _parse_tagged_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedTaggedEvent:
+    """Parse the flexible tagged shape used by `Zq` and `Zs`."""
     definition = payload[:2].decode("ascii", errors="replace")
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
@@ -457,6 +476,7 @@ def _parse_tagged_push_event(_account: str, payload: bytes, _raw: str) -> PushPa
 
 
 def _parse_zone_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedZoneEvent:
+    """Parse zone-style event families such as `Zc`, `Zx`, `Zr`, and `Zt`."""
     definition = payload[:2].decode("ascii", errors="replace")
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
@@ -484,6 +504,7 @@ def _parse_zone_push_event(_account: str, payload: bytes, _raw: str) -> PushPars
 
 
 def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedAccessEvent:
+    """Parse keypad and access-style pushes such as `Zj`."""
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     device, device_name = _extract_tag(payload, b"v", 3)
@@ -503,6 +524,7 @@ def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushPa
 
 
 def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedScheduleEvent:
+    """Parse schedule pushes such as `Zl`."""
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     schedule_name = _strip_optional_quote(_decode_segment_body(_extract_simple_segment_body(payload, b"n")))
@@ -532,6 +554,7 @@ def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> Push
 
 
 def _parse_user_code_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedUserCodeEvent:
+    """Parse user-code administration pushes such as `Zu`."""
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     subject_user, subject_user_name = _extract_tag(payload, b"um", 5)
@@ -555,6 +578,7 @@ def _parse_user_code_push_event(_account: str, payload: bytes, _raw: str) -> Pus
 
 
 def _parse_checkin_s070_event(_account: str, _payload: bytes, raw: str) -> PushParsedCheckinEvent:
+    """Parse the simple `s070` check-in push."""
     match = re.search(r"s070(?P<interval>\d{4})?$", raw.strip())
     interval_text = match.group("interval") if match else None
     return PushParsedCheckinEvent(
@@ -579,6 +603,7 @@ DEFAULT_PUSH_EVENT_PARSERS: dict[str, PushEventParser] = {
 
 
 def _extract_push_event_payload(normalized_frame: bytes) -> tuple[str, bytes, str] | None:
+    """Extract either a `Z*` event body or a plain `s070` check-in body."""
     offset = _find_serial3_event_offset(normalized_frame)
     if offset is not None:
         payload = normalized_frame[offset:]
@@ -600,7 +625,12 @@ def parse_push_event(
     *,
     event_parsers: dict[str, PushEventParser] | None = None,
 ) -> PushEvent | None:
-    """Parse one normalized clear push frame into a raw event plus optional parsed data."""
+    """Parse one normalized clear push frame into a raw event plus optional parsed data.
+
+    If there is no registered parser for the event definition, callers still
+    get the raw event shell so new event families can be captured and studied
+    without changing listener behavior first.
+    """
     extracted = _extract_push_event_payload(normalized_frame)
     if extracted is None:
         return None
@@ -631,6 +661,7 @@ def _build_push_message(
     ack_frame: bytes | None = None,
     event_parsers: dict[str, PushEventParser] | None = None,
 ) -> PushMessage:
+    """Build the final listener message object for one inbound frame."""
     normalized_frame, had_stx, had_nuls, had_trailing_cr = _normalize_clear_frame(clear_frame)
     account_field = _extract_account_field(normalized_frame)
     account = account_field.strip() or None
@@ -661,6 +692,7 @@ def _build_mode_mismatch_message(
     expected_secure: bool,
     raw_frame: bytes,
 ) -> PushMessage:
+    """Build a listener notice for clear-vs-secure mode mismatches."""
     observed_mode = (
         PushTransportMode.SECURE_S
         if raw_frame.startswith(SECURE_S_PREFIX)
@@ -687,6 +719,7 @@ def _build_mode_mismatch_message(
 
 
 def _build_secure_passphrase_mismatch_message(raw_frame: bytes) -> PushMessage:
+    """Build a listener notice for secure traffic that matched no passphrase."""
     return PushMessage(
         transport_mode=PushTransportMode.SECURE_S,
         raw_frame=raw_frame,
@@ -719,6 +752,13 @@ def _choose_even_server_seq() -> int:
 
 
 def _should_ack_push_message(message: PushMessage) -> bool:
+    """Decide whether the listener should ACK this message.
+
+    We only ACK frames that exposed a usable account field. Bare `s070`
+    check-ins are allowed through even though they do not carry a full parsed
+    event body. Wrapped frames with a bad wrapper CRC are intentionally not
+    ACKed.
+    """
     if not message.account:
         return False
     if _is_bare_s070_checkin(message):
@@ -749,15 +789,24 @@ class ListenerProfilePush:
         self._event_parsers: dict[str, PushEventParser] = dict(DEFAULT_PUSH_EVENT_PARSERS)
 
     def register_event_parser(self, definition: str, parser: PushEventParser) -> None:
+        """Register or replace the parser for one event definition."""
         self._event_parsers[str(definition)] = parser
 
     def remove_event_parser(self, definition: str) -> None:
+        """Remove the parser for one event definition."""
         self._event_parsers.pop(str(definition), None)
 
     def create_connection_state(self) -> _PushConnectionState:
+        """Create the per-socket state bucket used while bytes are arriving."""
         return _PushConnectionState()
 
     def feed_data(self, state: _PushConnectionState, chunk: bytes) -> InboundAction:
+        """Consume a new chunk of socket bytes and emit ACKs/messages.
+
+        This method is incremental on purpose. A panel may split one push
+        frame across multiple TCP reads, so we keep a buffer until we have a
+        whole frame.
+        """
         state.buffer += chunk
         action = InboundAction()
 
@@ -789,6 +838,7 @@ class ListenerProfilePush:
 
         while state.buffer:
             if self._secure_passphrases:
+                # Secure listeners consume one framed `!!S` message at a time.
                 secure_action = self._consume_secure_frame(state)
                 if secure_action is None:
                     break
@@ -799,6 +849,7 @@ class ListenerProfilePush:
                     break
                 continue
 
+            # Clear listener lanes treat carriage return as the frame boundary.
             if b"\r" not in state.buffer:
                 break
 
@@ -822,6 +873,7 @@ class ListenerProfilePush:
         return action
 
     def _consume_secure_frame(self, state: _PushConnectionState) -> InboundAction | None:
+        """Consume one complete secure `!!S` frame when enough bytes are buffered."""
         if not self._secure_passphrases and state.secure_passphrase is None:
             raise ListenerConfigurationError(
                 "Secure !!S push traffic requires at least one configured passphrase"
@@ -856,11 +908,7 @@ class ListenerProfilePush:
         action = InboundAction()
 
         if frame.frame_type == SECURE_S_FRAME_TYPE_SETUP:
-            reply_frame, reply_state = build_secure_s_setup_reply_frame(
-                passphrase,
-                frame,
-                server_seq=_choose_even_server_seq(),
-            )
+            reply_frame, reply_state = build_secure_s_setup_reply_frame(passphrase, frame, server_seq=_choose_even_server_seq())
             state.secure_reply_state = reply_state
             action.outbound_frames.append(reply_frame)
             return action
@@ -882,18 +930,14 @@ class ListenerProfilePush:
             raise ListenerProtocolError("Secure push payload did not expose a valid account field")
 
         if _should_ack_push_message(message):
-            ack_frame = build_secure_s_push_ack_frame(
-                passphrase,
-                state.secure_reply_state,
-                account=message.account,
-                incoming_push=frame,
-            )
+            ack_frame = build_secure_s_push_ack_frame(passphrase, state.secure_reply_state, account=message.account, incoming_push=frame)
             message.ack_frame = ack_frame
             action.outbound_frames.append(ack_frame)
         action.messages.append(message)
         return action
 
     def _select_secure_passphrase(self, buffer: bytes) -> tuple[str, int] | None:
+        """Find the configured passphrase that can successfully parse the buffered frame."""
         if len(buffer) < len(SECURE_S_PREFIX) + 16:
             return None
         if not buffer.startswith(SECURE_S_PREFIX):
@@ -917,7 +961,12 @@ class ListenerProfilePush:
 
 
 class DMPPushListener:
-    """Async TCP push listener for the stateless core."""
+    """Async TCP push listener for the stateless core.
+
+    The listener accepts inbound push sockets, delegates byte parsing to a
+    `ListenerProfilePush`, then forwards fully built `PushMessage` objects to
+    registered callbacks.
+    """
 
     def __init__(
         self,
@@ -934,21 +983,21 @@ class DMPPushListener:
         self._client_writers: set[asyncio.StreamWriter] = set()
 
     def register_callback(self, callback: Callback) -> None:
+        """Register a callback that will receive every parsed push message."""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callback) -> None:
+        """Remove a previously registered callback."""
         self._callbacks.discard(callback)
 
     async def start(self) -> None:
+        """Start the TCP listener if it is not already running."""
         if self._server is not None:
             return
-        self._server = await asyncio.start_server(
-            self._handle_client,
-            self._listen_host,
-            self._listen_port,
-        )
+        self._server = await asyncio.start_server(self._handle_client, self._listen_host, self._listen_port)
 
     async def stop(self) -> None:
+        """Stop the server and close any active client sockets."""
         server = self._server
         self._server = None
         if server is not None:
@@ -959,16 +1008,14 @@ class DMPPushListener:
         for writer in writers:
             writer.close()
         if writers:
-            await asyncio.gather(
-                *(writer.wait_closed() for writer in writers),
-                return_exceptions=True,
-            )
+            await asyncio.gather(*(writer.wait_closed() for writer in writers), return_exceptions=True)
 
     async def _handle_client(
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ) -> None:
+        """Read bytes from one client socket until it closes or the profile ends it."""
         state = self._profile.create_connection_state()
         self._client_writers.add(writer)
         try:
@@ -981,6 +1028,8 @@ class DMPPushListener:
                     writer.write(outbound_frame)
                 if action.outbound_frames:
                     await writer.drain()
+                # Dispatch after ACK work so the panel is not kept waiting by
+                # slow application callbacks.
                 for message in action.messages:
                     await self._dispatch(message)
                 if action.close_connection:
@@ -991,6 +1040,7 @@ class DMPPushListener:
             await writer.wait_closed()
 
     async def _dispatch(self, message: PushMessage) -> None:
+        """Deliver one message to every registered callback."""
         loop = asyncio.get_running_loop()
         for callback in list(self._callbacks):
             try:

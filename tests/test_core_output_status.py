@@ -1,3 +1,5 @@
+"""Readable tests for `?WQ` output parsing and output query walks."""
+
 import pytest
 
 from pydmp.core import (
@@ -16,6 +18,8 @@ from pydmp.core import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on output logic."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -37,6 +41,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -162,11 +167,7 @@ async def test_core_panel_client_query_outputs_uses_explicit_reseeding():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.query_outputs()
@@ -230,11 +231,7 @@ async def test_core_panel_client_query_outputs_supports_explicit_namespace_and_f
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.query_outputs(namespace="D", named_only=False)
@@ -264,11 +261,7 @@ async def test_manager_query_outputs_walks_explicit_d_namespace_seed():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.submit(TransactionQueryOutputs("D01"))

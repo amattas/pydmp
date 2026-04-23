@@ -1,3 +1,5 @@
+"""Readable tests for the new-core push listener and event parsers."""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,6 +31,9 @@ CLEAR_ARM_FRAME = (
     b'\x025A72  12345 &    0Zq\\062\\t "CL\\u 00000"NO CODE REQUIRED\\a 003"A3              \\\r'
 )
 
+# These sample frames mirror the kinds of pushes stored in this project’s
+# captures and listener logs. They give us realistic fixtures without requiring
+# a live panel in the test suite.
 HOST_OUTPUT_SYSTEM_FRAME = b"\x022841  12345 &    2Zs\\014\\t 086\\\r"
 HOST_OUTPUT_CHECKIN_FRAME = b"\x0271B8  12345 s0700005 \r"
 HOST_OUTPUT_CHECKIN_BARE_FRAME = b"\x02AB2A  12345 s070 \r"

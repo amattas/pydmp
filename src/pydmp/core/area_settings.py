@@ -1,4 +1,9 @@
-"""Stateless `?Za` area-settings transaction and reply parsing."""
+"""Stateless `?Za` area-settings transaction and reply parsing.
+
+`?Za` reads one seeded area-settings page. The reply can contain multiple area
+records, so the parser keeps the whole page and then selects the requested
+record for convenience.
+"""
 
 from __future__ import annotations
 
@@ -75,15 +80,7 @@ class TransactionQueryAreaSettings(Transaction):
     def __init__(self, area: int | str) -> None:
         area_number = normalize_area_settings_number(area)
         self.area_number = area_number
-        super().__init__(
-            body=f"?Za{area_number}",
-            completion=payload_required(),
-            label="query_area_settings",
-            parser=lambda reply: parse_area_settings_reply(
-                reply,
-                requested_area=area_number,
-            ),
-        )
+        super().__init__(body=f"?Za{area_number}", completion=payload_required(), label="query_area_settings", parser=lambda reply: parse_area_settings_reply(reply, requested_area=area_number))
 
 
 def normalize_area_settings_number(area: int | str) -> str:
@@ -119,13 +116,7 @@ def parse_area_settings_reply(
     if len(matches) > 1:
         raise SessionProtocolError(f"?Za reply contained duplicate area {requested}")
 
-    return AreaSettingsReply(
-        requested_area=requested,
-        area=matches[0] if matches else None,
-        records=page.records,
-        has_terminal_marker=page.has_terminal_marker,
-        raw_reply=page.raw_reply,
-    )
+    return AreaSettingsReply(requested_area=requested, area=matches[0] if matches else None, records=page.records, has_terminal_marker=page.has_terminal_marker, raw_reply=page.raw_reply)
 
 
 def parse_area_settings_page(reply: bytes) -> AreaSettingsPage:
@@ -133,11 +124,7 @@ def parse_area_settings_page(reply: bytes) -> AreaSettingsPage:
     payload = _extract_area_settings_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == AREA_SETTINGS_TERMINATOR:
-        return AreaSettingsPage(
-            records=[],
-            has_terminal_marker=True,
-            raw_reply=reply,
-        )
+        return AreaSettingsPage(records=[], has_terminal_marker=True, raw_reply=reply)
     if not cleaned:
         raise SessionProtocolError("Empty ?Za reply payload")
     if len(cleaned) > AREA_SETTINGS_MAX_VISIBLE_BODY_LENGTH:
@@ -170,11 +157,7 @@ def parse_area_settings_page(reply: bytes) -> AreaSettingsPage:
     if not has_terminal_marker:
         raise SessionProtocolError(f"Malformed ?Za reply missing terminator: {reply!r}")
 
-    return AreaSettingsPage(
-        records=records,
-        has_terminal_marker=has_terminal_marker,
-        raw_reply=reply,
-    )
+    return AreaSettingsPage(records=records, has_terminal_marker=has_terminal_marker, raw_reply=reply)
 
 
 def _parse_area_settings_record(raw_record: bytes) -> AreaSettingsRecord:
@@ -235,24 +218,7 @@ def _parse_area_settings_record(raw_record: bytes) -> AreaSettingsRecord:
     )
     name = _decode_area_settings_name(raw_record[28:], raw_record=raw_record)
 
-    return AreaSettingsRecord(
-        number=f"{number_value:02d}",
-        account=account,
-        auto_arm=auto_arm,
-        bad_zones=bad_zones,
-        auto_disarm=auto_disarm,
-        armed_output=armed_output,
-        bank_saf=bank_saf,
-        common=common,
-        dual_authority=dual_authority,
-        arm_first=arm_first,
-        late_output=late_output,
-        late_arm_delay=late_arm_delay,
-        oc_reports=oc_reports,
-        burg_bell_output=burg_bell_output,
-        card_plus_pin=card_plus_pin,
-        name=name,
-    )
+    return AreaSettingsRecord(number=f"{number_value:02d}", account=account, auto_arm=auto_arm, bad_zones=bad_zones, auto_disarm=auto_disarm, armed_output=armed_output, bank_saf=bank_saf, common=common, dual_authority=dual_authority, arm_first=arm_first, late_output=late_output, late_arm_delay=late_arm_delay, oc_reports=oc_reports, burg_bell_output=burg_bell_output, card_plus_pin=card_plus_pin, name=name)
 
 
 def _parse_yn(raw_value: bytes, *, raw_record: bytes, label: str) -> str:
@@ -307,7 +273,8 @@ def _decode_enum(
 
 
 def _decode_area_settings_name(raw_name: bytes, *, raw_record: bytes) -> str:
-    # Bench213 readback trims storage padding on the right; preserve any leading spaces.
+    # Readback trims storage padding on the right, but leading spaces may be
+    # meaningful to the caller, so we preserve them.
     name = _decode_ascii(raw_name, raw_record=raw_record, label="area name").rstrip()
     if not name:
         raise SessionProtocolError(f"Malformed ?Za record missing area name: {raw_record!r}")

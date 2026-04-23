@@ -1,3 +1,5 @@
+"""Readable tests for secure `!!S` framing and session behavior."""
+
 import pytest
 
 from pydmp.core import (
@@ -24,6 +26,8 @@ from pydmp.core.secure_s import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on secure framing."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -47,6 +51,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -63,41 +68,17 @@ async def test_secure_s_manager_executes_queries_and_tracks_sequences():
     endpoint = PanelEndpoint(host="panel", account="12345", passphrase=passphrase)
 
     server_setup_seq = 0xC4F0
-    setup_reply = build_secure_s_frame(
-        passphrase,
-        seq=server_setup_seq,
-        ack=7,
-        frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY,
-        payload=b"",
-    )
+    setup_reply = build_secure_s_frame(passphrase, seq=server_setup_seq, ack=7, frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY, payload=b"")
 
     zz_payload = b"\x02@ 12345*ZZ00000\r\x00"
-    zz_reply = build_secure_s_frame(
-        passphrase,
-        seq=0xC4F7,
-        ack=0x0018,
-        frame_type=SECURE_S_FRAME_TYPE_DATA,
-        payload=zz_payload,
-    )
+    zz_reply = build_secure_s_frame(passphrase, seq=0xC4F7, ack=0x0018, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=zz_payload)
     zz_reply_frame = parse_secure_s_frame(passphrase, zz_reply)
 
     wa_payload = b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r\x00"
-    wa_reply = build_secure_s_frame(
-        passphrase,
-        seq=0xC50A,
-        ack=0x002B,
-        frame_type=SECURE_S_FRAME_TYPE_DATA,
-        payload=wa_payload,
-    )
+    wa_reply = build_secure_s_frame(passphrase, seq=0xC50A, ack=0x002B, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=wa_payload)
 
-    factory, transports = make_transport_factory(
-        scripted_replies=[setup_reply, zz_reply, wa_reply]
-    )
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileSecureS(),
-        transport_factory=factory,
-    )
+    factory, transports = make_transport_factory(scripted_replies=[setup_reply, zz_reply, wa_reply])
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileSecureS(), transport_factory=factory)
 
     try:
         lockout_transaction = await manager.submit(TransactionQueryLockoutCode())
@@ -114,22 +95,10 @@ async def test_secure_s_manager_executes_queries_and_tracks_sequences():
 
         assert transports[0].requests[0] == build_secure_s_setup_frame(passphrase, seq=0, ack=0)
 
-        first_data_request = build_secure_s_frame(
-            passphrase,
-            seq=7,
-            ack=(server_setup_seq + 7) & 0xFFFF,
-            frame_type=SECURE_S_FRAME_TYPE_DATA,
-            payload=format_account_frame(endpoint.normalized_account, "?ZZ"),
-        )
+        first_data_request = build_secure_s_frame(passphrase, seq=7, ack=(server_setup_seq + 7) & 0xFFFF, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=format_account_frame(endpoint.normalized_account, "?ZZ"))
         assert transports[0].requests[1] == first_data_request
 
-        second_data_request = build_secure_s_frame(
-            passphrase,
-            seq=next_secure_s_send_sequence(7, 7 + len(format_account_frame(endpoint.normalized_account, "?ZZ"))),
-            ack=(zz_reply_frame.seq + zz_reply_frame.logical_length) & 0xFFFF,
-            frame_type=SECURE_S_FRAME_TYPE_DATA,
-            payload=format_account_frame(endpoint.normalized_account, "?WA01"),
-        )
+        second_data_request = build_secure_s_frame(passphrase, seq=next_secure_s_send_sequence(7, 7 + len(format_account_frame(endpoint.normalized_account, "?ZZ"))), ack=(zz_reply_frame.seq + zz_reply_frame.logical_length) & 0xFFFF, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=format_account_frame(endpoint.normalized_account, "?WA01"))
         assert transports[0].requests[2] == second_data_request
     finally:
         await manager.close()
@@ -140,11 +109,7 @@ async def test_secure_s_manager_executes_queries_and_tracks_sequences():
 @pytest.mark.asyncio
 async def test_secure_s_setup_rejects_bare_prefix_reply():
     factory, transports = make_transport_factory(scripted_replies=[SECURE_S_PREFIX])
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", passphrase="1234123412341234"),
-        session_profile=SessionProfileSecureS(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", passphrase="1234123412341234"), session_profile=SessionProfileSecureS(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError):
@@ -157,19 +122,9 @@ async def test_secure_s_setup_rejects_bare_prefix_reply():
 @pytest.mark.asyncio
 async def test_secure_s_setup_rejects_wrong_frame_type():
     passphrase = "1234123412341234"
-    reply_with_wrong_type = build_secure_s_frame(
-        passphrase,
-        seq=0xC4F0,
-        ack=7,
-        frame_type=SECURE_S_FRAME_TYPE_DATA,
-        payload=b"",
-    )
+    reply_with_wrong_type = build_secure_s_frame(passphrase, seq=0xC4F0, ack=7, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=b"")
     factory, _transports = make_transport_factory(scripted_replies=[reply_with_wrong_type])
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase),
-        session_profile=SessionProfileSecureS(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase), session_profile=SessionProfileSecureS(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError, match="wrong frame type"):
@@ -181,19 +136,9 @@ async def test_secure_s_setup_rejects_wrong_frame_type():
 @pytest.mark.asyncio
 async def test_secure_s_setup_rejects_ack_mismatch():
     passphrase = "1234123412341234"
-    reply_with_bad_ack = build_secure_s_frame(
-        passphrase,
-        seq=0xC4F0,
-        ack=0x0042,
-        frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY,
-        payload=b"",
-    )
+    reply_with_bad_ack = build_secure_s_frame(passphrase, seq=0xC4F0, ack=0x0042, frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY, payload=b"")
     factory, _transports = make_transport_factory(scripted_replies=[reply_with_bad_ack])
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase),
-        session_profile=SessionProfileSecureS(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase), session_profile=SessionProfileSecureS(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError, match=r"ACK mismatch: got 0x0042, expected 0x0007"):
@@ -203,31 +148,15 @@ async def test_secure_s_setup_rejects_ack_mismatch():
 
 
 @pytest.mark.asyncio
-async def test_core_panel_client_query_wa_over_secure_s():
+async def test_core_panel_client_query_areas_over_secure_s():
     passphrase = "1234123412341234"
-    setup_reply = build_secure_s_frame(
-        passphrase,
-        seq=0xC4F0,
-        ack=7,
-        frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY,
-        payload=b"",
-    )
-    wa_reply = build_secure_s_frame(
-        passphrase,
-        seq=0xC4F7,
-        ack=0x0013,
-        frame_type=SECURE_S_FRAME_TYPE_DATA,
-        payload=b"\x02@ 12345*WA01NNNNPERIMETER\x1e02NNNNINTERIOR\x1e--\r\x00",
-    )
+    setup_reply = build_secure_s_frame(passphrase, seq=0xC4F0, ack=7, frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY, payload=b"")
+    wa_reply = build_secure_s_frame(passphrase, seq=0xC4F7, ack=0x0013, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=b"\x02@ 12345*WA01NNNNPERIMETER\x1e02NNNNINTERIOR\x1e--\r\x00")
     factory, transports = make_transport_factory(scripted_replies=[setup_reply, wa_reply])
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", passphrase=passphrase),
-        session_profile=SessionProfileSecureS(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", passphrase=passphrase), session_profile=SessionProfileSecureS(), transport_factory=factory)
 
     try:
-        reply = await client.query_wa()
+        reply = await client.query_areas()
         assert [area.number for area in reply.areas] == ["01", "02"]
         assert [area.name for area in reply.areas] == ["PERIMETER", "INTERIOR"]
         assert transports[0].requests[0] == build_secure_s_setup_frame(passphrase)

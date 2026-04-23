@@ -1,3 +1,5 @@
+"""Readable tests for `?U` profile queries and profile parsing helpers."""
+
 import pytest
 
 from pydmp.core import (
@@ -15,6 +17,8 @@ from pydmp.core import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on profile logic."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -36,6 +40,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -196,11 +201,7 @@ async def test_core_panel_client_query_profiles():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.query_profiles()
@@ -229,11 +230,7 @@ async def test_manager_query_profiles_stops_on_empty_page():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.submit(TransactionQueryProfiles())
@@ -259,11 +256,7 @@ async def test_manager_query_profiles_rejects_non_advancing_selector_walk():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionProtocolError, match="did not advance"):

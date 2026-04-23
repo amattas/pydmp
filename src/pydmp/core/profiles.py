@@ -1,4 +1,9 @@
-"""Stateless `?U` profile-table transaction and reply parsing."""
+"""Stateless `?U` profile-table transaction and reply parsing.
+
+`?U` exposes the visible profile table. This module keeps the wire handling
+strict while also breaking the known profile fields into smaller, friendlier
+properties for callers.
+"""
 
 from __future__ import annotations
 
@@ -283,11 +288,7 @@ class TransactionQueryProfiles(Transaction):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(
-            body=f"?U{PROFILE_START_SELECTOR}",
-            completion=payload_required(),
-            label="query_profiles",
-        )
+        super().__init__(body=f"?U{PROFILE_START_SELECTOR}", completion=payload_required(), label="query_profiles")
 
     async def execute_in_session(
         self,
@@ -320,15 +321,11 @@ class TransactionQueryProfiles(Transaction):
             raw_replies.append(page.raw_reply)
             profiles.extend(page.profiles)
 
-            next_selector = _next_profile_selector(
-                profiles=page.profiles,
-            )
+            # `?U` also uses seeded continuation. We ask again starting at the
+            # highest visible profile plus one.
+            next_selector = _next_profile_selector(profiles=page.profiles)
             if next_selector is None:
-                self.parsed_response = ProfileReply(
-                    profiles=profiles,
-                    complete=True,
-                    raw_replies=raw_replies,
-                )
+                self.parsed_response = ProfileReply(profiles=profiles, complete=True, raw_replies=raw_replies)
                 return self
 
             if int(next_selector, 10) <= int(selector, 10):
@@ -341,7 +338,11 @@ class TransactionQueryProfiles(Transaction):
 
 
 def parse_profile_page(reply: bytes) -> ProfilePage:
-    """Parse one raw panel reply page for the `?U` family."""
+    """Parse one raw panel reply page for the `?U` family.
+
+    A non-empty page contains up to four profile records followed by `----`.
+    The fully empty terminal page is just `*U----`.
+    """
     payload = _extract_profile_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == PROFILE_PAGE_TERMINATOR:
@@ -377,15 +378,16 @@ def parse_profile_page(reply: bytes) -> ProfilePage:
     if not has_terminal_marker:
         raise SessionProtocolError(f"Malformed ?U reply missing terminator: {reply!r}")
 
-    return ProfilePage(
-        profiles=profiles,
-        has_terminal_marker=has_terminal_marker,
-        raw_reply=reply,
-    )
+    return ProfilePage(profiles=profiles, has_terminal_marker=has_terminal_marker, raw_reply=reply)
 
 
 def _parse_profile_record(raw_record: str) -> ProfileRecord:
-    """Parse one cleartext profile record from a `?U` page."""
+    """Parse one cleartext profile record from a `?U` page.
+
+    The first 49 characters are the older fixed layout. Current captures add a
+    later fixed tail before the display name, so we split those pieces out when
+    enough data is present.
+    """
     if len(raw_record) < PROFILE_LEGACY_MIN_FIXED_WIDTH:
         raise SessionProtocolError(f"Malformed ?U profile record: {raw_record!r}")
 
@@ -398,21 +400,11 @@ def _parse_profile_record(raw_record: str) -> ProfileRecord:
     else:
         name = raw_record[49:]
 
-    return ProfileRecord(
-        number=raw_record[0:3],
-        areas_mask=raw_record[3:11],
-        access_areas_mask=raw_record[11:19],
-        output_group=raw_record[19:22],
-        menu_options=raw_record[22:30],
-        field_30_45=field_30_45,
-        rearm_delay=rearm_delay,
-        field_49_63=field_49_63,
-        name=name,
-    )
+    return ProfileRecord(number=raw_record[0:3], areas_mask=raw_record[3:11], access_areas_mask=raw_record[11:19], output_group=raw_record[19:22], menu_options=raw_record[22:30], field_30_45=field_30_45, rearm_delay=rearm_delay, field_49_63=field_49_63, name=name)
 
 
 def _next_profile_selector(*, profiles: list[ProfileRecord]) -> str | None:
-    """Return the next selector using the observed profile-page behavior."""
+    """Return the next selector using highest-visible-profile progression."""
     if not profiles:
         return None
 

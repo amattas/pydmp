@@ -1,3 +1,5 @@
+"""Readable tests for the session manager and session-profile handshakes."""
+
 import asyncio
 
 import pytest
@@ -28,6 +30,8 @@ from pydmp.core.wrapped_v3 import (
 
 
 class FakeTransport:
+    """Scripted transport that records requests in the order they were sent."""
+
     def __init__(self, endpoint, scripted_replies=None, scripted_errors=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -57,6 +61,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None, scripted_errors=None):
+    """Return a transport factory plus the fake transports it created."""
     transports = []
 
     def factory(endpoint):
@@ -72,6 +77,7 @@ def make_transport_factory(scripted_replies=None, scripted_errors=None):
 
 
 def encode_wrapped_reply(account_field: str, body: str, trailer: str = " ") -> bytes:
+    """Build a wrapped V3 reply frame for handshake and session tests."""
     wrapped = wrap_v3_body(body, trailer)
     return (
         b"\x02@"
@@ -93,11 +99,7 @@ async def test_blank_v2_manager_executes_one_transaction():
         ]
     )
     endpoint = PanelEndpoint(host="192.168.111.2", account="12345", idle_disconnect_seconds=0.01)
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     transaction = await manager.execute("?WA01", label="area_status")
 
@@ -125,11 +127,7 @@ async def test_manager_closes_idle_session_and_reopens_for_later_work():
         ]
     )
     endpoint = PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01)
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     first = await manager.execute("?WB**Y001", label="zones")
     assert first.response == b"\x02@ 12345*WB...\r"
@@ -148,11 +146,7 @@ async def test_manager_closes_idle_session_and_reopens_for_later_work():
 async def test_blank_v2_handshake_rejects_negative_v_reply():
     factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VC\r"])
     endpoint = PanelEndpoint(host="panel", account="12345")
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError):
@@ -164,7 +158,7 @@ async def test_blank_v2_handshake_rejects_negative_v_reply():
 
 @pytest.mark.asyncio
 async def test_blank_v2_handshake_soft_passes_non_fatal_denial():
-    """Bench pcaps show `-VB` precedes real command traffic on the same session."""
+    """Project captures show `-VB` can still lead to a valid working session."""
     factory, transports = make_transport_factory(
         scripted_replies=[
             b"\x02@ 12345-VB\r",
@@ -173,11 +167,7 @@ async def test_blank_v2_handshake_soft_passes_non_fatal_denial():
         ]
     )
     endpoint = PanelEndpoint(host="panel", account="12345")
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.execute("?WA01", label="area_status")
@@ -190,14 +180,10 @@ async def test_blank_v2_handshake_soft_passes_non_fatal_denial():
 
 @pytest.mark.asyncio
 async def test_blank_v2_handshake_rejects_unknown_denial():
-    """Only `-VB` is bench-confirmed non-fatal; every other `-V*` must raise."""
+    """Only `-VB` is capture-confirmed non-fatal; every other `-V*` must raise."""
     factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VA\r"])
     endpoint = PanelEndpoint(host="panel", account="12345")
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError, match=r"Blank V2 authentication denied by panel \(-VA\)"):
@@ -218,11 +204,7 @@ async def test_blank_v2_handshake_accepts_bare_plus_v_banner():
         ]
     )
     endpoint = PanelEndpoint(host="panel", account="12345")
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.execute("?WA01", label="area_status")
@@ -239,11 +221,7 @@ async def test_blank_v2_handshake_treats_fatal_after_soft_as_fatal():
         scripted_replies=[b"\x02@ 12345-VB\r\x02@ 12345-VC\r"]
     )
     endpoint = PanelEndpoint(host="panel", account="12345")
-    manager = CommandSessionManager(
-        endpoint=endpoint,
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=endpoint, session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         with pytest.raises(SessionHandshakeError, match=r"Blank V2 authentication denied by panel \(-VC\)"):
@@ -443,7 +421,7 @@ async def test_keyed_v2_manager_executes_wa_transaction():
 
 @pytest.mark.asyncio
 async def test_keyed_v2_rejects_negative_v_reply():
-    """Bench probe pcap shows a wrong 16-char key yields `-VC` and no session."""
+    """Project captures show a wrong 16-char key yields `-VC` and no session."""
     factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VC\r"])
     endpoint = PanelEndpoint(
         host="panel",
@@ -551,7 +529,7 @@ async def test_v31_manager_executes_wrapped_wa_transaction():
 
 @pytest.mark.asyncio
 async def test_v31_rejects_plain_negative_v_reply():
-    """Bench allAuthTest1.pcap shows wrong V31 material yields plaintext `-VC`."""
+    """Project captures show wrong V31 material yields plaintext `-VC`."""
     factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VC\r"])
     endpoint = PanelEndpoint(
         host="panel",
@@ -615,7 +593,7 @@ async def test_v30_manager_executes_wrapped_wa_transaction():
 
 @pytest.mark.asyncio
 async def test_v30_rejects_plain_negative_v_reply():
-    """Bench v30Testing.pcap shows a bad V30 token yields plaintext `-VV`."""
+    """Project captures show a bad V30 token yields plaintext `-VV`."""
     factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VV\r"])
     endpoint = PanelEndpoint(
         host="panel",

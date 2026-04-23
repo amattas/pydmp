@@ -1,4 +1,12 @@
-"""Session profiles for the stateless core."""
+"""Session profiles for the stateless core.
+
+Each profile answers the same practical question:
+"How do we open a session, send commands through it, and close it cleanly?"
+
+Keeping that logic here lets the manager stay small. The manager only has to
+decide when work should run. The session profile decides what the wire traffic
+looks like for blank `!V2`, keyed `!V2`, wrapped `V30`/`V31`, and secure `!!S`.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +54,11 @@ from .wrapped_v3 import (
 
 
 class SessionProfile(Protocol):
-    """Session-specific open/close/execute behavior."""
+    """Common shape for all session profiles.
+
+    A profile owns the handshake rules for one lane. Once the profile has
+    opened a session, every transaction uses the same `execute()` hook.
+    """
 
     mode: SessionMode
 
@@ -71,25 +83,30 @@ class SessionProfile(Protocol):
         """Execute one transaction inside the active session."""
 
 
-# Only `-VB` is bench-confirmed as non-fatal (armAwayDisarm.pcap flow 50784:
-# `!V2` -> `-VB` -> `?WB**Y001` -> full zone data -> `!V0` -> `+V`). Every
-# other `-V[A-Z]` code must be treated as fatal until its precondition is
-# pinned down in firmware, otherwise an unknown denial silently opens a
-# broken session.
+# Project captures only show `-VB` continuing into a healthy session. Every
+# other `-V*` denial is treated as fatal so we do not continue in a half-open
+# state that may fail later in less obvious ways.
 _BLANK_V2_SOFT_DENIALS = (b"-VB",)
 
 
 @dataclass(slots=True)
 class SessionProfileBlankV2:
-    """Blank local `!V2` profile for the permissive Integrator lane."""
+    """Blank local `!V2` profile for the common clear Integrator lane."""
 
     mode: SessionMode = SessionMode.BLANK_V2
 
     async def open(self, endpoint: PanelEndpoint, transport: TransportProtocol) -> SessionState:
-        """Authenticate with the bench-confirmed blank `!V2` compare."""
+        """Open a blank `!V2` session.
+
+        This is the simplest lane in the project notes, so it is also the
+        default profile used by `CorePanelClient`.
+        """
         request = format_account_frame(endpoint.normalized_account, b"!V2" + BLANK_V2_COMPARE)
         reply = await transport.exchange(request, payload_required())
 
+        # Some panels send a denial code and still allow the session to
+        # continue. We only allow the one soft denial that captures have shown
+        # to be safe.
         denials = extract_v_denials(reply)
         fatal = next((d for d in denials if d not in _BLANK_V2_SOFT_DENIALS), None)
         if fatal is not None:
@@ -101,10 +118,7 @@ class SessionProfileBlankV2:
         if soft_denial is None and not is_v_banner_success(reply):
             raise SessionHandshakeError("Blank V2 authentication reply was not recognized")
 
-        return SessionState(
-            mode=self.mode,
-            metadata={"auth_reply": reply, "auth_denial_code": soft_denial},
-        )
+        return SessionState(mode=self.mode, metadata={"auth_reply": reply, "auth_denial_code": soft_denial})
 
     async def close(
         self,
@@ -131,27 +145,21 @@ class SessionProfileBlankV2:
         """Execute one transaction inside the blank local V2 session."""
         del state
 
-        async def exchange(
-            body: bytes | str,
-            completion,
-        ) -> TransactionExchangeResult:
+        async def exchange(body: bytes | str, completion) -> TransactionExchangeResult:
             request = format_account_frame(endpoint.normalized_account, body)
             reply = await transport.exchange(request, completion)
-            return TransactionExchangeResult(
-                wire_request=request,
-                response=reply or None,
-                wire_response=reply or None,
-            )
+            return TransactionExchangeResult(wire_request=request, response=reply or None, wire_response=reply or None)
 
-        return await transaction.execute_in_session(
-            exchange,
-            session_mode=self.mode,
-            endpoint=endpoint,
-        )
+        return await transaction.execute_in_session(exchange, session_mode=self.mode, endpoint=endpoint)
 
 
 def _normalize_v3_reply(raw_reply: bytes) -> bytes:
-    """Return a parser-facing reply for a wrapped local V3 session."""
+    """Return the clear parser-facing payload for a wrapped local V3 reply.
+
+    Most transaction parsers should not care whether the session was wrapped.
+    They should see the same clear reply body they would have received on a
+    non-wrapped lane.
+    """
     try:
         normalized, _wrapped = normalize_wrapped_reply(raw_reply)
         return normalized
@@ -182,41 +190,33 @@ async def _execute_wrapped_v3_transaction(
 ) -> Transaction:
     """Execute one logical transaction inside a wrapped local V3 session."""
 
-    async def exchange(
-        body: bytes | str,
-        completion,
-    ) -> TransactionExchangeResult:
+    async def exchange(body: bytes | str, completion) -> TransactionExchangeResult:
         request = encode_account_v3_frame(endpoint.normalized_account, body, V3_TRAILER_SPACE)
         raw_reply = await transport.exchange(request, completion)
         response = None if not raw_reply else _normalize_v3_reply(raw_reply)
-        return TransactionExchangeResult(
-            wire_request=request,
-            response=response,
-            wire_response=raw_reply or None,
-        )
+        return TransactionExchangeResult(wire_request=request, response=response, wire_response=raw_reply or None)
 
-    return await transaction.execute_in_session(
-        exchange,
-        session_mode=session_mode,
-        endpoint=endpoint,
-    )
+    return await transaction.execute_in_session(exchange, session_mode=session_mode, endpoint=endpoint)
 
 
-# Firmware auth gate shares the V2 path between blank and keyed (only the
-# compare_source differs), so the soft allowlist matches BlankV2. Only `-VB`
-# is bench-confirmed non-fatal; every other `-V[A-Z]` code is treated as
-# fatal until its precondition is pinned down.
+# Captures show keyed and blank `!V2` share the same soft-denial behavior, so
+# we keep the same allowlist here.
 _KEYED_V2_SOFT_DENIALS = (b"-VB",)
 
 
 @dataclass(slots=True)
 class SessionProfileKeyedV2:
-    """Keyed `!V2` session profile."""
+    """Keyed `!V2` session profile.
+
+    Use this when the panel expects `!V2<remote_key>` instead of the blank
+    compare block.
+    """
 
     remote_key: str
     mode: SessionMode = SessionMode.KEYED_V2
 
     async def open(self, endpoint: PanelEndpoint, transport: TransportProtocol) -> SessionState:
+        """Open a keyed `!V2` session using the configured remote key."""
         remote_key = self.remote_key or endpoint.remote_key
         if not remote_key:
             raise SessionHandshakeError("Keyed V2 requires a remote key")
@@ -235,14 +235,7 @@ class SessionProfileKeyedV2:
         if soft_denial is None and not is_v_banner_success(reply):
             raise SessionHandshakeError("Keyed V2 authentication reply was not recognized")
 
-        return SessionState(
-            mode=self.mode,
-            metadata={
-                "auth_reply": reply,
-                "auth_denial_code": soft_denial,
-                "remote_key": remote_key,
-            },
-        )
+        return SessionState(mode=self.mode, metadata={"auth_reply": reply, "auth_denial_code": soft_denial, "remote_key": remote_key})
 
     async def close(
         self,
@@ -250,6 +243,7 @@ class SessionProfileKeyedV2:
         transport: TransportProtocol,
         state: SessionState,
     ) -> None:
+        """Send `!V0` and ignore close-time transport problems."""
         del state
         request = format_account_frame(endpoint.normalized_account, "!V0")
         try:
@@ -264,49 +258,39 @@ class SessionProfileKeyedV2:
         state: SessionState,
         transaction: Transaction,
     ) -> Transaction:
+        """Execute one transaction inside the keyed local V2 session."""
         del state
 
-        async def exchange(
-            body: bytes | str,
-            completion,
-        ) -> TransactionExchangeResult:
+        async def exchange(body: bytes | str, completion) -> TransactionExchangeResult:
             request = format_account_frame(endpoint.normalized_account, body)
             reply = await transport.exchange(request, completion)
-            return TransactionExchangeResult(
-                wire_request=request,
-                response=reply or None,
-                wire_response=reply or None,
-            )
+            return TransactionExchangeResult(wire_request=request, response=reply or None, wire_response=reply or None)
 
-        return await transaction.execute_in_session(
-            exchange,
-            session_mode=self.mode,
-            endpoint=endpoint,
-        )
+        return await transaction.execute_in_session(exchange, session_mode=self.mode, endpoint=endpoint)
 
 
 @dataclass(slots=True)
 class SessionProfileV31:
-    """Wrapped local `V31` session profile."""
+    """Wrapped local `V31` session profile.
+
+    `V31` is the compare-material variant of the wrapped local session.
+    Successful authentication switches the lane into wrapped traffic.
+    """
 
     compare_material: str | None = None
     mode: SessionMode = SessionMode.V31
 
     async def open(self, endpoint: PanelEndpoint, transport: TransportProtocol) -> SessionState:
+        """Open a wrapped `V31` session and verify the lane really became wrapped."""
         compare_material = self.compare_material
         if compare_material is None:
             compare_material = endpoint.v31_compare_material
 
-        request = format_account_frame(
-            endpoint.normalized_account,
-            build_v31_auth_body(compare_material),
-        )
+        request = format_account_frame(endpoint.normalized_account, build_v31_auth_body(compare_material))
         raw_reply = await transport.exchange(request, payload_required())
 
-        # V31 denials come back plaintext; only success enters wrapped mode.
-        # Bench allAuthTest1.pcap confirms `!V31XXXXXXXXXX` -> `-VC` plain, and
-        # `!V3000...` -> `-VV` plain. Since V31 is the wrap-enabling handshake,
-        # any denial means there's no wrapped session to continue with.
+        # Denials arrive as plain replies. Only a successful reply enters the
+        # wrapped traffic format, so any denial ends the handshake here.
         denials = extract_v_denials(raw_reply)
         if denials:
             raise SessionHandshakeError(
@@ -321,14 +305,7 @@ class SessionProfileV31:
         if b"+V3" not in normalized_reply:
             raise SessionHandshakeError("V31 authentication reply was not recognized")
 
-        return SessionState(
-            mode=self.mode,
-            metadata={
-                "auth_reply": normalized_reply,
-                "auth_denial_code": None,
-                "compare_material": compare_material or "",
-            },
-        )
+        return SessionState(mode=self.mode, metadata={"auth_reply": normalized_reply, "auth_denial_code": None, "compare_material": compare_material or ""})
 
     async def close(
         self,
@@ -347,17 +324,16 @@ class SessionProfileV31:
         transaction: Transaction,
     ) -> Transaction:
         del state
-        return await _execute_wrapped_v3_transaction(
-            endpoint,
-            transport,
-            self.mode,
-            transaction,
-        )
+        return await _execute_wrapped_v3_transaction(endpoint, transport, self.mode, transaction)
 
 
 @dataclass(slots=True)
 class SessionProfileV30:
-    """Wrapped local `V30` session profile."""
+    """Wrapped local `V30` session profile.
+
+    `V30` uses user-code based compare material but otherwise behaves like the
+    other wrapped local sessions once it is open.
+    """
 
     code: str | None = None
     panel_serial: str | None = None
@@ -365,6 +341,7 @@ class SessionProfileV30:
     mode: SessionMode = SessionMode.V30
 
     async def open(self, endpoint: PanelEndpoint, transport: TransportProtocol) -> SessionState:
+        """Open a wrapped `V30` session using the configured code and panel serial."""
         code = self.code or endpoint.user_code
         panel_serial = self.panel_serial or endpoint.panel_serial
         tail4 = self.tail4 or endpoint.v30_tail4 or "0000"
@@ -374,17 +351,11 @@ class SessionProfileV30:
         if not panel_serial:
             raise SessionHandshakeError("V30 requires a panel serial")
 
-        request = format_account_frame(
-            endpoint.normalized_account,
-            build_v30_auth_body(endpoint.normalized_account, panel_serial, code, tail4),
-        )
+        request = format_account_frame(endpoint.normalized_account, build_v30_auth_body(endpoint.normalized_account, panel_serial, code, tail4))
         raw_reply = await transport.exchange(request, payload_required())
 
-        # V30 denials come back plaintext; only success enters wrapped mode.
-        # Bench v30Testing.pcap/v30Testing2.pcap show `!V30<wrong 32-hex>` -> `-VV`
-        # plain, matching the firmware parser (subtype '3', subsubtype != '1' ->
-        # 0x29 / `-VV`). Since V30 is the wrap-enabling handshake, any denial
-        # means there's no wrapped session to continue with.
+        # Denials arrive as plain replies. Only a successful reply enters the
+        # wrapped traffic format, so any denial ends the handshake here.
         denials = extract_v_denials(raw_reply)
         if denials:
             raise SessionHandshakeError(
@@ -399,16 +370,7 @@ class SessionProfileV30:
         if b"+V3" not in normalized_reply:
             raise SessionHandshakeError("V30 authentication reply was not recognized")
 
-        return SessionState(
-            mode=self.mode,
-            metadata={
-                "auth_reply": normalized_reply,
-                "auth_denial_code": None,
-                "code": code,
-                "panel_serial": panel_serial,
-                "tail4": tail4,
-            },
-        )
+        return SessionState(mode=self.mode, metadata={"auth_reply": normalized_reply, "auth_denial_code": None, "code": code, "panel_serial": panel_serial, "tail4": tail4})
 
     async def close(
         self,
@@ -427,22 +389,22 @@ class SessionProfileV30:
         transaction: Transaction,
     ) -> Transaction:
         del state
-        return await _execute_wrapped_v3_transaction(
-            endpoint,
-            transport,
-            self.mode,
-            transaction,
-        )
+        return await _execute_wrapped_v3_transaction(endpoint, transport, self.mode, transaction)
 
 
 @dataclass(slots=True)
 class SessionProfileSecureS:
-    """Secure local Integrator passphrase session profile."""
+    """Secure local Integrator passphrase session profile.
+
+    This profile wraps every logical command in the `!!S` framing layer and
+    keeps the rolling sequence numbers in session metadata between exchanges.
+    """
 
     passphrase: str | None = None
     mode: SessionMode = SessionMode.SECURE_S
 
     async def open(self, endpoint: PanelEndpoint, transport: TransportProtocol) -> SessionState:
+        """Open a secure `!!S` session and capture the starting sequence state."""
         passphrase = self.passphrase or endpoint.passphrase
         if not passphrase:
             raise SessionHandshakeError("Secure !!S requires a passphrase")
@@ -469,15 +431,7 @@ class SessionProfileSecureS:
                 f"Secure !!S setup reply ACK mismatch: got 0x{reply.ack:04X}, expected 0x{expected_ack:04X}"
             )
 
-        return SessionState(
-            mode=self.mode,
-            metadata={
-                "passphrase": passphrase,
-                "next_send_seq": next_secure_s_send_sequence(client_seq, 7),
-                "next_send_ack": (reply.seq + reply.logical_length) & 0xFFFF,
-                "setup_reply": raw_reply,
-            },
-        )
+        return SessionState(mode=self.mode, metadata={"passphrase": passphrase, "next_send_seq": next_secure_s_send_sequence(client_seq, 7), "next_send_ack": (reply.seq + reply.logical_length) & 0xFFFF, "setup_reply": raw_reply})
 
     async def close(
         self,
@@ -485,6 +439,7 @@ class SessionProfileSecureS:
         transport: TransportProtocol,
         state: SessionState,
     ) -> None:
+        """Secure `!!S` does not need an explicit close command."""
         del endpoint, transport, state
 
     async def execute(
@@ -494,42 +449,32 @@ class SessionProfileSecureS:
         state: SessionState,
         transaction: Transaction,
     ) -> Transaction:
+        """Wrap one logical transaction inside secure `!!S` framing."""
         passphrase = state.metadata.get("passphrase")
 
         if not isinstance(passphrase, str) or not passphrase:
             raise SessionProtocolError("Secure !!S session is missing a passphrase")
 
-        async def exchange(
-            body: bytes | str,
-            completion,
-        ) -> TransactionExchangeResult:
+        async def exchange(body: bytes | str, completion) -> TransactionExchangeResult:
             next_send_seq = state.metadata.get("next_send_seq")
             next_send_ack = state.metadata.get("next_send_ack")
             if not isinstance(next_send_seq, int) or not isinstance(next_send_ack, int):
                 raise SessionProtocolError("Secure !!S session is missing sequence state")
 
+            # Secure `!!S` wraps the same logical command we would otherwise
+            # send on a clear socket. We build that clear payload first, then
+            # wrap it.
             logical_payload = format_account_frame(endpoint.normalized_account, body)
             logical_length = 7 + len(logical_payload)
-            wire_request = build_secure_s_frame(
-                passphrase,
-                seq=next_send_seq,
-                ack=next_send_ack,
-                frame_type=SECURE_S_FRAME_TYPE_DATA,
-                payload=logical_payload,
-            )
+            wire_request = build_secure_s_frame(passphrase, seq=next_send_seq, ack=next_send_ack, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=logical_payload)
             raw_reply = await transport.exchange(wire_request, completion)
 
-            state.metadata["next_send_seq"] = next_secure_s_send_sequence(
-                next_send_seq,
-                logical_length,
-            )
+            # We always advance our outgoing sequence after we send a frame.
+            # That way the next transaction starts from the updated state.
+            state.metadata["next_send_seq"] = next_secure_s_send_sequence(next_send_seq, logical_length)
 
             if not raw_reply:
-                return TransactionExchangeResult(
-                    wire_request=wire_request,
-                    response=None,
-                    wire_response=None,
-                )
+                return TransactionExchangeResult(wire_request=wire_request, response=None, wire_response=None)
 
             if raw_reply == SECURE_S_PREFIX:
                 raise SessionProtocolError("Secure !!S data exchange returned bare !!S")
@@ -542,22 +487,16 @@ class SessionProfileSecureS:
             if reply.frame_type != SECURE_S_FRAME_TYPE_DATA:
                 raise SessionProtocolError("Secure !!S data reply had the wrong frame type")
 
+            # The reply tells us what the panel expects us to acknowledge on
+            # the next frame.
             state.metadata["next_send_ack"] = (reply.seq + reply.logical_length) & 0xFFFF
-            return TransactionExchangeResult(
-                wire_request=wire_request,
-                response=reply.payload,
-                wire_response=raw_reply,
-            )
+            return TransactionExchangeResult(wire_request=wire_request, response=reply.payload, wire_response=raw_reply)
 
-        return await transaction.execute_in_session(
-            exchange,
-            session_mode=self.mode,
-            endpoint=endpoint,
-        )
+        return await transaction.execute_in_session(exchange, session_mode=self.mode, endpoint=endpoint)
 
 
 def build_session_profile(mode: SessionMode, **kwargs: str) -> SessionProfile:
-    """Create a session profile from the requested mode."""
+    """Create the matching profile object for a selected session mode."""
     if mode is SessionMode.BLANK_V2:
         return SessionProfileBlankV2()
     if mode is SessionMode.KEYED_V2:

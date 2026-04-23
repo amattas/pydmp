@@ -1,4 +1,9 @@
-"""Stateless `?WQ` output-status transaction and reply parsing."""
+"""Stateless `?WQ` output-status transaction and reply parsing.
+
+`?WQ` can walk several selector families. By default we stay in the numeric
+family and only return named rows, but the parser keeps enough structure for
+callers to inspect the raw mixed rows too.
+"""
 
 from __future__ import annotations
 
@@ -125,11 +130,7 @@ class TransactionQueryOutputs(Transaction):
         )
         if max_pages < 1:
             raise ValueError(f"max_pages must be >= 1, got: {max_pages!r}")
-        super().__init__(
-            body=f"?WQ{normalized_selector}",
-            completion=payload_required(),
-            label="query_outputs",
-        )
+        super().__init__(body=f"?WQ{normalized_selector}", completion=payload_required(), label="query_outputs")
         self.start_selector = normalized_selector
         self.namespace = normalized_namespace
         self.named_only = bool(named_only)
@@ -166,38 +167,19 @@ class TransactionQueryOutputs(Transaction):
             raw_replies.append(page.raw_reply)
 
             if page.empty_terminal_page:
-                self.parsed_response = OutputStatusReply(
-                    records=_filter_output_records(
-                        records,
-                        namespace=self.namespace,
-                        named_only=self.named_only,
-                    ),
-                    complete=True,
-                    raw_replies=raw_replies,
-                    all_records=records,
-                    namespace=self.namespace,
-                    named_only=self.named_only,
-                )
+                self.parsed_response = OutputStatusReply(records=_filter_output_records(records, namespace=self.namespace, named_only=self.named_only), complete=True, raw_replies=raw_replies, all_records=records, namespace=self.namespace, named_only=self.named_only)
                 return self
 
             records.extend(page.records)
+            # Reseed using the highest visible selector from the same family.
+            # This matches the way the panel exposes numeric and namespaced
+            # output walks in project captures.
             next_selector = _next_output_selector(
                 current_selector=selector,
                 records=page.records,
             )
             if next_selector is None:
-                self.parsed_response = OutputStatusReply(
-                    records=_filter_output_records(
-                        records,
-                        namespace=self.namespace,
-                        named_only=self.named_only,
-                    ),
-                    complete=True,
-                    raw_replies=raw_replies,
-                    all_records=records,
-                    namespace=self.namespace,
-                    named_only=self.named_only,
-                )
+                self.parsed_response = OutputStatusReply(records=_filter_output_records(records, namespace=self.namespace, named_only=self.named_only), complete=True, raw_replies=raw_replies, all_records=records, namespace=self.namespace, named_only=self.named_only)
                 return self
             if _compare_output_selectors(next_selector, selector) <= 0:
                 raise SessionProtocolError(
@@ -241,7 +223,11 @@ def normalize_output_selector(selector: int | str) -> str:
 
 
 def parse_output_status_page(reply: bytes) -> OutputStatusPage:
-    """Parse one raw panel reply page for the `?WQ` family."""
+    """Parse one raw panel reply page for the `?WQ` family.
+
+    A non-empty page is a series of output rows separated by `0x1e`, followed
+    by `0x1e---`. The fully empty terminal page is just `---`.
+    """
     payload = _extract_output_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == OUTPUT_PAGE_TERMINATOR:
@@ -272,11 +258,7 @@ def parse_output_status_page(reply: bytes) -> OutputStatusPage:
     if not saw_terminator:
         raise SessionProtocolError(f"Malformed ?WQ reply missing terminator: {reply!r}")
 
-    return OutputStatusPage(
-        records=records,
-        empty_terminal_page=False,
-        raw_reply=reply,
-    )
+    return OutputStatusPage(records=records, empty_terminal_page=False, raw_reply=reply)
 
 
 def _parse_output_row(raw_row: bytes) -> OutputStatusRecord:
@@ -349,7 +331,13 @@ def normalize_output_query_start(
     *,
     namespace: str | None = None,
 ) -> tuple[str, str]:
-    """Return the seeded visible selector plus its selected query namespace."""
+    """Return the seeded visible selector plus its selected query namespace.
+
+    This helper keeps two ideas aligned:
+
+    - what selector we will actually send on the wire
+    - what family the caller expects back from the filtered result
+    """
     normalized_selector = normalize_output_selector(start_selector)
     inferred_namespace = _selector_family(normalized_selector)
     requested_namespace = normalize_output_query_namespace(namespace)

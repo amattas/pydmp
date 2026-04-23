@@ -1,3 +1,5 @@
+"""Readable tests for the `!E001` sensor-reset command."""
+
 import pytest
 
 from pydmp.core import (
@@ -12,6 +14,8 @@ from pydmp.core import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on sensor reset."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -33,6 +37,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -79,11 +84,7 @@ async def test_core_panel_client_sensor_reset():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.sensor_reset()
@@ -103,11 +104,7 @@ async def test_manager_sensor_reset_parses_negative_reply():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.submit(TransactionSensorReset())

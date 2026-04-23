@@ -1,4 +1,8 @@
-"""Stateless `!E001` sensor-reset transaction and reply parsing."""
+"""Stateless `!E001` sensor-reset transaction and reply parsing.
+
+This module keeps the `!E001` surface intentionally conservative: one command,
+one simple reply parser, and opaque trailing detail when present.
+"""
 
 from __future__ import annotations
 
@@ -17,17 +21,12 @@ class SensorResetReply:
 
 
 class TransactionSensorReset(Transaction):
-    """Run the firmware-backed `!E001` sensor-reset command."""
+    """Run the known `!E001` sensor-reset command."""
 
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(
-            body="!E001",
-            completion=ack_or_deny(),
-            label="sensor_reset",
-            parser=parse_sensor_reset_reply,
-        )
+        super().__init__(body="!E001", completion=ack_or_deny(), label="sensor_reset", parser=parse_sensor_reset_reply)
 
 
 def parse_sensor_reset_reply(reply: bytes) -> SensorResetReply:

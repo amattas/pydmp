@@ -1,4 +1,11 @@
-"""Stateless `?P=` user-table transaction and reply parsing."""
+"""Stateless `?P=` user-table transaction and reply parsing.
+
+This module handles the visible user table used by the local Integrator lane.
+There are two distinct jobs here:
+
+- walk the paged `?P=` query until the table is exhausted
+- deobfuscate each returned user record into readable fields
+"""
 
 from __future__ import annotations
 
@@ -82,16 +89,12 @@ class UserWriteReply:
 
 
 class TransactionQueryUsers(Transaction):
-    """Complete paged `?P=` user-table query using seeded highest-user continuation."""
+    """Complete paged `?P=` user-table query using highest-user continuation."""
 
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(
-            body=f"?P={USER_START_SELECTOR}",
-            completion=payload_required(),
-            label="query_users",
-        )
+        super().__init__(body=f"?P={USER_START_SELECTOR}", completion=payload_required(), label="query_users")
 
     async def execute_in_session(
         self,
@@ -117,6 +120,8 @@ class TransactionQueryUsers(Transaction):
                 raise SessionProtocolError(f"User query selector walk repeated at {selector!r}")
             seen_start_selectors.add(selector)
 
+            # `?P=` uses seeded continuation. We start at `0000`, then ask for
+            # the highest visible user plus one on each later request.
             exchange_result = await exchange(f"?P={selector}", self.completion)
             self.record_exchange(exchange_result, session_mode=session_mode)
 
@@ -133,11 +138,7 @@ class TransactionQueryUsers(Transaction):
 
             next_selector = _next_user_selector(page.users)
             if next_selector is None:
-                self.parsed_response = UserReply(
-                    users=users,
-                    complete=True,
-                    raw_replies=raw_replies,
-                )
+                self.parsed_response = UserReply(users=users, complete=True, raw_replies=raw_replies)
                 return self
 
             if int(next_selector, 10) <= int(selector, 10):
@@ -197,12 +198,7 @@ class TransactionWriteUser(Transaction):
     ) -> None:
         if not allow_experimental_write_user:
             raise RuntimeError(EXPERIMENTAL_WRITE_USER_MESSAGE)
-        super().__init__(
-            body="!P=",
-            completion=ack_or_deny(),
-            label="write_user",
-            parser=parse_user_write_reply,
-        )
+        super().__init__(body="!P=", completion=ack_or_deny(), label="write_user", parser=parse_user_write_reply)
         self.user_number = normalize_user_number(user_number, allow_zero=False)
         self.delete = bool(delete)
         if self.delete:
@@ -251,12 +247,9 @@ class TransactionWriteUser(Transaction):
             account_number=account_number,
             remote_key=remote_key,
         )
-        # Local writes only completed cleanly once the post-name suffix was restored.
-        self.body = (
-            f"!P={self.wire_record}"
-            f"{USER_RECORD_SEPARATOR.decode('ascii')}"
-            f"{USER_WRITE_POST_NAME_SUFFIX}"
-        )
+        # Project write traces only became stable once the post-name suffix was
+        # restored, so we keep that exact visible shape here.
+        self.body = f"!P={self.wire_record}{USER_RECORD_SEPARATOR.decode('ascii')}{USER_WRITE_POST_NAME_SUFFIX}"
 
         exchange_result = await exchange(self.body, self.completion)
         self.record_exchange(exchange_result, session_mode=session_mode)
@@ -269,7 +262,11 @@ def parse_user_page(
     account_number: int,
     remote_key: str = "",
 ) -> UserPage:
-    """Parse one raw panel reply page for the `?P=` family."""
+    """Parse one raw panel reply page for the `?P=` family.
+
+    A non-empty page contains up to two user records followed by `----`.
+    The fully empty terminal page is just `*P=----`.
+    """
     payload = _extract_user_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == USER_PAGE_TERMINATOR:
@@ -345,7 +342,11 @@ def _decode_user_record(
     account_number: int,
     remote_key: str,
 ) -> UserRecord:
-    """Decrypt and parse one user record from a `?P=` page."""
+    """Decrypt and parse one user record from a `?P=` page.
+
+    The first fixed fields are always present. The trailing flags, start date,
+    and name only appear when that tail matches the currently known shape.
+    """
     plain = _decrypt_user_record(raw_record, account_number=account_number, remote_key=remote_key)
     if len(plain) < 44:
         raise SessionProtocolError("Decrypted user record shorter than 44 chars")
@@ -358,6 +359,8 @@ def _decode_user_record(
     start_date = None
     name = ""
     if tail:
+        # Some older rows stop after the fixed portion, while current rows add
+        # flags, start date, and then the display name.
         maybe_flags = tail[0:3] if len(tail) >= 3 else ""
         maybe_start = tail[3:9] if len(tail) >= 9 else ""
         if (
@@ -376,17 +379,7 @@ def _decode_user_record(
         else:
             name = tail
 
-    return UserRecord(
-        number=plain[0:4],
-        code=_strip_f_padding(plain[4:16]),
-        pin=_strip_f_padding(pin_raw),
-        profiles=tuple(_maybe_unused_profile(value) for value in profiles_raw),  # type: ignore[arg-type]
-        end_date=_maybe_empty_date(plain[34:40]),
-        legacy_exp=None if plain[40:44] == "----" else plain[40:44],
-        flags=flags,
-        start_date=start_date,
-        name=name,
-    )
+    return UserRecord(number=plain[0:4], code=_strip_f_padding(plain[4:16]), pin=_strip_f_padding(pin_raw), profiles=tuple(_maybe_unused_profile(value) for value in profiles_raw), end_date=_maybe_empty_date(plain[34:40]), legacy_exp=None if plain[40:44] == "----" else plain[40:44], flags=flags, start_date=start_date, name=name)
 
 
 def _next_user_selector(users: list[UserRecord]) -> str | None:
@@ -410,7 +403,11 @@ def _decrypt_user_record(raw_record: str, *, account_number: int, remote_key: st
 
 
 def _transform_user_record(value: str, *, account_number: int, remote_key: str) -> str:
-    """Apply the symmetric user-record LFSR transform."""
+    """Apply the symmetric user-record transform.
+
+    The same transform is used in both directions, so this helper is shared by
+    query deobfuscation and experimental write generation.
+    """
     seed = _generate_user_seed(value[:4], account_number=account_number, remote_key=remote_key)
     result = list(value)
     string_pos = 0
@@ -545,12 +542,8 @@ def _build_plain_user_record(
     start_date: str,
     name: str,
 ) -> str:
-    """Build the cleartext user record before the LFSR transform."""
-    flags = (
-        ("Y" if active else "N")
-        + ("Y" if flag_2 else "N")
-        + ("Y" if temporary else "N")
-    )
+    """Build the cleartext user record before the transform layer is applied."""
+    flags = ("Y" if active else "N") + ("Y" if flag_2 else "N") + ("Y" if temporary else "N")
     return (
         f"{user_number}"
         f"{code}"
@@ -576,6 +569,8 @@ def _generate_user_seed(user_number: str, *, account_number: int, remote_key: st
             system_seed = 0
 
     return base_seed ^ system_seed
+
+
 def _advance_seed(seed: int) -> int:
     """Advance one LFSR step and return the next seed value."""
     bit_val = (seed & 1) ^ ((seed >> 2) & 1) ^ ((seed >> 3) & 1) ^ ((seed >> 4) & 1)

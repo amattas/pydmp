@@ -1,4 +1,11 @@
-"""Stateless `?WA` transactions and reply parsing."""
+"""Stateless `?WA` transactions and reply parsing.
+
+`?WA` is the authoritative area-status query in this project. This module
+handles both parts of that job:
+
+- asking for the first page and any follow-up pages
+- turning each raw reply into small, readable area records
+"""
 
 from __future__ import annotations
 
@@ -26,12 +33,12 @@ AREA_STATUS_2_TO_4_CHARS = frozenset("NY")
 class AreaStatusBlock:
     """One parsed 4-character `?WA` status block.
 
-    Firmware RE ties the four characters to the low bits of the per-area status
-    word at `0xa00425ec + (area_index + 0x20) * 4`:
-    - state / bit 0x01: rendered as `N`, `Y`, or special `B`
-    - unknown / bit 0x02: no observed product meaning; treat as reserved/unused
-    - schedule_active / bit 0x04
-    - late_to_close / bit 0x08
+    Project notes and captures support this interpretation:
+
+    - first character: main area state, including the special `B` case
+    - second character: still unnamed, so we keep the neutral `unknown` label
+    - third character: schedule active
+    - fourth character: late to close
     """
 
     state: str
@@ -135,16 +142,8 @@ class TransactionQueryAreas(Transaction):
         endpoint=None,
     ) -> Transaction:
         del endpoint
-        collected = await collect_area_status(
-            self,
-            exchange,
-            session_mode=session_mode,
-        )
-        self.parsed_response = AreaStatusReply(
-            areas=collected.areas,
-            complete=collected.complete,
-            raw_replies=collected.raw_replies,
-        )
+        collected = await collect_area_status(self, exchange, session_mode=session_mode)
+        self.parsed_response = AreaStatusReply(areas=collected.areas, complete=collected.complete, raw_replies=collected.raw_replies)
         return self
 
 
@@ -154,7 +153,11 @@ async def collect_area_status(
     *,
     session_mode,
 ) -> AreaStatusCollection:
-    """Collect a full paged `?WA` result inside an active session."""
+    """Collect a full paged `?WA` result inside an active session.
+
+    The loop starts with `?WA01`, then uses bare `?WA` as the continuation
+    request until the panel sends the `--` terminator.
+    """
     current_body: bytes | str = AREA_QUERY_INITIAL_BODY
     collected_areas: list[AreaStatusRecord] = []
     raw_replies: list[bytes] = []
@@ -169,24 +172,19 @@ async def collect_area_status(
             raise SessionProtocolError("Area query completed without a reply payload")
 
         page = parse_area_status_page(exchange_result.response)
+        # Use the visible payload as a lightweight no-progress guard. If a
+        # panel repeats a non-terminal page forever, we stop instead of
+        # spinning until the page limit.
         page_signature = _area_payload_signature(exchange_result.response)
         if page_signature in seen_pages and not page.complete:
-            return AreaStatusCollection(
-                areas=collected_areas,
-                raw_replies=raw_replies,
-                complete=False,
-            )
+            return AreaStatusCollection(areas=collected_areas, raw_replies=raw_replies, complete=False)
         seen_pages.add(page_signature)
 
         raw_replies.append(page.raw_reply)
         collected_areas.extend(page.areas)
 
         if page.complete:
-            return AreaStatusCollection(
-                areas=collected_areas,
-                raw_replies=raw_replies,
-                complete=True,
-            )
+            return AreaStatusCollection(areas=collected_areas, raw_replies=raw_replies, complete=True)
 
         current_body = AREA_QUERY_CONTINUATION_BODY
 
@@ -196,7 +194,11 @@ async def collect_area_status(
 
 
 def parse_area_status_page(reply: bytes) -> AreaStatusPage:
-    """Parse one raw panel reply page for the `?WA` family."""
+    """Parse one raw panel reply page for the `?WA` family.
+
+    A normal page is a series of area records separated by `0x1e`, followed by
+    the visible `--` terminator.
+    """
     payload = _extract_area_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == b"--":
@@ -245,8 +247,8 @@ def parse_area_status_block(raw_status: str) -> AreaStatusBlock:
 def _parse_area_record(raw_record: bytes) -> AreaStatusRecord:
     """Parse one `?WA` area row.
 
-    Current support is intentionally limited to the XR/213-backed shape:
-    `%02d + status4 + name`.
+    Current support is intentionally limited to the shape seen throughout the
+    project notes and captures: `%02d + status4 + name`.
     """
     if len(raw_record) < 7:
         raise SessionProtocolError(f"Malformed ?WA area record: {raw_record!r}")
@@ -267,14 +269,11 @@ def _parse_area_record(raw_record: bytes) -> AreaStatusRecord:
 
     raw_status = body[:4].decode("ascii", errors="strict")
     name = _decode_area_name(body[4:], raw_record)
-    return AreaStatusRecord(
-        number=number,
-        status=parse_area_status_block(raw_status),
-        name=name,
-    )
+    return AreaStatusRecord(number=number, status=parse_area_status_block(raw_status), name=name)
 
 
 def _looks_like_area_status(value: bytes) -> bool:
+    """Return `True` when the next 4 bytes look like a valid status block."""
     if len(value) < 4:
         return False
     try:
@@ -288,6 +287,7 @@ def _looks_like_area_status(value: bytes) -> bool:
 
 
 def _decode_area_name(raw_name: bytes, raw_record: bytes) -> str:
+    """Decode and validate the visible area name field."""
     try:
         decoded = raw_name.decode("ascii", errors="strict")
     except UnicodeDecodeError as exc:
@@ -296,6 +296,8 @@ def _decode_area_name(raw_name: bytes, raw_record: bytes) -> str:
     if any(ord(char) < 0x20 or ord(char) > 0x7E for char in decoded):
         raise SessionProtocolError(f"Malformed ?WA area name: {raw_record!r}")
 
+    # `?WA` only gives us the visible display name, so trimming padding is the
+    # most useful behavior for callers.
     name = decoded.strip()
     if not name:
         raise SessionProtocolError(f"Malformed ?WA area record missing area name: {raw_record!r}")

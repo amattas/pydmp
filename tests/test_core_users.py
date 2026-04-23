@@ -1,3 +1,5 @@
+"""Readable tests for `?P=` user queries and experimental user writes."""
+
 import pytest
 
 from pydmp.core import (
@@ -20,6 +22,8 @@ from pydmp.core.users import (
 
 
 class FakeTransport:
+    """Tiny scripted transport used to keep these tests focused on user logic."""
+
     def __init__(self, endpoint, scripted_replies=None):
         self.endpoint = endpoint
         self._scripted_replies = list(scripted_replies or [])
@@ -41,6 +45,7 @@ class FakeTransport:
 
 
 def make_transport_factory(scripted_replies=None):
+    """Return a transport factory plus the created fake transports."""
     transports = []
 
     def factory(endpoint):
@@ -221,11 +226,7 @@ async def test_core_panel_client_query_users():
             b"\x02@ 12345+V\r",
         ]
     )
-    client = CorePanelClient(
-        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    client = CorePanelClient(PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         reply = await client.query_users()
@@ -261,11 +262,7 @@ async def test_manager_query_users_paginates_until_empty_terminal_page():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.submit(TransactionQueryUsers())
@@ -292,11 +289,7 @@ async def test_manager_query_users_stops_at_9999():
             b"\x02@ 12345+V\r",
         ]
     )
-    manager = CommandSessionManager(
-        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
-        session_profile=SessionProfileBlankV2(),
-        transport_factory=factory,
-    )
+    manager = CommandSessionManager(endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01), session_profile=SessionProfileBlankV2(), transport_factory=factory)
 
     try:
         transaction = await manager.submit(TransactionQueryUsers())

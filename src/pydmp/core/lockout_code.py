@@ -1,4 +1,8 @@
-"""Stateless `?ZZ` transaction and reply parsing."""
+"""Stateless `?ZZ` transaction and reply parsing.
+
+`?ZZ` is one of the smallest read transactions in the core, so this module is
+kept intentionally simple and direct.
+"""
 
 from __future__ import annotations
 
@@ -26,16 +30,15 @@ class TransactionQueryLockoutCode(Transaction):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(
-            body="?ZZ",
-            completion=payload_required(),
-            label="query_lockout_code",
-            parser=parse_lockout_code_reply,
-        )
+        super().__init__(body="?ZZ", completion=payload_required(), label="query_lockout_code", parser=parse_lockout_code_reply)
 
 
 def parse_lockout_code_reply(reply: bytes) -> LockoutCodeReply:
-    """Parse one raw panel reply for the `?ZZ` family."""
+    """Parse one raw panel reply for the `?ZZ` family.
+
+    The visible reply starts with a 5-digit code. Any later text is preserved
+    as trailing payload instead of being interpreted here.
+    """
     payload = _extract_lockout_code_payload(reply).rstrip(b"\r\x00")
     if len(payload) < 5:
         raise SessionProtocolError(f"Malformed ?ZZ payload: {payload!r}")
@@ -49,12 +52,7 @@ def parse_lockout_code_reply(reply: bytes) -> LockoutCodeReply:
         trailing_payload = payload[5:].decode("ascii", errors="replace")
 
     numeric_value = int(code, 10)
-    return LockoutCodeReply(
-        code=code,
-        numeric_value=numeric_value,
-        is_null=(code == "00000"),
-        trailing_payload=trailing_payload or None,
-    )
+    return LockoutCodeReply(code=code, numeric_value=numeric_value, is_null=(code == "00000"), trailing_payload=trailing_payload or None)
 
 
 def _extract_lockout_code_payload(reply: bytes) -> bytes:

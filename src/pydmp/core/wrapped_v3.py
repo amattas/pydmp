@@ -1,7 +1,6 @@
 """Wrapped local V3 helpers used by the stateless core.
 
-This module is based on the reference logic in `Working Python Examples`.
-It only carries the pieces needed for the current core:
+This module only carries the pieces needed for the current core:
 - local `!V31` auth payload formatting
 - local `!V30` token building
 - wrapped request framing
@@ -67,6 +66,7 @@ class WrappedV3Body:
 
 
 def _ensure_ascii_bytes(value: str | bytes, label: str) -> bytes:
+    """Return ASCII bytes for a helper input that may start as text."""
     if isinstance(value, bytes):
         return value
     try:
@@ -76,6 +76,7 @@ def _ensure_ascii_bytes(value: str | bytes, label: str) -> bytes:
 
 
 def _normalize_trailer_byte(trailer_byte: str | bytes | int) -> int:
+    """Normalize the single-byte trailer used by wrapped V3 messages."""
     if isinstance(trailer_byte, int):
         if 0 <= trailer_byte <= 0xFF:
             return trailer_byte
@@ -131,7 +132,7 @@ def normalize_v30_tail4(tail4: str | bytes | None) -> bytes:
 
 
 def build_v30_plaintext_block(code: str | bytes, tail4: str | bytes | None = None) -> bytes:
-    """Build the current bench-backed local `!V30` 16-byte plaintext block."""
+    """Build the 16-byte plaintext block encrypted into the `!V30` token."""
     return build_v30_code_field12(code) + normalize_v30_tail4(tail4)
 
 
@@ -365,7 +366,11 @@ def encode_account_v3_frame(
     command_body: str | bytes,
     trailer_byte: str | bytes | int = V3_TRAILER_SPACE,
 ) -> bytes:
-    """Build one wrapped local V3 request frame."""
+    """Build one wrapped local V3 request frame.
+
+    The returned bytes already include the `@` prefix, normalized account
+    field, wrapped body, checksum, and trailing carriage return.
+    """
     wrapped = wrap_v3_body(command_body, trailer_byte)
     checksum_text = f"{wrapped.checksum:04X}".encode("ascii")
     return (
@@ -379,7 +384,11 @@ def encode_account_v3_frame(
 
 
 def extract_first_frame(raw_reply: bytes) -> bytes:
-    """Return the first clean reply frame from a raw transport read."""
+    """Return the first clean reply frame from a raw transport read.
+
+    This helper removes common transport noise like NUL padding and leading
+    STX so higher layers can work with one stable frame shape.
+    """
     cleaned = raw_reply.replace(b"\x00", b"")
     if cleaned.startswith(b"\x02"):
         cleaned = cleaned[1:]
@@ -421,7 +430,12 @@ def parse_account_v3_frame(frame: str | bytes) -> tuple[str, WrappedV3Body]:
 
 
 def normalize_wrapped_reply(raw_reply: bytes) -> tuple[bytes, WrappedV3Body]:
-    """Normalize one wrapped reply back into a plain parser-facing reply frame."""
+    """Normalize one wrapped reply back into a plain parser-facing reply frame.
+
+    Transaction parsers should not need to know whether a session was wrapped,
+    so this helper returns the clear parser-facing frame alongside the parsed
+    wrapped-body details.
+    """
     frame = extract_first_frame(raw_reply)
     account_field, wrapped = parse_account_v3_frame(frame)
     normalized = b"@" + account_field.encode("ascii") + wrapped.body + b"\r"

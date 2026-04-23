@@ -1,4 +1,9 @@
-"""Stateless `?WB` transactions and reply parsing."""
+"""Stateless `?WB` transactions and reply parsing.
+
+`?WB` is the zone snapshot query. In practice it is not a simple one-call
+query: we discover areas first, then walk each area-scoped `?WB` iterator to
+completion.
+"""
 
 from __future__ import annotations
 
@@ -77,24 +82,17 @@ class TransactionQueryZones(Transaction):
         del endpoint
         # Delegate area discovery to the same full-panel ?WA loop used by
         # TransactionQueryAreas so this transaction cannot drift from it.
-        discovered = await collect_area_status(
-            self,
-            exchange,
-            session_mode=session_mode,
-        )
+        discovered = await collect_area_status(self, exchange, session_mode=session_mode)
 
         raw_replies = list(discovered.raw_replies)
         zones_by_number: dict[str, ZoneStatusRecord] = {}
         zones_complete = True
 
         if discovered.areas:
+            # Each area gets its own seeded `?WBxxY001` walk. Project captures
+            # show that some zones only appear under their own area seed.
             for area in discovered.areas:
-                sweep = await collect_zone_status_for_area(
-                    self,
-                    exchange,
-                    area_number=area.number,
-                    session_mode=session_mode,
-                )
+                sweep = await collect_zone_status_for_area(self, exchange, area_number=area.number, session_mode=session_mode)
                 raw_replies.extend(sweep.raw_replies)
                 zones_complete = zones_complete and sweep.complete
                 for zone in sweep.zones:
@@ -104,12 +102,7 @@ class TransactionQueryZones(Transaction):
         else:
             # Area discovery should normally find at least area 01. If it does
             # not, wildcard is the least-assumptive fallback for global rows.
-            sweep = await collect_zone_status_pages(
-                self,
-                exchange,
-                initial_body=ZONE_QUERY_WILDCARD_BODY,
-                session_mode=session_mode,
-            )
+            sweep = await collect_zone_status_pages(self, exchange, initial_body=ZONE_QUERY_WILDCARD_BODY, session_mode=session_mode)
             raw_replies.extend(sweep.raw_replies)
             zones_complete = sweep.complete
             for zone in sweep.zones:
@@ -117,12 +110,7 @@ class TransactionQueryZones(Transaction):
                     del zones_by_number[zone.number]
                 zones_by_number[zone.number] = zone
 
-        self.parsed_response = ZoneStatusReply(
-            zones=sorted(zones_by_number.values(), key=lambda zone: int(zone.number)),
-            areas=discovered.areas,
-            complete=discovered.complete and zones_complete,
-            raw_replies=raw_replies,
-        )
+        self.parsed_response = ZoneStatusReply(zones=sorted(zones_by_number.values(), key=lambda zone: int(zone.number)), areas=discovered.areas, complete=discovered.complete and zones_complete, raw_replies=raw_replies)
         return self
 
 
@@ -143,12 +131,7 @@ async def collect_zone_status_for_area(
     session_mode,
 ) -> ZoneStatusCollection:
     """Collect a full paged `?WB` sweep for one discovered area."""
-    return await collect_zone_status_pages(
-        transaction,
-        exchange,
-        initial_body=f"?WB{area_number}{ZONE_EMIT_FLAG}{ZONE_START_ZONE}",
-        session_mode=session_mode,
-    )
+    return await collect_zone_status_pages(transaction, exchange, initial_body=f"?WB{area_number}{ZONE_EMIT_FLAG}{ZONE_START_ZONE}", session_mode=session_mode)
 
 
 async def collect_zone_status_pages(
@@ -173,17 +156,10 @@ async def collect_zone_status_pages(
         if exchange_result.response is None:
             raise SessionProtocolError("Zone query completed without a reply payload")
 
-        page = parse_zone_status_page(
-            exchange_result.response,
-            current_area_number=current_area_number,
-        )
+        page = parse_zone_status_page(exchange_result.response, current_area_number=current_area_number)
         page_signature = _zone_payload_signature(exchange_result.response)
         if page_signature in seen_pages:
-            return ZoneStatusCollection(
-                zones=collected_zones,
-                raw_replies=raw_replies,
-                complete=False,
-            )
+            return ZoneStatusCollection(zones=collected_zones, raw_replies=raw_replies, complete=False)
         seen_pages.add(page_signature)
 
         raw_replies.append(page.raw_reply)
@@ -191,11 +167,7 @@ async def collect_zone_status_pages(
         current_area_number = page.next_area_number
 
         if _is_empty_zone_terminal(page, page_signature):
-            return ZoneStatusCollection(
-                zones=collected_zones,
-                raw_replies=raw_replies,
-                complete=True,
-            )
+            return ZoneStatusCollection(zones=collected_zones, raw_replies=raw_replies, complete=True)
 
         current_body = ZONE_QUERY_CONTINUATION_BODY
 
@@ -209,16 +181,17 @@ def parse_zone_status_page(
     *,
     current_area_number: str = ZONE_GLOBAL_AREA_NUMBER,
 ) -> ZoneStatusPage:
-    """Parse one raw panel reply page for the `?WB` family."""
+    """Parse one raw panel reply page for the `?WB` family.
+
+    `?WB` pages can mix two row types:
+
+    - `A...` area anchors, which change the active area for later zone rows
+    - `L...` zone rows, which inherit the current active area
+    """
     payload = _extract_zone_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == b"-":
-        return ZoneStatusPage(
-            zones=[],
-            complete=True,
-            raw_reply=reply,
-            next_area_number=current_area_number,
-        )
+        return ZoneStatusPage(zones=[], complete=True, raw_reply=reply, next_area_number=current_area_number)
     if not cleaned:
         raise SessionProtocolError("Empty ?WB reply payload")
 
@@ -292,12 +265,7 @@ def _parse_zone_row(raw_row: bytes, *, area_number: str) -> ZoneStatusRecord:
     if status not in ZONE_STATUS_CHARS:
         raise SessionProtocolError(f"Unexpected ?WB zone status character: {raw_row!r}")
     name = _decode_status_name(raw_row[5:], raw_row=raw_row, label="zone name")
-    return ZoneStatusRecord(
-        number=number,
-        area_number=area_number,
-        status=status,
-        name=name,
-    )
+    return ZoneStatusRecord(number=number, area_number=area_number, status=status, name=name)
 
 
 def _parse_decimal_field(
@@ -318,6 +286,7 @@ def _parse_decimal_field(
 
 
 def _decode_status_name(raw_name: bytes, *, raw_row: bytes, label: str) -> str:
+    """Decode one visible area or zone name from a `?WB` row."""
     name = _decode_ascii_field(raw_name, raw_row=raw_row, label=label).strip()
     if not name:
         raise SessionProtocolError(f"Malformed ?WB record missing {label}: {raw_row!r}")
@@ -329,6 +298,7 @@ def _decode_status_name(raw_name: bytes, *, raw_row: bytes, label: str) -> str:
 
 
 def _decode_ascii_field(raw_value: bytes, *, raw_row: bytes, label: str) -> str:
+    """Decode one ASCII field and reject non-printable characters."""
     try:
         decoded = raw_value.decode("ascii", errors="strict")
     except UnicodeDecodeError as exc:
@@ -355,4 +325,5 @@ def _zone_payload_signature(reply: bytes) -> bytes:
 
 
 def _is_empty_zone_terminal(page: ZoneStatusPage, page_signature: bytes) -> bool:
+    """Return `True` only for the explicit empty terminal page `*WB-`."""
     return page.complete and not page.zones and page_signature == b"-"

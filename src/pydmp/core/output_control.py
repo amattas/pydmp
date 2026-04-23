@@ -1,4 +1,8 @@
-"""Stateless `!Q` output-control transaction and reply parsing."""
+"""Stateless `!Q` output-control transaction and reply parsing.
+
+`!Q` writes one output selector and one mode byte. This module keeps that
+surface narrow on purpose: one selector, one normalized mode, one parsed reply.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ from .output_status import normalize_output_selector
 
 
 class OutputControlMode(str, Enum):
-    """Known `!Q` mode bytes from the XR150 213 firmware table."""
+    """Known visible `!Q` mode bytes."""
 
     OFF = "O"
     PULSE = "P"
@@ -49,13 +53,13 @@ class OutputControlReply:
 
 
 class TransactionSetOutput(Transaction):
-    """Set one `?WQ` selector with the firmware-backed `!Q` command.
+    """Set one `?WQ` selector with the visible `!Q` command.
 
     Practical safety guidance:
     - poll outputs first with `?WQ`
     - limit writes to selectors known to be valid on the current panel
 
-    The parser accepts the full firmware-backed visible selector grammar, but
+    The parser accepts the full visible selector grammar, but
     that is broader than the set of selectors proven populated on any one
     system.
     """
@@ -67,22 +71,13 @@ class TransactionSetOutput(Transaction):
         normalized_mode = normalize_output_control_mode(mode)
         self.selector = normalized_selector
         self.mode = normalized_mode
-        super().__init__(
-            body=f"!Q{normalized_selector}{normalized_mode}",
-            completion=ack_or_deny(),
-            label="set_output",
-            parser=lambda reply: parse_output_control_reply(
-                reply,
-                selector=normalized_selector,
-                mode=normalized_mode,
-            ),
-        )
+        super().__init__(body=f"!Q{normalized_selector}{normalized_mode}", completion=ack_or_deny(), label="set_output", parser=lambda reply: parse_output_control_reply(reply, selector=normalized_selector, mode=normalized_mode))
 
 
 def normalize_output_control_mode(mode: str | OutputControlMode) -> str:
-    """Return one firmware-valid `!Q` mode byte.
+    """Return one project-valid `!Q` mode byte.
 
-    The 213 firmware lookup table accepts only `O`, `P`, `S`, `M`, `T`, `W`,
+    The project notes accept only `O`, `P`, `S`, `M`, `T`, `W`,
     `a`, and `t`. Unknown bytes are dangerous because the parser can still
     report success after passing an out-of-table index deeper into the output
     state machinery.
@@ -106,9 +101,7 @@ def normalize_output_control_mode(mode: str | OutputControlMode) -> str:
     if alias is not None:
         return alias
 
-    raise ValueError(
-        "Output control mode must be one of O, P, S, M, T, W, a, or t"
-    )
+    raise ValueError("Output control mode must be one of O, P, S, M, T, W, a, or t")
 
 
 def parse_output_control_reply(
@@ -119,7 +112,7 @@ def parse_output_control_reply(
 ) -> OutputControlReply:
     """Parse one local panel reply for `!Q`.
 
-    Firmware success emits status `+Q`. The same router branch can deny as
+    Success emits status `+Q`. The same command path can deny as
     `-Q`, privilege-fail as `-VV`, or compatibility-fail as `-QV`.
     """
 
@@ -132,12 +125,7 @@ def parse_output_control_reply(
     if positive is not None and (negative is None or positive[0] < negative[0]):
         index, marker = positive
         detail = _extract_detail(reply[index + len(marker) :])
-        return OutputControlReply(
-            selector=selector,
-            mode=mode,
-            acknowledged=True,
-            detail=detail,
-        )
+        return OutputControlReply(selector=selector, mode=mode, acknowledged=True, detail=detail)
 
     if negative is not None:
         index, marker = negative
@@ -147,12 +135,7 @@ def parse_output_control_reply(
             detail = "QV"
         else:
             detail = _extract_detail(reply[index + len(marker) :])
-        return OutputControlReply(
-            selector=selector,
-            mode=mode,
-            acknowledged=False,
-            detail=detail,
-        )
+        return OutputControlReply(selector=selector, mode=mode, acknowledged=False, detail=detail)
 
     raise SessionProtocolError("Reply did not contain a Q command marker")
 

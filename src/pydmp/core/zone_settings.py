@@ -1,4 +1,9 @@
-"""Stateless `?ZL` zone-settings transaction and reply parsing."""
+"""Stateless `?ZL` zone-settings transaction and reply parsing.
+
+`?ZL` reads one direct zone-settings row, while lowercase `?Zl` behaves more
+like a list page. The parser supports both because they share the same record
+layout.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +28,11 @@ ZONE_SETTINGS_NAME_PREFIX_FLAGS = frozenset("YN")
 
 @dataclass(slots=True)
 class ZoneSettingsRecord:
-    """One decoded zone-settings row from a `?ZL` or `?Zl` reply."""
+    """One decoded zone-settings row from a `?ZL` or `?Zl` reply.
+
+    Known fields are broken out directly. Bytes whose product meaning is still
+    open keep neutral names so callers can inspect them without us guessing.
+    """
 
     number: str
     type_code: str
@@ -127,15 +136,7 @@ class TransactionQueryZoneSettings(Transaction):
     def __init__(self, zone: int | str) -> None:
         zone_number = normalize_zone_settings_number(zone)
         self.zone_number = zone_number
-        super().__init__(
-            body=f"?ZL{zone_number}",
-            completion=payload_required(),
-            label="query_zone_settings",
-            parser=lambda reply: parse_zone_settings_reply(
-                reply,
-                requested_zone=zone_number,
-            ),
-        )
+        super().__init__(body=f"?ZL{zone_number}", completion=payload_required(), label="query_zone_settings", parser=lambda reply: parse_zone_settings_reply(reply, requested_zone=zone_number))
 
 
 def normalize_zone_settings_number(zone: int | str) -> str:
@@ -161,25 +162,19 @@ def parse_zone_settings_reply(
     if len(matches) > 1:
         raise SessionProtocolError(f"?ZL reply contained duplicate zone {requested}")
 
-    return ZoneSettingsReply(
-        requested_zone=requested,
-        zone=matches[0] if matches else None,
-        records=page.records,
-        has_terminal_marker=page.has_terminal_marker,
-        raw_reply=page.raw_reply,
-    )
+    return ZoneSettingsReply(requested_zone=requested, zone=matches[0] if matches else None, records=page.records, has_terminal_marker=page.has_terminal_marker, raw_reply=page.raw_reply)
 
 
 def parse_zone_settings_page(reply: bytes) -> ZoneSettingsPage:
-    """Parse one raw panel reply page for the `?ZL`/`?Zl` family."""
+    """Parse one raw panel reply page for the `?ZL`/`?Zl` family.
+
+    Direct uppercase reads often contain one record with no terminal marker.
+    Lowercase list pages can contain one or more records followed by `---`.
+    """
     payload = _extract_zone_settings_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
     if cleaned == ZONE_SETTINGS_TERMINATOR:
-        return ZoneSettingsPage(
-            records=[],
-            has_terminal_marker=True,
-            raw_reply=reply,
-        )
+        return ZoneSettingsPage(records=[], has_terminal_marker=True, raw_reply=reply)
     if not cleaned:
         raise SessionProtocolError("Empty ?ZL reply payload")
 
@@ -213,11 +208,7 @@ def parse_zone_settings_page(reply: bytes) -> ZoneSettingsPage:
 
         records.append(_parse_zone_settings_record(part))
 
-    return ZoneSettingsPage(
-        records=records,
-        has_terminal_marker=has_terminal_marker,
-        raw_reply=reply,
-    )
+    return ZoneSettingsPage(records=records, has_terminal_marker=has_terminal_marker, raw_reply=reply)
 
 
 def _parse_zone_settings_record(raw_record: bytes) -> ZoneSettingsRecord:
@@ -397,6 +388,7 @@ def _parse_action_group_fields(
     raw_record: bytes,
     label: str,
 ) -> tuple[str, str, str]:
+    """Split one 5-character action cell into action, output, and mode."""
     text = _decode_ascii(raw_value, raw_record=raw_record, label=label)
     action = "none" if text[0] == "-" else text[0]
     output = "none" if text[1:4] == "000" else text[1:4]
@@ -500,10 +492,10 @@ def _decode_zone_settings_name(raw_name: bytes, *, raw_record: bytes) -> str:
 def _split_zone_settings_name_tail(raw_record: bytes) -> tuple[str, str]:
     """Split the shared 98-byte fixed body from the visible zone name tail.
 
-    Bench 2.13 records place the name directly at offset 98. A newer live
-    capture also showed a two-byte `-N` prefix before the visible name on an
-    uppercase `?ZL500` record. Preserve that prefix separately and return the
-    cleaned visible name.
+    Most records place the name directly at offset 98. A later live capture
+    also showed a two-byte `-N` prefix before the visible name on one direct
+    uppercase row. Preserve that prefix separately and return the cleaned
+    visible name.
     """
     raw_name = raw_record[ZONE_SETTINGS_FIXED_LENGTH:]
     if len(raw_name) >= 2:

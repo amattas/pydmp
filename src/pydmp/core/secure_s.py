@@ -1,7 +1,7 @@
 """Secure `!!S` transport helpers for the stateless core.
 
-This module follows the bench-confirmed local Integrator passphrase transport
-documented in `Working Python Examples/dmp_secure_transport.py`.
+This module collects the byte-level rules for the secure local passphrase
+transport so the session and listener code can stay focused on workflow.
 """
 
 from __future__ import annotations
@@ -23,7 +23,10 @@ SECURE_S_FRAME_TYPE_DATA: Final[int] = 0x18
 
 @dataclass(slots=True)
 class SecureSLogicalFrame:
-    """One decrypted secure logical frame."""
+    """One decrypted secure logical frame.
+
+    This is the parser-facing view after AES decryption and header decoding.
+    """
 
     seq: int
     ack: int
@@ -43,7 +46,7 @@ class SecureSReplyState:
 
 
 def normalize_secure_s_passphrase_slot(passphrase: str | bytes) -> bytes:
-    """Return the 16-byte passphrase slot used by the secure transport."""
+    """Return the fixed 16-byte passphrase slot used by the secure transport."""
     if isinstance(passphrase, str):
         try:
             passphrase_bytes = passphrase.encode("ascii")
@@ -70,7 +73,11 @@ def build_secure_s_logical_body(
     frame_type: int,
     payload: bytes = b"",
 ) -> bytes:
-    """Build one decrypted logical frame body before AES encryption."""
+    """Build one decrypted logical frame body before AES encryption.
+
+    The logical body is the clear header plus payload. `build_secure_s_frame()`
+    handles the later encryption and wire prefix.
+    """
     if not 0 <= seq <= 0xFFFF:
         raise ValueError(f"Secure sequence out of range: {seq!r}")
     if not 0 <= ack <= 0xFFFF:
@@ -92,6 +99,7 @@ def build_secure_s_logical_body(
 
 
 def _pad_secure_s_logical_body(logical_body: bytes) -> bytes:
+    """Pad a logical body to a whole AES block count with zero bytes."""
     remainder = len(logical_body) % 16
     if remainder == 0:
         return logical_body
@@ -131,7 +139,11 @@ def build_secure_s_frame(
     frame_type: int,
     payload: bytes = b"",
 ) -> bytes:
-    """Build one full secure wire frame."""
+    """Build one full secure wire frame.
+
+    This is the main convenience helper for tests and higher-level session
+    code: build clear logical bytes, encrypt them, then add the `!!S` prefix.
+    """
     logical_body = build_secure_s_logical_body(seq, ack, frame_type, payload)
     ciphertext = encrypt_secure_s_logical_body(passphrase, logical_body)
     return SECURE_S_PREFIX + ciphertext
@@ -149,7 +161,11 @@ def build_secure_s_setup_frame(passphrase: str | bytes, seq: int = 0, ack: int =
 
 
 def parse_secure_s_frame(passphrase: str | bytes, frame_bytes: bytes) -> SecureSLogicalFrame:
-    """Decrypt and parse one secure wire frame."""
+    """Decrypt and parse one secure wire frame.
+
+    The returned object keeps both the logical payload and the padded plaintext
+    because some callers need the exact lengths for sequence tracking.
+    """
     if not frame_bytes.startswith(SECURE_S_PREFIX):
         raise ValueError(f"Secure frame must start with {SECURE_S_PREFIX!r}")
 
@@ -182,14 +198,14 @@ def parse_secure_s_frame(passphrase: str | bytes, frame_bytes: bytes) -> SecureS
 
 
 def expected_secure_s_setup_reply_ack(client_seq: int) -> int:
-    """Return the setup ACK value the panel should send back."""
+    """Return the setup ACK value the peer should send back."""
     if not 0 <= client_seq <= 0xFFFF:
         raise ValueError(f"Secure sequence out of range: {client_seq!r}")
     return (client_seq + 7) & 0xFFFF
 
 
 def next_secure_s_send_sequence(current_seq: int, logical_length: int) -> int:
-    """Advance the next client send sequence after one logical frame."""
+    """Advance the next send sequence after one logical frame."""
     if not 0 <= current_seq <= 0xFFFF:
         raise ValueError(f"Secure sequence out of range: {current_seq!r}")
     if not 0 <= logical_length <= 0xFFFF:
@@ -203,7 +219,11 @@ def next_expected_secure_s_ack(frame: SecureSLogicalFrame) -> int:
 
 
 def peek_secure_s_frame_length(passphrase: str | bytes, buffer: bytes) -> int | None:
-    """Return the total wire length for one secure frame when enough header exists."""
+    """Return the total wire length for one secure frame when enough header exists.
+
+    This lets the listener know when it has buffered a whole secure frame
+    before attempting a full parse.
+    """
     minimum = len(SECURE_S_PREFIX) + 16
     if len(buffer) < minimum:
         return None
@@ -239,7 +259,7 @@ def build_secure_s_setup_reply_frame(
     *,
     server_seq: int,
 ) -> tuple[bytes, SecureSReplyState]:
-    """Build the secure setup reply expected by the panel."""
+    """Build the secure setup reply and the next reply-state snapshot."""
     if incoming_setup.frame_type != SECURE_S_FRAME_TYPE_SETUP:
         raise ValueError(
             f"Secure setup reply requires incoming type 0x02, got 0x{incoming_setup.frame_type:02X}"
@@ -258,13 +278,7 @@ def build_secure_s_setup_reply_frame(
         frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY,
         payload=b"",
     )
-    return (
-        wire,
-        SecureSReplyState(
-            next_send_seq=next_secure_s_send_sequence(server_seq, 7),
-            next_send_ack=reply_ack,
-        ),
-    )
+    return (wire, SecureSReplyState(next_send_seq=next_secure_s_send_sequence(server_seq, 7), next_send_ack=reply_ack))
 
 
 def build_secure_s_data_frame_from_state(
@@ -274,13 +288,7 @@ def build_secure_s_data_frame_from_state(
 ) -> bytes:
     """Build one secure data frame and advance the reply sequence state."""
     logical_length = 7 + len(payload)
-    wire = build_secure_s_frame(
-        passphrase,
-        seq=state.next_send_seq,
-        ack=state.next_send_ack,
-        frame_type=SECURE_S_FRAME_TYPE_DATA,
-        payload=payload,
-    )
+    wire = build_secure_s_frame(passphrase, seq=state.next_send_seq, ack=state.next_send_ack, frame_type=SECURE_S_FRAME_TYPE_DATA, payload=payload)
     state.next_send_seq = next_secure_s_send_sequence(state.next_send_seq, logical_length)
     return wire
 
@@ -298,8 +306,4 @@ def build_secure_s_push_ack_frame(
             f"Secure push ACK requires incoming type 0x18, got 0x{incoming_push.frame_type:02X}"
         )
     state.next_send_ack = next_expected_secure_s_ack(incoming_push)
-    return build_secure_s_data_frame_from_state(
-        passphrase,
-        state,
-        build_secure_s_push_ack_payload(account),
-    )
+    return build_secure_s_data_frame_from_state(passphrase, state, build_secure_s_push_ack_payload(account))

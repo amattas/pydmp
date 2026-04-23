@@ -1,4 +1,9 @@
-"""Small helpers for parser-facing local panel framing."""
+"""Small helpers for parser-facing local panel framing.
+
+These helpers work with the plain `@<account><body>\r` framing used by the
+local command lanes. Keeping them in one module avoids repeating tiny byte
+rules throughout the session code and tests.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,11 @@ BLANK_V2_COMPARE = b" " * 16
 
 
 def coerce_body_bytes(body: bytes | str) -> bytes:
-    """Normalize a logical command/query body to bytes."""
+    """Normalize a logical command or query body to bytes.
+
+    Callers pass either `str` or `bytes`. The result always omits the trailing
+    carriage return so the frame builder can add it exactly once.
+    """
     if isinstance(body, bytes):
         result = body
     else:
@@ -18,7 +27,11 @@ def coerce_body_bytes(body: bytes | str) -> bytes:
 
 
 def format_account_frame(account: str, body: bytes | str) -> bytes:
-    """Build a parser-facing local frame: `@<acct><body>\\r`."""
+    """Build a plain account-framed local message.
+
+    Example:
+    `12345` + `?WA01` becomes `@12345?WA01\r`
+    """
     return MESSAGE_PREFIX + account.encode("ascii") + coerce_body_bytes(body) + MESSAGE_TERMINATOR
 
 
@@ -26,7 +39,7 @@ def is_v_banner_success(reply: bytes) -> bool:
     """Check for a local `+V` success banner (bare or versioned `+V0..+V3`).
 
     Older pydmp-style panels reply to `!V2` with a plain `+V` and no version
-    digit; bench-213 firmware emits `+V2`. Both are valid V2 auth success.
+    digit; other panels reply with `+V2`. Both are valid V2 auth success.
     The `!V0` teardown ack also produces a bare `+V`, but `close()` never
     parses its reply, so there is no collision in practice.
     """
@@ -42,10 +55,8 @@ def is_v_banner_success(reply: bytes) -> bool:
 def extract_v_denials(reply: bytes) -> tuple[bytes, ...]:
     """Return every `-V[A-Z]` denial code present in order of appearance.
 
-    The 213 bench firmware pairs each `-V*` code with a distinct auth-lane
-    condition, and only some are fatal. A buffered reply may carry more than
-    one denial (e.g. a soft code followed by a fatal one); callers decide
-    which ones to raise on.
+    A buffered reply may carry more than one denial code, so callers get the
+    full list in order and can decide which ones are soft versus fatal.
     """
     denials: list[bytes] = []
     search_from = 0

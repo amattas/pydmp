@@ -3,8 +3,13 @@
 This package is intentionally separate from the older stateful `pydmp`
 surface. It provides a panel-scoped command-session manager, transport, and
 session profiles that can be used by higher layers without owning panel state.
+
+Most callers should import from `pydmp.core` instead of reaching into the
+individual module files. This export surface is meant to be the readable,
+stable entry point for the new core.
 """
 
+# Exceptions and shared error types.
 from .errors import (
     CommandSessionError,
     ListenerConfigurationError,
@@ -18,6 +23,8 @@ from .errors import (
     SessionTimeoutError,
     TransactionParseError,
 )
+
+# Area query and control transactions.
 from .area_control import (
     AreaControlReply,
     TransactionArmAreas,
@@ -44,12 +51,24 @@ from .area_status import (
     parse_area_status_block,
     parse_area_status_page,
 )
+
+# Beginner-friendly client and manager entry points.
 from .client import CorePanelClient
+from .manager import CommandSessionManager
+
+# Small read transactions.
 from .lockout_code import (
     LockoutCodeReply,
     TransactionQueryLockoutCode,
     parse_lockout_code_reply,
 )
+from .sensor_reset import (
+    SensorResetReply,
+    TransactionSensorReset,
+    parse_sensor_reset_reply,
+)
+
+# Push listener surface.
 from .listener import (
     DMPPushListener,
     ListenerProfilePush,
@@ -65,7 +84,8 @@ from .listener import (
     PushTransportMode,
     parse_push_event,
 )
-from .manager import CommandSessionManager
+
+# Shared transaction/session models.
 from .models import (
     CompletionPolicy,
     PanelEndpoint,
@@ -78,6 +98,8 @@ from .models import (
     payload_required,
     reply_optional,
 )
+
+# Output read and write transactions.
 from .output_control import (
     OutputControlMode,
     OutputControlReply,
@@ -93,6 +115,15 @@ from .output_status import (
     normalize_output_selector,
     parse_output_status_page,
 )
+
+# Zone and area settings transactions.
+from .profiles import (
+    ProfilePage,
+    ProfileRecord,
+    ProfileReply,
+    TransactionQueryProfiles,
+    parse_profile_page,
+)
 from .zone_settings import (
     ZoneSettingsPage,
     ZoneSettingsRecord,
@@ -102,6 +133,8 @@ from .zone_settings import (
     parse_zone_settings_page,
     parse_zone_settings_reply,
 )
+
+# Session profile implementations.
 from .sessions import (
     SessionProfile,
     SessionProfileBlankV2,
@@ -111,19 +144,11 @@ from .sessions import (
     SessionProfileV31,
     build_session_profile,
 )
-from .profiles import (
-    ProfilePage,
-    ProfileRecord,
-    ProfileReply,
-    TransactionQueryProfiles,
-    parse_profile_page,
-)
-from .sensor_reset import (
-    SensorResetReply,
-    TransactionSensorReset,
-    parse_sensor_reset_reply,
-)
+
+# Raw transport implementation.
 from .transport import PanelTransport
+
+# User table and zone query/control transactions.
 from .users import (
     TransactionQueryUsers,
     UserFlags,
@@ -148,6 +173,7 @@ from .zone_control import (
     parse_zone_unbypass_reply,
 )
 
+# Re-export the intended public surface of the stateless core.
 __all__ = [
     "CommandSessionError",
     "ListenerError",

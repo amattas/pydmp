@@ -1,4 +1,18 @@
-"""Thin stateless client helpers built on top of the core manager."""
+"""Friendly async helpers built on top of the stateless core.
+
+`CorePanelClient` is meant to be the easiest new-core entry point to read and
+use directly. It does not cache panel state and it does not try to hide the
+fact that every helper below is just a named transaction.
+
+That design is intentional:
+
+- the command/session details stay in `CommandSessionManager`
+- each protocol family stays in its own transaction module
+- this file gives beginners a short list of "do the obvious thing" helpers
+
+If you want lower-level control, use `CommandSessionManager` directly.
+If you want a future high-level stateful facade, it should sit above this file.
+"""
 
 from __future__ import annotations
 
@@ -35,7 +49,11 @@ from .zone_settings import TransactionQueryZoneSettings, ZoneSettingsReply
 
 
 class CorePanelClient:
-    """Stateless command client built on top of `CommandSessionManager`."""
+    """Simple async client that exposes one method per common transaction.
+
+    This class is intentionally small. It gives callers a clean place to start
+    without forcing them to learn the full transaction API on day one.
+    """
 
     def __init__(
         self,
@@ -44,23 +62,31 @@ class CorePanelClient:
         session_profile: SessionProfile | None = None,
         transport_factory: Callable[[PanelEndpoint], TransportProtocol] | None = None,
     ) -> None:
-        self._manager = CommandSessionManager(
-            endpoint=endpoint,
-            session_profile=session_profile or SessionProfileBlankV2(),
-            transport_factory=transport_factory or PanelTransport,
-        )
+        # Default to the blank local V2 session because that is still the most
+        # common bench and lab starting point in this repo.
+        self._manager = CommandSessionManager(endpoint=endpoint, session_profile=session_profile or SessionProfileBlankV2(), transport_factory=transport_factory or PanelTransport)
 
     @property
     def manager(self) -> CommandSessionManager:
-        """Expose the manager for advanced callers."""
+        """Expose the underlying manager for callers who need more control.
+
+        Most application code should stay on the named helpers below.
+        This property exists for advanced scripts that want to submit custom
+        transactions or inspect raw wire exchanges.
+        """
         return self._manager
 
     async def close(self) -> None:
-        """Close the underlying manager."""
+        """Close the current command session and underlying transport."""
         await self._manager.close()
 
-    async def query_wa(self) -> AreaStatusReply:
-        """Run a full `?WA` transaction and return the parsed reply."""
+    async def query_areas(self) -> AreaStatusReply:
+        """Return the authoritative area snapshot from `?WA`.
+
+        The project notes and captures show that `?WA` is the right source for
+        full area state. We keep this helper explicit instead of hiding it
+        behind a generic "status" call.
+        """
         transaction = await self._manager.submit(TransactionQueryAreas())
         parsed = transaction.parsed_response
         if not isinstance(parsed, AreaStatusReply):
@@ -75,22 +101,22 @@ class CorePanelClient:
         force_arm: bool = False,
         instant: bool = False,
     ) -> AreaControlReply:
-        """Run `!C` for one or more areas and return the parsed reply."""
-        transaction = await self._manager.submit(
-            TransactionArmAreas(
-                areas,
-                bypass_faulted=bypass_faulted,
-                force_arm=force_arm,
-                instant=instant,
-            )
-        )
+        """Send one `!C` command for one or more areas.
+
+        The helper keeps the protocol naming close to the wire format:
+
+        - `areas` is the area list you want to arm
+        - `bypass_faulted`, `force_arm`, and `instant` map straight to the
+          three option bytes on the command
+        """
+        transaction = await self._manager.submit(TransactionArmAreas(areas, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant))
         parsed = transaction.parsed_response
         if not isinstance(parsed, AreaControlReply):
             raise ValueError("Command completed without a parsed C reply")
         return parsed
 
     async def disarm_areas(self, areas) -> AreaControlReply:
-        """Run `!O` for one or more areas and return the parsed reply."""
+        """Send one `!O` command for one or more areas."""
         transaction = await self._manager.submit(TransactionDisarmAreas(areas))
         parsed = transaction.parsed_response
         if not isinstance(parsed, AreaControlReply):
@@ -98,7 +124,12 @@ class CorePanelClient:
         return parsed
 
     async def query_zones(self) -> ZoneStatusReply:
-        """Run a full `?WB` zone snapshot transaction and return the parsed reply."""
+        """Return a full zone snapshot from `?WB`.
+
+        The query transaction already handles the area-seeded paging behavior
+        that came out of the project captures. This helper simply exposes that
+        finished result.
+        """
         transaction = await self._manager.submit(TransactionQueryZones())
         parsed = transaction.parsed_response
         if not isinstance(parsed, ZoneStatusReply):
@@ -106,7 +137,7 @@ class CorePanelClient:
         return parsed
 
     async def query_zone_settings(self, zone: int | str) -> ZoneSettingsReply:
-        """Run one `?ZLNNN` zone-settings transaction and return the parsed reply."""
+        """Return one direct `?ZLNNN` zone-settings record."""
         transaction = await self._manager.submit(TransactionQueryZoneSettings(zone))
         parsed = transaction.parsed_response
         if not isinstance(parsed, ZoneSettingsReply):
@@ -114,7 +145,7 @@ class CorePanelClient:
         return parsed
 
     async def query_area_settings(self, area: int | str) -> AreaSettingsReply:
-        """Run one `?ZaNN` area-settings transaction and return the parsed reply."""
+        """Return one direct `?ZaNN` area-settings record."""
         transaction = await self._manager.submit(TransactionQueryAreaSettings(area))
         parsed = transaction.parsed_response
         if not isinstance(parsed, AreaSettingsReply):
@@ -129,15 +160,16 @@ class CorePanelClient:
         named_only: bool = True,
         max_pages: int = 200,
     ) -> OutputStatusReply:
-        """Run a full `?WQ` output-status transaction and return the parsed reply."""
-        transaction = await self._manager.submit(
-            TransactionQueryOutputs(
-                start_selector,
-                namespace=namespace,
-                named_only=named_only,
-                max_pages=max_pages,
-            )
-        )
+        """Return output status records from `?WQ`.
+
+        By default this follows the safer beginner workflow used elsewhere in
+        the repo:
+
+        - start in the numeric output namespace
+        - keep only named outputs
+        - let callers opt in to `D`, `F`, or `G` explicitly
+        """
+        transaction = await self._manager.submit(TransactionQueryOutputs(start_selector, namespace=namespace, named_only=named_only, max_pages=max_pages))
         parsed = transaction.parsed_response
         if not isinstance(parsed, OutputStatusReply):
             raise ValueError("Query completed without a parsed WQ reply")
@@ -148,7 +180,7 @@ class CorePanelClient:
         selector: int | str,
         mode: str | OutputControlMode,
     ) -> OutputControlReply:
-        """Run `!Q` for one output selector and return the parsed reply.
+        """Send `!Q` for one output selector and return the parsed reply.
 
         Poll outputs first with `query_outputs()` and keep writes limited to
         selectors known to exist on the current panel.
@@ -176,7 +208,7 @@ class CorePanelClient:
         return await self.set_output(selector, "M")
 
     async def query_lockout_code(self) -> LockoutCodeReply:
-        """Run a `?ZZ` lockout-code query and return the parsed reply."""
+        """Return the current `?ZZ` lockout-code value."""
         transaction = await self._manager.submit(TransactionQueryLockoutCode())
         parsed = transaction.parsed_response
         if not isinstance(parsed, LockoutCodeReply):
@@ -184,7 +216,7 @@ class CorePanelClient:
         return parsed
 
     async def query_users(self) -> UserReply:
-        """Run a full `?P=` user-table transaction and return the parsed reply."""
+        """Return the full visible user table from `?P=`."""
         transaction = await self._manager.submit(TransactionQueryUsers())
         parsed = transaction.parsed_response
         if not isinstance(parsed, UserReply):
@@ -192,7 +224,7 @@ class CorePanelClient:
         return parsed
 
     async def query_profiles(self) -> ProfileReply:
-        """Run a full `?U` profile-table transaction and return the parsed reply."""
+        """Return the full visible profile table from `?U`."""
         transaction = await self._manager.submit(TransactionQueryProfiles())
         parsed = transaction.parsed_response
         if not isinstance(parsed, ProfileReply):
@@ -200,7 +232,7 @@ class CorePanelClient:
         return parsed
 
     async def sensor_reset(self) -> SensorResetReply:
-        """Run `!E001` and return the parsed reply."""
+        """Send `!E001` and return the parsed reply."""
         transaction = await self._manager.submit(TransactionSensorReset())
         parsed = transaction.parsed_response
         if not isinstance(parsed, SensorResetReply):
@@ -208,7 +240,7 @@ class CorePanelClient:
         return parsed
 
     async def bypass_zone(self, zone: int | str) -> ZoneControlReply:
-        """Run `!X` for one zone and return the parsed reply."""
+        """Send `!X` for one zone and return the parsed reply."""
         transaction = await self._manager.submit(TransactionBypassZone(zone))
         parsed = transaction.parsed_response
         if not isinstance(parsed, ZoneControlReply):
@@ -216,7 +248,7 @@ class CorePanelClient:
         return parsed
 
     async def unbypass_zone(self, zone: int | str) -> ZoneControlReply:
-        """Run `!Y` for one zone and return the parsed reply."""
+        """Send `!Y` for one zone and return the parsed reply."""
         transaction = await self._manager.submit(TransactionUnbypassZone(zone))
         parsed = transaction.parsed_response
         if not isinstance(parsed, ZoneControlReply):

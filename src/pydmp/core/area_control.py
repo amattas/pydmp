@@ -1,4 +1,9 @@
-"""Stateless area arm and disarm transactions."""
+"""Stateless area arm and disarm transactions.
+
+These commands are simple on the wire but easy to misread in code because the
+panel packs all selected areas together with no separators. This module keeps
+that packing rule explicit and shared.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ class AreaControlReply:
 
 
 def normalize_area_number(area: int | str) -> str:
-    """Normalize an area number to the documented 2-digit XR format."""
+    """Normalize one area number to the packed 2-digit command format."""
     if isinstance(area, int):
         value = area
     else:
@@ -35,7 +40,11 @@ def normalize_area_number(area: int | str) -> str:
 
 
 def normalize_area_list(areas: int | str | Iterable[int | str]) -> str:
-    """Return a packed 2-digit area list for `!C` and `!O` commands."""
+    """Return a packed 2-digit area list for `!C` and `!O` commands.
+
+    Example:
+    `1, 2, 3` becomes `010203`
+    """
     if isinstance(areas, (int, str)):
         return normalize_area_number(areas)
 
@@ -43,6 +52,8 @@ def normalize_area_list(areas: int | str | Iterable[int | str]) -> str:
     seen: set[str] = set()
     for area in areas:
         normalized_area = normalize_area_number(area)
+        # Keep first-seen order but drop duplicates so callers can pass loose
+        # iterables without worrying about repeated values.
         if normalized_area in seen:
             continue
         seen.add(normalized_area)
@@ -72,17 +83,8 @@ class TransactionArmAreas(Transaction):
         self.force_arm = force_arm
         self.instant = instant
 
-        flags = (
-            _bool_to_flag(bypass_faulted),
-            _bool_to_flag(force_arm),
-            _bool_to_flag(instant),
-        )
-        super().__init__(
-            body=f"!C{area_numbers},{''.join(flags)}",
-            completion=ack_or_deny(),
-            label="arm_areas",
-            parser=parse_area_arm_reply,
-        )
+        flags = (_bool_to_flag(bypass_faulted), _bool_to_flag(force_arm), _bool_to_flag(instant))
+        super().__init__(body=f"!C{area_numbers},{''.join(flags)}", completion=ack_or_deny(), label="arm_areas", parser=parse_area_arm_reply)
 
 
 class TransactionDisarmAreas(Transaction):
@@ -93,12 +95,7 @@ class TransactionDisarmAreas(Transaction):
     def __init__(self, areas: int | str | Iterable[int | str]) -> None:
         area_numbers = normalize_area_list(areas)
         self.area_numbers = area_numbers
-        super().__init__(
-            body=f"!O{area_numbers},",
-            completion=ack_or_deny(),
-            label="disarm_areas",
-            parser=parse_area_disarm_reply,
-        )
+        super().__init__(body=f"!O{area_numbers},", completion=ack_or_deny(), label="disarm_areas", parser=parse_area_disarm_reply)
 
 
 def parse_area_arm_reply(reply: bytes) -> AreaControlReply:
@@ -112,7 +109,11 @@ def parse_area_disarm_reply(reply: bytes) -> AreaControlReply:
 
 
 def _parse_area_control_reply(reply: bytes, *, command: str) -> AreaControlReply:
-    """Parse one local panel reply for `!C` or `!O`."""
+    """Parse one local panel reply for `!C` or `!O`.
+
+    We keep reply details opaque here because the visible suffixes are small
+    and not fully standardized across all observed cases.
+    """
     positive = f"+{command}".encode("ascii")
     negative = f"-{command}".encode("ascii")
 
@@ -141,5 +142,5 @@ def _extract_detail(suffix: bytes) -> str | None:
 
 
 def _bool_to_flag(value: bool) -> str:
-    """Return the panel flag character for one boolean arm option."""
+    """Return the on-wire flag character for one boolean arm option."""
     return "Y" if value else "N"

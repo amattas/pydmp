@@ -1,4 +1,8 @@
-"""Stateless zone bypass and unbypass transactions."""
+"""Stateless zone bypass and unbypass transactions.
+
+These are single-target commands: one zone per request, no list packing, and
+no comma separators.
+"""
 
 from __future__ import annotations
 
@@ -38,12 +42,7 @@ class TransactionBypassZone(Transaction):
     def __init__(self, zone: int | str) -> None:
         zone_number = normalize_zone_number(zone)
         self.zone_number = zone_number
-        super().__init__(
-            body=f"!X{zone_number}",
-            completion=ack_or_deny(),
-            label="bypass_zone",
-            parser=parse_zone_bypass_reply,
-        )
+        super().__init__(body=f"!X{zone_number}", completion=ack_or_deny(), label="bypass_zone", parser=parse_zone_bypass_reply)
 
 
 class TransactionUnbypassZone(Transaction):
@@ -54,12 +53,7 @@ class TransactionUnbypassZone(Transaction):
     def __init__(self, zone: int | str) -> None:
         zone_number = normalize_zone_number(zone)
         self.zone_number = zone_number
-        super().__init__(
-            body=f"!Y{zone_number}",
-            completion=ack_or_deny(),
-            label="unbypass_zone",
-            parser=parse_zone_unbypass_reply,
-        )
+        super().__init__(body=f"!Y{zone_number}", completion=ack_or_deny(), label="unbypass_zone", parser=parse_zone_unbypass_reply)
 
 
 def parse_zone_bypass_reply(reply: bytes) -> ZoneControlReply:
@@ -73,22 +67,13 @@ def parse_zone_unbypass_reply(reply: bytes) -> ZoneControlReply:
 
 
 def _parse_zone_control_reply(reply: bytes, *, command: str) -> ZoneControlReply:
-    """Parse one local panel reply for `!X` or `!Y`."""
-    positive_match = _find_first_marker(
-        reply,
-        [
-            f"+{command}".encode("ascii"),
-            f"+!{command}".encode("ascii"),
-        ],
-    )
-    negative_match = _find_first_marker(
-        reply,
-        [
-            f"-{command}".encode("ascii"),
-            f"-!{command}".encode("ascii"),
-            b"-VV",
-        ],
-    )
+    """Parse one local panel reply for `!X` or `!Y`.
+
+    The parser accepts the short forms we use directly plus a small
+    compatibility allowance for prefixed `+!X` / `-!X` style replies.
+    """
+    positive_match = _find_first_marker(reply, [f"+{command}".encode("ascii"), f"+!{command}".encode("ascii")])
+    negative_match = _find_first_marker(reply, [f"-{command}".encode("ascii"), f"-!{command}".encode("ascii"), b"-VV"])
 
     if positive_match and (not negative_match or positive_match[0] < negative_match[0]):
         positive_index, positive_marker = positive_match

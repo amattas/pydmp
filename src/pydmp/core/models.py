@@ -1,4 +1,15 @@
-"""Small data models used by the stateless core."""
+"""Shared data objects used across the stateless core.
+
+These models are intentionally small and boring.
+They give the rest of the core a shared vocabulary for:
+
+- what a panel endpoint looks like
+- what a transaction looks like
+- what a session is allowed to remember between commands
+- what a reply policy means
+
+Keeping these objects simple makes the higher-level files easier to follow.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +27,12 @@ from .wrapped_v3 import (
 
 
 class SessionMode(str, Enum):
-    """Supported command-session modes."""
+    """Named session styles supported by the new core.
+
+    Each value maps to one session profile in `sessions.py`.
+    The names are explicit because the project now treats blank V2, keyed V2,
+    wrapped V30/V31, and secure `!!S` as distinct session families.
+    """
 
     BLANK_V2 = "blank_v2"
     KEYED_V2 = "keyed_v2"
@@ -26,7 +42,7 @@ class SessionMode(str, Enum):
 
 
 class ReplyExpectation(str, Enum):
-    """How much reply data a transaction needs to complete."""
+    """Describe how much reply data must arrive before a transaction is done."""
 
     PAYLOAD_REQUIRED = "payload_required"
     ACK_OR_DENY = "ack_or_deny"
@@ -36,7 +52,11 @@ class ReplyExpectation(str, Enum):
 
 @dataclass(slots=True)
 class CompletionPolicy:
-    """Reply and timeout rules for one transaction."""
+    """Reply and timeout rules for one logical transaction.
+
+    A transaction can use one of the stock helpers below, or it can override
+    the defaults when a protocol family needs different pacing.
+    """
 
     reply_expectation: ReplyExpectation
     first_reply_timeout: float = 1.0
@@ -50,7 +70,11 @@ TransactionRunner = Callable[[bytes | str, CompletionPolicy], Awaitable["Transac
 
 @dataclass(slots=True)
 class TransactionExchangeResult:
-    """One wire exchange inside a larger transaction."""
+    """One request/reply exchange inside a logical transaction.
+
+    Some logical transactions only need one exchange.
+    Others perform several seeded queries or continuations and record each one.
+    """
 
     wire_request: bytes
     response: bytes | None
@@ -59,7 +83,18 @@ class TransactionExchangeResult:
 
 @dataclass(slots=True)
 class Transaction:
-    """One logical command/query exchange."""
+    """One logical command or query.
+
+    This object collects everything a caller usually wants after a transaction:
+
+    - the logical body that was sent
+    - the completion policy that drove the exchange
+    - the raw replies that came back
+    - the parsed reply, if a parser was supplied
+
+    Transaction subclasses can override `execute_in_session()` when one logical
+    operation needs multiple wire exchanges.
+    """
 
     body: bytes | str
     completion: CompletionPolicy
@@ -76,7 +111,11 @@ class Transaction:
     session_mode: SessionMode | None = None
 
     def apply_parser(self) -> object | None:
-        """Parse the reply if this transaction carries a parser."""
+        """Parse `self.response` once and cache the result.
+
+        Parsing is kept separate from wire execution so that transaction logic
+        and parser logic can fail independently with clearer error messages.
+        """
         if self.parsed_response is not None:
             return self.parsed_response
 
@@ -93,7 +132,7 @@ class Transaction:
         *,
         session_mode: SessionMode,
     ) -> None:
-        """Record one wire exchange inside this transaction."""
+        """Store one completed wire exchange on the transaction object."""
         self.session_mode = session_mode
         self.wire_request = exchange_result.wire_request
         self.wire_response = exchange_result.wire_response
@@ -118,7 +157,7 @@ class Transaction:
 
         The default implementation is a single request/reply exchange.
         Transaction subclasses can override this when one logical transaction
-        needs multiple wire exchanges.
+        needs multiple wire exchanges, such as seeded pages or continuations.
         """
         del endpoint
         exchange_result = await exchange(self.body, self.completion)
@@ -128,7 +167,14 @@ class Transaction:
 
 @dataclass(slots=True)
 class PanelEndpoint:
-    """Addressing and connection policy for one panel."""
+    """Connection details and session defaults for one panel.
+
+    This is the single place where callers describe how to reach a panel and
+    which optional session credentials exist for it.
+
+    `PanelEndpoint` normalizes public inputs early so the rest of the core can
+    work with stable values instead of repeatedly re-validating strings.
+    """
 
     host: str
     account: str
@@ -144,22 +190,18 @@ class PanelEndpoint:
     rate_limit_seconds: float = 0.25
 
     def __post_init__(self) -> None:
-        """Apply light validation to the public endpoint inputs."""
+        """Normalize public inputs into the exact shapes used by the core.
+
+        This keeps later code simpler. For example, session profiles can trust
+        that account, timeouts, and optional auth materials were already checked
+        once here.
+        """
         self.host = _normalize_host(self.host)
         self.account = _normalize_account(self.account)
         self.port = _normalize_port(self.port)
-        self.connect_timeout = _normalize_positive_timeout(
-            self.connect_timeout,
-            label="connect_timeout",
-        )
-        self.idle_disconnect_seconds = _normalize_non_negative_timeout(
-            self.idle_disconnect_seconds,
-            label="idle_disconnect_seconds",
-        )
-        self.rate_limit_seconds = _normalize_non_negative_timeout(
-            self.rate_limit_seconds,
-            label="rate_limit_seconds",
-        )
+        self.connect_timeout = _normalize_positive_timeout(self.connect_timeout, label="connect_timeout")
+        self.idle_disconnect_seconds = _normalize_non_negative_timeout(self.idle_disconnect_seconds, label="idle_disconnect_seconds")
+        self.rate_limit_seconds = _normalize_non_negative_timeout(self.rate_limit_seconds, label="rate_limit_seconds")
 
         if self.remote_key is not None:
             self.remote_key = _normalize_remote_key(self.remote_key)
@@ -176,35 +218,40 @@ class PanelEndpoint:
 
     @property
     def normalized_account(self) -> str:
-        """Return the panel account left-padded to 5 characters."""
+        """Return the account in the visible 5-character form used on the wire."""
         return str(self.account).strip().rjust(5)
 
 
 @dataclass(slots=True)
 class SessionState:
-    """Mutable state for one active command session."""
+    """Mutable per-session scratch state.
+
+    Session profiles use `metadata` for the small amount of state that must
+    survive between commands, such as auth replies, sequence counters, or
+    chosen credentials.
+    """
 
     mode: SessionMode
     metadata: dict[str, object] = field(default_factory=dict)
 
 
 def payload_required() -> CompletionPolicy:
-    """Default policy for query transactions."""
+    """Return the standard policy for queries that must produce a payload."""
     return CompletionPolicy(reply_expectation=ReplyExpectation.PAYLOAD_REQUIRED)
 
 
 def ack_or_deny() -> CompletionPolicy:
-    """Default policy for command acknowledgements."""
+    """Return the standard policy for commands that should ack or deny."""
     return CompletionPolicy(reply_expectation=ReplyExpectation.ACK_OR_DENY)
 
 
 def reply_optional() -> CompletionPolicy:
-    """Default policy when a reply may or may not arrive."""
+    """Return the standard policy for traffic where a reply is optional."""
     return CompletionPolicy(reply_expectation=ReplyExpectation.REPLY_OPTIONAL)
 
 
 def no_reply_expected() -> CompletionPolicy:
-    """Default policy for fire-and-forget traffic."""
+    """Return the standard policy for fire-and-forget traffic."""
     return CompletionPolicy(reply_expectation=ReplyExpectation.NO_REPLY_EXPECTED)
 
 
@@ -217,7 +264,7 @@ def _normalize_host(host: str) -> str:
 
 
 def _normalize_account(account: str) -> str:
-    """Return a 1..5 digit account string."""
+    """Return an account string in the public 1..5 digit form."""
     normalized = str(account).strip()
     if not normalized.isdigit():
         raise ValueError(f"Account must be 1..5 digits: {account!r}")
@@ -235,7 +282,7 @@ def _normalize_port(port: int) -> int:
 
 
 def _normalize_remote_key(remote_key: str) -> str:
-    """Return the exact ASCII remote key accepted by panel programming."""
+    """Return the exact ASCII remote key shape used by the project notes."""
     normalized = str(remote_key)
     try:
         normalized.encode("ascii")
@@ -255,7 +302,7 @@ def _normalize_positive_timeout(value: float, *, label: str) -> float:
 
 
 def _normalize_non_negative_timeout(value: float, *, label: str) -> float:
-    """Return a timeout/delay that must not be negative."""
+    """Return a timeout or delay that must not be negative."""
     normalized = float(value)
     if normalized < 0:
         raise ValueError(f"{label} must be >= 0: {value!r}")

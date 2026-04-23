@@ -32,6 +32,13 @@ from .secure_s import (
 # The Python string literal "\\" is one backslash, matching the on-wire byte.
 SERIAL3_FIELD_DELIMITER = "\\"
 
+ZONE_EVENT_TYPE_CODES = frozenset({"BL", "FI", "BU", "SV", "PN", "EM", "A1", "A2", "CO", "VA", "HU"})
+ARMING_EVENT_TYPE_CODES = frozenset({"OP", "CL", "LA"})
+ACCESS_EVENT_TYPE_CODES = frozenset({"DA", "AA", "IA", "IT", "AP", "IC", "IL", "WP", "IN"})
+REALTIME_EVENT_TYPE_CODES = frozenset({"DO", "DC", "HO", "FO", "ON", "OF", "PL", "TP", "MO"})
+USER_CODE_EVENT_TYPE_CODES = frozenset({"AD", "CH", "DE", "IN"})
+SCHEDULE_NAMED_TYPE_CODES = frozenset({"PE", "TE", "PR", "SE", "S1", "S2", "S3", "S4"})
+
 
 class PushTransportMode(str, Enum):
     """Wire-level push transport modes seen on the listener lanes."""
@@ -42,15 +49,23 @@ class PushTransportMode(str, Enum):
 
 @dataclass(slots=True)
 class PushEvent:
-    """Structured view of one clear Serial 3 push body.
-
-    `fields` is the raw body split on the wire-level backslash (0x5C)
-    delimiter; it is not a tokenization of Python escape sequences.
-    """
+    """Raw push event plus optional code-specific parsed data."""
 
     account: str
     definition: str
+    fields: list[str]
+    raw: str
+    parsed: object | None = None
+    parser_name: str | None = None
+
+
+@dataclass(slots=True)
+class PushParsedTaggedEvent:
+    """Parsed data for one tag-oriented `Z*` push event."""
+
+    event_code: str | None
     type_code: str | None
+    event_qualifier: str | None
     area: str | None
     area_name: str | None
     zone: str | None
@@ -61,15 +76,81 @@ class PushEvent:
     target_user_name: str | None
     device: str | None
     device_name: str | None
+    path_number: str | None
+    path_transport: str | None
+    path_role: str | None
     system_code: str | None
     system_text: str | None
-    fields: list[str]
-    raw: str
+
+
+@dataclass(slots=True)
+class PushParsedZoneEvent:
+    """Parsed data for zone-style event families like `Zc`, `Zx`, and `Zr`."""
+
+    event_code: str | None
+    type_code: str | None
+    target_kind: str | None
+    zone: str | None
+    zone_name: str | None
+    device: str | None
+    device_name: str | None
+    area: str | None
+    area_name: str | None
+    actor_user: str | None
+    actor_user_name: str | None
+
+
+@dataclass(slots=True)
+class PushParsedAccessEvent:
+    """Parsed data for access / keypad events like `Zj`."""
+
+    event_code: str | None
+    type_code: str | None
+    device: str | None
+    device_name: str | None
+    actor_user: str | None
+    actor_user_name: str | None
+    entered_code: str | None
+
+
+@dataclass(slots=True)
+class PushParsedScheduleEvent:
+    """Parsed data for schedule events like `Zl`."""
+
+    event_code: str | None
+    type_code: str | None
+    schedule_name: str | None
+    open_time: str | None
+    open_day: str | None
+    close_time: str | None
+    close_day: str | None
+    actor_user: str | None
+    actor_user_name: str | None
+
+
+@dataclass(slots=True)
+class PushParsedUserCodeEvent:
+    """Parsed data for user-code events like `Zu`."""
+
+    event_code: str | None
+    type_code: str | None
+    subject_user: str | None
+    subject_user_name: str | None
+    actor_user: str | None
+    actor_user_name: str | None
+    protected_hex: str | None
+
+
+@dataclass(slots=True)
+class PushParsedCheckinEvent:
+    """Parsed data for a host-output `s070` check-in frame."""
+
+    interval_minutes: int | None
 
 
 @dataclass(slots=True)
 class PushSpecialFrame:
-    """Structured view of a non-`Z*` push frame we understand."""
+    """Structured listener notice for non-event conditions."""
 
     kind: str
     interval_minutes: int | None = None
@@ -116,6 +197,7 @@ class _PushConnectionState:
 
 
 Callback = Callable[[PushMessage], Awaitable[None] | None]
+PushEventParser = Callable[[str, bytes, str], object | None]
 
 
 def _compute_host_output_crc(payload: bytes) -> int:
@@ -198,10 +280,10 @@ def _parse_host_output_wrapper(normalized_frame: bytes) -> dict[str, str | bool 
 
 
 def _find_serial3_event_offset(normalized_frame: bytes) -> int | None:
-    for offset in range(len(normalized_frame) - 1):
-        if normalized_frame[offset] == ord("Z") and ord("a") <= normalized_frame[offset + 1] <= ord("z"):
-            return offset
-    return None
+    match = re.search(rb"Z[a-z]\\\d{3}", normalized_frame)
+    if match is None:
+        return None
+    return match.start()
 
 
 def _decode_ascii_field(value: bytes | None) -> str | None:
@@ -212,10 +294,17 @@ def _decode_ascii_field(value: bytes | None) -> str | None:
 
 
 def _extract_type_code(payload: bytes) -> str | None:
-    match = re.search(rb'"(?P<op>[A-Z0-9]{2})\\', payload)
+    match = re.match(rb"^[A-Za-z]{2}\\\d{3}(?:\\t|\t)\s*\"(?P<op>[A-Z0-9]{2})\\", payload)
     if not match:
         return None
     return _decode_ascii_field(match.group("op"))
+
+
+def _extract_event_code(payload: bytes) -> str | None:
+    match = re.match(rb"^[A-Za-z]{2}\\(?P<code>\d{3})(?:\\|$)", payload)
+    if not match:
+        return None
+    return _decode_ascii_field(match.group("code"))
 
 
 def _extract_system_code(payload: bytes, definition: str) -> str | None:
@@ -239,36 +328,97 @@ def _extract_tag(payload: bytes, tag: bytes, width: int) -> tuple[str | None, st
     return _decode_ascii_field(match.group("id")), _decode_ascii_field(match.group("name"))
 
 
-def parse_push_special(normalized_frame: bytes) -> PushSpecialFrame | None:
-    """Parse a known non-`Z*` push frame."""
-    text = normalized_frame.decode("ascii", errors="ignore")
+def _extract_segment_body(payload: bytes, tag: bytes) -> bytes | None:
+    match = re.search(rb"\\" + re.escape(tag) + rb"(?P<body>[^\\]{0,128})", payload)
+    if not match:
+        return None
+    return match.group("body")
 
-    if _parse_host_output_wrapper(normalized_frame)["wrapper_crc_hex"] is not None:
-        match = re.match(
-            r"^[0-9A-Fa-f]{4}.{2}(?P<account>[ 0-9]{5}) s070(?P<interval>\d{4})?\s*$",
-            text,
-        )
-        if match:
-            interval_text = match.group("interval")
-            interval_minutes = int(interval_text) if interval_text is not None else None
-            return PushSpecialFrame(
-                kind="checkin_s070",
-                interval_minutes=interval_minutes,
-                raw=text,
-            )
 
+def _extract_simple_segment_body(payload: bytes, tag: bytes) -> bytes | None:
+    match = re.search(rb"\\" + re.escape(tag) + rb"(?![a-z])(?P<body>[^\\]{0,128})", payload)
+    if not match:
+        return None
+    return match.group("body")
+
+
+def _decode_segment_body(value: bytes | None) -> str | None:
+    if not value:
+        return None
+    text = value.decode("ascii", errors="ignore").strip()
+    return text or None
+
+
+def _strip_optional_quote(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return value[1:] if value.startswith('"') else value
+
+
+def _normalize_hex(value: bytes | None) -> str | None:
+    text = _decode_segment_body(value)
+    if text is None or re.fullmatch(r"[0-9A-Fa-f]+", text) is None:
+        return None
+    return text.upper()
+
+
+def _extract_event_qualifier(payload: bytes) -> str | None:
+    return _strip_optional_quote(_decode_segment_body(_extract_simple_segment_body(payload, b"e")))
+
+
+def _parse_path_info(payload: bytes) -> tuple[str | None, str | None, str | None]:
+    raw = _decode_segment_body(_extract_simple_segment_body(payload, b"c"))
+    if raw is None:
+        return None, None, None
+    if '"' in raw:
+        number, path_flags = raw.split('"', 1)
+    else:
+        number, path_flags = raw[:2], raw[2:]
+    number = number.strip() or None
+    path_flags = path_flags.strip()
+    if number is None or re.fullmatch(r"\d{2}", number) is None:
+        return None, None, None
+    if len(path_flags) != 2:
+        return number, None, None
+    return number, path_flags[0], path_flags[1]
+
+
+def _extract_entered_code(payload: bytes) -> str | None:
+    raw = _strip_optional_quote(_decode_segment_body(_extract_segment_body(payload, b"eu")))
+    if raw is None or raw.isdigit() is False:
+        return None
+    return raw
+
+
+def _is_schedule_type_code(type_code: str | None) -> bool:
+    if type_code is None:
+        return False
+    return type_code in SCHEDULE_NAMED_TYPE_CODES or re.fullmatch(r"\d{2}", type_code) is not None
+
+
+def _classify_zone_target(zone: str | None, device: str | None) -> str | None:
+    if zone and device:
+        return "mixed"
+    if zone:
+        return "zone"
+    if device:
+        return "device"
     return None
 
 
-def parse_push_event(account: str | None, normalized_frame: bytes) -> PushEvent | None:
-    """Parse one normalized clear push frame into a structured event."""
-    offset = _find_serial3_event_offset(normalized_frame)
-    if offset is None:
-        return None
+def _parse_time_day_segment(value: bytes | None) -> tuple[str | None, str | None]:
+    text = _decode_segment_body(value)
+    if text is None:
+        return None, None
+    if '"' not in text:
+        return text, None
+    time_text, day_text = text.split('"', 1)
+    return time_text or None, day_text or None
 
-    payload = normalized_frame[offset:]
-    raw = payload.decode("ascii", errors="replace")
-    definition = raw[:2]
+
+def _parse_tagged_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedTaggedEvent:
+    definition = payload[:2].decode("ascii", errors="replace")
+    event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     area, area_name = _extract_tag(payload, b"a", 3)
     zone, zone_name = _extract_tag(payload, b"z", 3)
@@ -276,11 +426,18 @@ def parse_push_event(account: str | None, normalized_frame: bytes) -> PushEvent 
     target_user, target_user_name = _extract_tag(payload, b"um", 5)
     device, device_name = _extract_tag(payload, b"v", 3)
     system_code = _extract_system_code(payload, definition)
-
-    return PushEvent(
-        account=(account or "").strip(),
-        definition=definition,
+    event_qualifier = _extract_event_qualifier(payload)
+    path_number, path_transport, path_role = _parse_path_info(payload)
+    if definition == "Zq":
+        if event_code is None or type_code not in ARMING_EVENT_TYPE_CODES or area is None:
+            return None
+    elif definition == "Zs":
+        if system_code is None:
+            return None
+    return PushParsedTaggedEvent(
+        event_code=event_code,
         type_code=type_code,
+        event_qualifier=event_qualifier,
         area=area,
         area_name=area_name,
         zone=zone,
@@ -291,10 +448,178 @@ def parse_push_event(account: str | None, normalized_frame: bytes) -> PushEvent 
         target_user_name=target_user_name,
         device=device,
         device_name=device_name,
+        path_number=path_number,
+        path_transport=path_transport,
+        path_role=path_role,
         system_code=system_code,
         system_text=SYSTEM_MESSAGES.get(system_code) if system_code else None,
+    )
+
+
+def _parse_zone_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedZoneEvent:
+    definition = payload[:2].decode("ascii", errors="replace")
+    event_code = _extract_event_code(payload)
+    type_code = _extract_type_code(payload)
+    zone, zone_name = _extract_tag(payload, b"z", 3)
+    device, device_name = _extract_tag(payload, b"v", 3)
+    area, area_name = _extract_tag(payload, b"a", 3)
+    actor_user, actor_user_name = _extract_tag(payload, b"u", 5)
+    target_kind = _classify_zone_target(zone, device)
+    allowed_types = REALTIME_EVENT_TYPE_CODES if definition == "Zc" else ZONE_EVENT_TYPE_CODES
+    if event_code is None or type_code not in allowed_types or target_kind is None:
+        return None
+    return PushParsedZoneEvent(
+        event_code=event_code,
+        type_code=type_code,
+        target_kind=target_kind,
+        zone=zone,
+        zone_name=zone_name,
+        device=device,
+        device_name=device_name,
+        area=area,
+        area_name=area_name,
+        actor_user=actor_user,
+        actor_user_name=actor_user_name,
+    )
+
+
+def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedAccessEvent:
+    event_code = _extract_event_code(payload)
+    type_code = _extract_type_code(payload)
+    device, device_name = _extract_tag(payload, b"v", 3)
+    actor_user, actor_user_name = _extract_tag(payload, b"u", 5)
+    entered_code = _extract_entered_code(payload)
+    if event_code is None or type_code not in ACCESS_EVENT_TYPE_CODES or device is None:
+        return None
+    return PushParsedAccessEvent(
+        event_code=event_code,
+        type_code=type_code,
+        device=device,
+        device_name=device_name,
+        actor_user=actor_user,
+        actor_user_name=actor_user_name,
+        entered_code=entered_code,
+    )
+
+
+def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedScheduleEvent:
+    event_code = _extract_event_code(payload)
+    type_code = _extract_type_code(payload)
+    schedule_name = _strip_optional_quote(_decode_segment_body(_extract_simple_segment_body(payload, b"n")))
+    open_time, open_day = _parse_time_day_segment(_extract_segment_body(payload, b"io"))
+    close_time, close_day = _parse_time_day_segment(_extract_segment_body(payload, b"ic"))
+    actor_user, actor_user_name = _extract_tag(payload, b"u", 5)
+    if (
+        event_code is None
+        or _is_schedule_type_code(type_code) is False
+        or all(
+            value is None
+            for value in (schedule_name, open_time, close_time, actor_user)
+        )
+    ):
+        return None
+    return PushParsedScheduleEvent(
+        event_code=event_code,
+        type_code=type_code,
+        schedule_name=schedule_name,
+        open_time=open_time,
+        open_day=open_day,
+        close_time=close_time,
+        close_day=close_day,
+        actor_user=actor_user,
+        actor_user_name=actor_user_name,
+    )
+
+
+def _parse_user_code_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedUserCodeEvent:
+    event_code = _extract_event_code(payload)
+    type_code = _extract_type_code(payload)
+    subject_user, subject_user_name = _extract_tag(payload, b"um", 5)
+    actor_user, actor_user_name = _extract_tag(payload, b"u", 5)
+    protected_hex = _normalize_hex(_extract_segment_body(payload, b"P"))
+    if (
+        event_code is None
+        or type_code not in USER_CODE_EVENT_TYPE_CODES
+        or all(value is None for value in (subject_user, actor_user))
+    ):
+        return None
+    return PushParsedUserCodeEvent(
+        event_code=event_code,
+        type_code=type_code,
+        subject_user=subject_user,
+        subject_user_name=subject_user_name,
+        actor_user=actor_user,
+        actor_user_name=actor_user_name,
+        protected_hex=protected_hex,
+    )
+
+
+def _parse_checkin_s070_event(_account: str, _payload: bytes, raw: str) -> PushParsedCheckinEvent:
+    match = re.search(r"s070(?P<interval>\d{4})?$", raw.strip())
+    interval_text = match.group("interval") if match else None
+    return PushParsedCheckinEvent(
+        interval_minutes=int(interval_text) if interval_text is not None else None
+    )
+
+
+DEFAULT_PUSH_EVENT_PARSERS: dict[str, PushEventParser] = {
+    "Za": _parse_zone_push_event,
+    "Zc": _parse_zone_push_event,
+    "Zj": _parse_access_push_event,
+    "Zl": _parse_schedule_push_event,
+    "Zq": _parse_tagged_push_event,
+    "Zr": _parse_zone_push_event,
+    "Zs": _parse_tagged_push_event,
+    "Zt": _parse_zone_push_event,
+    "Zu": _parse_user_code_push_event,
+    "Zx": _parse_zone_push_event,
+    "Zy": _parse_zone_push_event,
+    "s070": _parse_checkin_s070_event,
+}
+
+
+def _extract_push_event_payload(normalized_frame: bytes) -> tuple[str, bytes, str] | None:
+    offset = _find_serial3_event_offset(normalized_frame)
+    if offset is not None:
+        payload = normalized_frame[offset:]
+        raw = payload.decode("ascii", errors="replace")
+        return raw[:2], payload, raw
+
+    text = normalized_frame.decode("ascii", errors="ignore")
+    match = re.search(r"s070\d{0,4}\s*$", text)
+    if match is None:
+        return None
+    raw = match.group(0).strip()
+    payload = raw.encode("ascii")
+    return "s070", payload, raw
+
+
+def parse_push_event(
+    account: str | None,
+    normalized_frame: bytes,
+    *,
+    event_parsers: dict[str, PushEventParser] | None = None,
+) -> PushEvent | None:
+    """Parse one normalized clear push frame into a raw event plus optional parsed data."""
+    extracted = _extract_push_event_payload(normalized_frame)
+    if extracted is None:
+        return None
+
+    definition, payload, raw = extracted
+    parser = (event_parsers or DEFAULT_PUSH_EVENT_PARSERS).get(definition)
+    parsed: object | None = None
+    parser_name: str | None = None
+    if parser is not None:
+        parsed = parser((account or "").strip(), payload, raw)
+        parser_name = getattr(parser, "__name__", parser.__class__.__name__)
+
+    return PushEvent(
+        account=(account or "").strip(),
+        definition=definition,
         fields=raw.split(SERIAL3_FIELD_DELIMITER),
         raw=raw,
+        parsed=parsed,
+        parser_name=parser_name,
     )
 
 
@@ -304,13 +629,13 @@ def _build_push_message(
     raw_frame: bytes,
     clear_frame: bytes,
     ack_frame: bytes | None = None,
+    event_parsers: dict[str, PushEventParser] | None = None,
 ) -> PushMessage:
     normalized_frame, had_stx, had_nuls, had_trailing_cr = _normalize_clear_frame(clear_frame)
     account_field = _extract_account_field(normalized_frame)
     account = account_field.strip() or None
     wrapper_info = _parse_host_output_wrapper(normalized_frame)
-    special = parse_push_special(normalized_frame)
-    event = parse_push_event(account, normalized_frame)
+    event = parse_push_event(account, normalized_frame, event_parsers=event_parsers)
 
     return PushMessage(
         transport_mode=transport_mode,
@@ -319,7 +644,6 @@ def _build_push_message(
         normalized_frame=normalized_frame,
         account=account,
         event=event,
-        special=special,
         ack_frame=ack_frame,
         had_stx=had_stx,
         had_nuls=had_nuls,
@@ -362,8 +686,46 @@ def _build_mode_mismatch_message(
     )
 
 
+def _build_secure_passphrase_mismatch_message(raw_frame: bytes) -> PushMessage:
+    return PushMessage(
+        transport_mode=PushTransportMode.SECURE_S,
+        raw_frame=raw_frame,
+        clear_frame=raw_frame,
+        normalized_frame=raw_frame,
+        account=None,
+        event=None,
+        special=PushSpecialFrame(
+            kind="secure_passphrase_mismatch",
+            raw=raw_frame.decode("ascii", errors="replace"),
+            detail="Secure !!S frame did not match any configured passphrase",
+        ),
+    )
+
+
+def _is_bare_s070_checkin(message: PushMessage) -> bool:
+    event = message.event
+    if event is None or event.definition != "s070":
+        return False
+    return bool(
+        re.match(
+            rb"^[0-9A-Fa-f]{4}..[ 0-9]{5} s070\d{0,4}\s*$",
+            message.normalized_frame,
+        )
+    )
+
+
 def _choose_even_server_seq() -> int:
     return int.from_bytes(os.urandom(2), "little") & 0xFFFE
+
+
+def _should_ack_push_message(message: PushMessage) -> bool:
+    if not message.account:
+        return False
+    if _is_bare_s070_checkin(message):
+        return True
+    if message.wrapper_crc_hex is not None and message.wrapper_crc_valid is False:
+        return False
+    return True
 
 
 class ListenerProfilePush:
@@ -384,6 +746,13 @@ class ListenerProfilePush:
             for passphrase in (secure_passphrases or [])
             if str(passphrase)
         ]
+        self._event_parsers: dict[str, PushEventParser] = dict(DEFAULT_PUSH_EVENT_PARSERS)
+
+    def register_event_parser(self, definition: str, parser: PushEventParser) -> None:
+        self._event_parsers[str(definition)] = parser
+
+    def remove_event_parser(self, definition: str) -> None:
+        self._event_parsers.pop(str(definition), None)
 
     def create_connection_state(self) -> _PushConnectionState:
         return _PushConnectionState()
@@ -442,8 +811,9 @@ class ListenerProfilePush:
                 transport_mode=PushTransportMode.CLEAR,
                 raw_frame=raw_frame,
                 clear_frame=raw_frame,
+                event_parsers=self._event_parsers,
             )
-            if message.account:
+            if _should_ack_push_message(message):
                 ack_frame = _build_clear_ack(message.account)
                 message.ack_frame = ack_frame
                 action.outbound_frames.append(ack_frame)
@@ -464,7 +834,12 @@ class ListenerProfilePush:
             candidate = self._select_secure_passphrase(state.buffer)
             if candidate is None:
                 if len(state.buffer) >= len(SECURE_S_PREFIX) + 16:
-                    raise ListenerProtocolError("Secure !!S frame did not match any configured passphrase")
+                    raw_frame = state.buffer
+                    state.buffer = b""
+                    return InboundAction(
+                        messages=[_build_secure_passphrase_mismatch_message(raw_frame)],
+                        close_connection=True,
+                    )
                 return None
             passphrase, frame_length = candidate
         else:
@@ -501,18 +876,20 @@ class ListenerProfilePush:
             transport_mode=PushTransportMode.SECURE_S,
             raw_frame=frame_bytes,
             clear_frame=frame.payload,
+            event_parsers=self._event_parsers,
         )
         if not message.account:
             raise ListenerProtocolError("Secure push payload did not expose a valid account field")
 
-        ack_frame = build_secure_s_push_ack_frame(
-            passphrase,
-            state.secure_reply_state,
-            account=message.account,
-            incoming_push=frame,
-        )
-        message.ack_frame = ack_frame
-        action.outbound_frames.append(ack_frame)
+        if _should_ack_push_message(message):
+            ack_frame = build_secure_s_push_ack_frame(
+                passphrase,
+                state.secure_reply_state,
+                account=message.account,
+                incoming_push=frame,
+            )
+            message.ack_frame = ack_frame
+            action.outbound_frames.append(ack_frame)
         action.messages.append(message)
         return action
 
@@ -554,6 +931,7 @@ class DMPPushListener:
         self._profile = profile or ListenerProfilePush()
         self._server: asyncio.base_events.Server | None = None
         self._callbacks: set[Callback] = set()
+        self._client_writers: set[asyncio.StreamWriter] = set()
 
     def register_callback(self, callback: Callback) -> None:
         self._callbacks.add(callback)
@@ -573,10 +951,18 @@ class DMPPushListener:
     async def stop(self) -> None:
         server = self._server
         self._server = None
-        if server is None:
-            return
-        server.close()
-        await server.wait_closed()
+        if server is not None:
+            server.close()
+            await server.wait_closed()
+
+        writers = list(self._client_writers)
+        for writer in writers:
+            writer.close()
+        if writers:
+            await asyncio.gather(
+                *(writer.wait_closed() for writer in writers),
+                return_exceptions=True,
+            )
 
     async def _handle_client(
         self,
@@ -584,6 +970,7 @@ class DMPPushListener:
         writer: asyncio.StreamWriter,
     ) -> None:
         state = self._profile.create_connection_state()
+        self._client_writers.add(writer)
         try:
             while not reader.at_eof():
                 chunk = await reader.read(4096)
@@ -599,11 +986,24 @@ class DMPPushListener:
                 if action.close_connection:
                     break
         finally:
+            self._client_writers.discard(writer)
             writer.close()
             await writer.wait_closed()
 
     async def _dispatch(self, message: PushMessage) -> None:
+        loop = asyncio.get_running_loop()
         for callback in list(self._callbacks):
-            result = callback(message)
-            if asyncio.iscoroutine(result):
-                await result  # type: ignore[func-returns-value]
+            try:
+                result = callback(message)
+                if asyncio.iscoroutine(result):
+                    await result  # type: ignore[func-returns-value]
+            except Exception as exc:
+                loop.call_exception_handler(
+                    {
+                        "message": "Unhandled DMP push listener callback exception",
+                        "exception": exc,
+                        "callback": callback,
+                        "push_message": message,
+                        "listener": self,
+                    }
+                )

@@ -210,19 +210,9 @@ def print_push_message(message: PushMessage) -> None:
 
     event = message.event
     print(f"  definition:    {event.definition}")
-    print(f"  type_code:     {event.type_code}")
-    print(f"  area:          {event.area}")
-    print(f"  area_name:     {event.area_name}")
-    print(f"  zone:          {event.zone}")
-    print(f"  zone_name:     {event.zone_name}")
-    print(f"  user:          {event.user}")
-    print(f"  user_name:     {event.user_name}")
-    print(f"  target_user:   {event.target_user}")
-    print(f"  target_name:   {event.target_user_name}")
-    print(f"  device:        {event.device}")
-    print(f"  device_name:   {event.device_name}")
-    print(f"  system_code:   {event.system_code}")
-    print(f"  system_text:   {event.system_text}")
+    print(f"  fields:        {event.fields}")
+    print(f"  parser:        {event.parser_name}")
+    print(f"  parsed:        {event.parsed!r}")
     print(f"  raw event:     {event.raw}")
 
 

@@ -31,7 +31,7 @@ def normalize_zone_number(zone: int | str) -> str:
 
 
 class TransactionBypassZone(Transaction):
-    """Bypass one zone with `!X`."""
+    """Bypass one zone with exact local form `!XZZZ`."""
 
     __slots__ = ("zone_number",)
 
@@ -47,7 +47,7 @@ class TransactionBypassZone(Transaction):
 
 
 class TransactionUnbypassZone(Transaction):
-    """Remove bypass on one zone with `!Y`."""
+    """Remove bypass on one zone with exact local form `!YZZZ`."""
 
     __slots__ = ("zone_number",)
 
@@ -74,21 +74,45 @@ def parse_zone_unbypass_reply(reply: bytes) -> ZoneControlReply:
 
 def _parse_zone_control_reply(reply: bytes, *, command: str) -> ZoneControlReply:
     """Parse one local panel reply for `!X` or `!Y`."""
-    positive = f"+{command}".encode("ascii")
-    negative = f"-{command}".encode("ascii")
+    positive_match = _find_first_marker(
+        reply,
+        [
+            f"+{command}".encode("ascii"),
+            f"+!{command}".encode("ascii"),
+        ],
+    )
+    negative_match = _find_first_marker(
+        reply,
+        [
+            f"-{command}".encode("ascii"),
+            f"-!{command}".encode("ascii"),
+            b"-VV",
+        ],
+    )
 
-    positive_index = reply.find(positive)
-    negative_index = reply.find(negative)
-
-    if positive_index != -1 and (negative_index == -1 or positive_index < negative_index):
-        detail = _extract_detail(reply[positive_index + len(positive):])
+    if positive_match and (not negative_match or positive_match[0] < negative_match[0]):
+        positive_index, positive_marker = positive_match
+        detail = _extract_detail(reply[positive_index + len(positive_marker):])
         return ZoneControlReply(command=command, acknowledged=True, detail=detail)
 
-    if negative_index != -1:
-        detail = _extract_detail(reply[negative_index + len(negative):])
+    if negative_match:
+        negative_index, negative_marker = negative_match
+        if negative_marker == b"-VV":
+            detail = "VV"
+        else:
+            detail = _extract_detail(reply[negative_index + len(negative_marker):])
         return ZoneControlReply(command=command, acknowledged=False, detail=detail)
 
     raise SessionProtocolError(f"Reply did not contain a {command} command marker")
+
+
+def _find_first_marker(reply: bytes, markers: list[bytes]) -> tuple[int, bytes] | None:
+    """Return the earliest present reply marker from the provided candidates."""
+    matches = [(reply.find(marker), marker) for marker in markers]
+    present = [(index, marker) for index, marker in matches if index != -1]
+    if not present:
+        return None
+    return min(present, key=lambda item: item[0])
 
 
 def _extract_detail(suffix: bytes) -> str | None:

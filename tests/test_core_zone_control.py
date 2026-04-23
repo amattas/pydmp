@@ -83,13 +83,21 @@ def test_transaction_zone_control_shapes():
 def test_parse_zone_control_replies():
     bypass_ok = parse_zone_bypass_reply(b"\x02@ 12345+X\r\x00")
     bypass_deny = parse_zone_bypass_reply(b"\x02@ 12345-XU\r\x00")
+    bypass_guard = parse_zone_bypass_reply(b"\x02@ 12345-XP\r\x00")
+    bypass_privilege = parse_zone_bypass_reply(b"\x02@ 12345-VV\r\x00")
     unbypass_ok = parse_zone_unbypass_reply(b"\x02@ 12345+Y\r\x00")
-    unbypass_deny = parse_zone_unbypass_reply(b"\x02@ 12345-YV\r\x00")
+    unbypass_deny = parse_zone_unbypass_reply(b"\x02@ 12345-YU\r\x00")
+    unbypass_privilege = parse_zone_unbypass_reply(b"\x02@ 12345-VV\r\x00")
+    bypass_prefixed = parse_zone_bypass_reply(b"\x02@ 12345+!X\r\x00")
 
     assert bypass_ok == ZoneControlReply(command="X", acknowledged=True, detail=None)
     assert bypass_deny == ZoneControlReply(command="X", acknowledged=False, detail="U")
+    assert bypass_guard == ZoneControlReply(command="X", acknowledged=False, detail="P")
+    assert bypass_privilege == ZoneControlReply(command="X", acknowledged=False, detail="VV")
     assert unbypass_ok == ZoneControlReply(command="Y", acknowledged=True, detail=None)
-    assert unbypass_deny == ZoneControlReply(command="Y", acknowledged=False, detail="V")
+    assert unbypass_deny == ZoneControlReply(command="Y", acknowledged=False, detail="U")
+    assert unbypass_privilege == ZoneControlReply(command="Y", acknowledged=False, detail="VV")
+    assert bypass_prefixed == ZoneControlReply(command="X", acknowledged=True, detail=None)
 
 
 @pytest.mark.asyncio

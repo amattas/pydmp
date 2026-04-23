@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from .area_status import normalize_area_number
 from .errors import SessionProtocolError
 from .models import Transaction, ack_or_deny
 
@@ -19,12 +18,35 @@ class AreaControlReply:
     detail: str | None
 
 
+def normalize_area_number(area: int | str) -> str:
+    """Normalize an area number to the documented 2-digit XR format."""
+    if isinstance(area, int):
+        value = area
+    else:
+        text = str(area).strip()
+        if not text.isdigit():
+            raise ValueError(f"Area must be numeric, got: {area!r}")
+        value = int(text)
+
+    if not 1 <= value <= 32:
+        raise ValueError(f"Area must be between 1 and 32, got: {value}")
+
+    return f"{value:02d}"
+
+
 def normalize_area_list(areas: int | str | Iterable[int | str]) -> str:
-    """Return a concatenated 2-digit area list for `!C` and `!O` commands."""
+    """Return a packed 2-digit area list for `!C` and `!O` commands."""
     if isinstance(areas, (int, str)):
         return normalize_area_number(areas)
 
-    normalized = [normalize_area_number(area) for area in areas]
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for area in areas:
+        normalized_area = normalize_area_number(area)
+        if normalized_area in seen:
+            continue
+        seen.add(normalized_area)
+        normalized.append(normalized_area)
     if not normalized:
         raise ValueError("Area list must not be empty")
 
@@ -32,7 +54,7 @@ def normalize_area_list(areas: int | str | Iterable[int | str]) -> str:
 
 
 class TransactionArmAreas(Transaction):
-    """Arm one or more areas with `!C`."""
+    """Arm one or more areas with `!C<areas>,<bypass><force><instant>`."""
 
     __slots__ = ("area_numbers", "bypass_faulted", "force_arm", "instant")
 
@@ -40,7 +62,7 @@ class TransactionArmAreas(Transaction):
         self,
         areas: int | str | Iterable[int | str],
         *,
-        bypass_faulted: bool = True,
+        bypass_faulted: bool = False,
         force_arm: bool = False,
         instant: bool = False,
     ) -> None:
@@ -64,7 +86,7 @@ class TransactionArmAreas(Transaction):
 
 
 class TransactionDisarmAreas(Transaction):
-    """Disarm one or more areas with `!O`."""
+    """Disarm one or more areas with packed `!O<areas>,`."""
 
     __slots__ = ("area_numbers",)
 

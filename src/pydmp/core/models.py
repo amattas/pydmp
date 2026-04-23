@@ -235,14 +235,14 @@ def _normalize_port(port: int) -> int:
 
 
 def _normalize_remote_key(remote_key: str) -> str:
-    """Return a 16-byte ASCII remote key."""
+    """Return the exact ASCII remote key accepted by panel programming."""
     normalized = str(remote_key)
     try:
         normalized.encode("ascii")
     except UnicodeEncodeError as exc:
         raise ValueError("Remote key must be ASCII") from exc
-    if len(normalized) != 16:
-        raise ValueError(f"Remote key must be exactly 16 ASCII characters: {remote_key!r}")
+    if not 8 <= len(normalized) <= 16:
+        raise ValueError(f"Remote key must be 8..16 ASCII characters: {remote_key!r}")
     return normalized
 
 

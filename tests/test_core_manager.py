@@ -163,6 +163,97 @@ async def test_blank_v2_handshake_rejects_negative_v_reply():
 
 
 @pytest.mark.asyncio
+async def test_blank_v2_handshake_soft_passes_non_fatal_denial():
+    """Bench pcaps show `-VB` precedes real command traffic on the same session."""
+    factory, transports = make_transport_factory(
+        scripted_replies=[
+            b"\x02@ 12345-VB\r",
+            b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r",
+            b"\x02@ 12345+V\r",
+        ]
+    )
+    endpoint = PanelEndpoint(host="panel", account="12345")
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        transaction = await manager.execute("?WA01", label="area_status")
+        assert transaction.response == b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r"
+        assert transports[0].requests[0] == b"@12345!V2                \r"
+        assert transports[0].requests[1] == b"@12345?WA01\r"
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_blank_v2_handshake_rejects_unknown_denial():
+    """Only `-VB` is bench-confirmed non-fatal; every other `-V*` must raise."""
+    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VA\r"])
+    endpoint = PanelEndpoint(host="panel", account="12345")
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"Blank V2 authentication denied by panel \(-VA\)"):
+            await manager.execute("?WA01")
+        assert transports[0].requests == [b"@12345!V2                \r"]
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_blank_v2_handshake_accepts_bare_plus_v_banner():
+    """Older pydmp-style panels reply to `!V2` with a plain `+V`, no version digit."""
+    factory, transports = make_transport_factory(
+        scripted_replies=[
+            b"\x02@ 12345+V\r",
+            b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r",
+            b"\x02@ 12345+V\r",
+        ]
+    )
+    endpoint = PanelEndpoint(host="panel", account="12345")
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        transaction = await manager.execute("?WA01", label="area_status")
+        assert transaction.response == b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r"
+        assert transports[0].requests[0] == b"@12345!V2                \r"
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_blank_v2_handshake_treats_fatal_after_soft_as_fatal():
+    """A buffered reply with `-VB` followed by `-VC` must raise on the fatal code."""
+    factory, transports = make_transport_factory(
+        scripted_replies=[b"\x02@ 12345-VB\r\x02@ 12345-VC\r"]
+    )
+    endpoint = PanelEndpoint(host="panel", account="12345")
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"Blank V2 authentication denied by panel \(-VC\)"):
+            await manager.execute("?WA01")
+        assert transports[0].requests == [b"@12345!V2                \r"]
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
 async def test_manager_drains_current_queue_on_session_error_but_can_recover():
     factory, transports = make_transport_factory(
         scripted_replies=[
@@ -251,7 +342,7 @@ def test_panel_endpoint_applies_light_validation():
         host=" 192.168.111.2 ",
         account=" 1 ",
         port=8011,
-        remote_key="0123456789ABCDEF",
+        remote_key="01234567",
         v31_compare_material="ABC",
         panel_serial="00172cd2",
         user_code="1234",
@@ -262,7 +353,7 @@ def test_panel_endpoint_applies_light_validation():
     assert endpoint.host == "192.168.111.2"
     assert endpoint.account == "1"
     assert endpoint.normalized_account == "    1"
-    assert endpoint.remote_key == "0123456789ABCDEF"
+    assert endpoint.remote_key == "01234567"
     assert endpoint.v31_compare_material == "ABC       "
     assert endpoint.panel_serial == "00172CD2"
     assert endpoint.user_code == "1234"
@@ -280,7 +371,8 @@ def test_panel_endpoint_applies_light_validation():
         ({"host": "panel", "account": "12345", "connect_timeout": 0}, "connect_timeout must be greater than 0"),
         ({"host": "panel", "account": "12345", "idle_disconnect_seconds": -1}, "idle_disconnect_seconds must be >= 0"),
         ({"host": "panel", "account": "12345", "rate_limit_seconds": -1}, "rate_limit_seconds must be >= 0"),
-        ({"host": "panel", "account": "12345", "remote_key": "short"}, "Remote key must be exactly 16 ASCII characters"),
+        ({"host": "panel", "account": "12345", "remote_key": "short"}, "Remote key must be 8..16 ASCII characters"),
+        ({"host": "panel", "account": "12345", "remote_key": "0123456789ABCDEFG"}, "Remote key must be 8..16 ASCII characters"),
         ({"host": "panel", "account": "12345", "panel_serial": "xyz"}, "Panel serial must be exactly 8 uppercase hex chars"),
         ({"host": "panel", "account": "12345", "user_code": "12A4"}, "V30 code must be numeric"),
         ({"host": "panel", "account": "12345", "passphrase": "12345678901234567"}, "Secure passphrase exceeds 16 bytes"),
@@ -336,7 +428,7 @@ async def test_keyed_v2_manager_executes_wa_transaction():
         transport_factory=factory,
     )
 
-    transaction = await manager.submit(TransactionQueryAreas(1))
+    transaction = await manager.submit(TransactionQueryAreas())
 
     assert transaction.session_mode is SessionMode.KEYED_V2
     assert transaction.response == b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r"
@@ -351,7 +443,8 @@ async def test_keyed_v2_manager_executes_wa_transaction():
 
 @pytest.mark.asyncio
 async def test_keyed_v2_rejects_negative_v_reply():
-    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VB\r"])
+    """Bench probe pcap shows a wrong 16-char key yields `-VC` and no session."""
+    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VC\r"])
     endpoint = PanelEndpoint(
         host="panel",
         account="12345",
@@ -365,8 +458,58 @@ async def test_keyed_v2_rejects_negative_v_reply():
     )
 
     try:
-        with pytest.raises(SessionHandshakeError, match="Keyed V2 authentication failed"):
-            await manager.submit(TransactionQueryAreas(1))
+        with pytest.raises(SessionHandshakeError, match=r"Keyed V2 authentication denied by panel \(-VC\)"):
+            await manager.submit(TransactionQueryAreas())
+        assert transports[0].requests == [b"@12345!V20123456789ABCDEF\r"]
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_keyed_v2_handshake_soft_passes_non_fatal_denial():
+    """`-VB` is session-state-driven and lets real command traffic continue."""
+    factory, transports = make_transport_factory(
+        scripted_replies=[
+            b"\x02@ 12345-VB\r",
+            b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r",
+            b"\x02@ 12345+V\r",
+        ]
+    )
+    endpoint = PanelEndpoint(
+        host="panel",
+        account="12345",
+        remote_key="0123456789ABCDEF",
+        idle_disconnect_seconds=0.01,
+    )
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileKeyedV2(remote_key="0123456789ABCDEF"),
+        transport_factory=factory,
+    )
+
+    try:
+        transaction = await manager.execute("?WA01", label="area_status")
+        assert transaction.response == b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\r"
+        assert transports[0].requests[0] == b"@12345!V20123456789ABCDEF\r"
+        assert transports[0].requests[1] == b"@12345?WA01\r"
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_keyed_v2_handshake_rejects_unknown_denial():
+    """Keyed V2 shares the V2 auth gate; only `-VB` is soft, all others fatal."""
+    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VA\r"])
+    endpoint = PanelEndpoint(host="panel", account="12345")
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileKeyedV2(remote_key="0123456789ABCDEF"),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"Keyed V2 authentication denied by panel \(-VA\)"):
+            await manager.execute("?WA01")
         assert transports[0].requests == [b"@12345!V20123456789ABCDEF\r"]
     finally:
         await manager.close()
@@ -392,7 +535,7 @@ async def test_v31_manager_executes_wrapped_wa_transaction():
         transport_factory=factory,
     )
 
-    transaction = await manager.submit(TransactionQueryAreas(1))
+    transaction = await manager.submit(TransactionQueryAreas())
 
     assert transaction.session_mode is SessionMode.V31
     assert transaction.response == b"@ 12345*WA01NNNNPERIMETER\x1e--\r"
@@ -404,6 +547,32 @@ async def test_v31_manager_executes_wrapped_wa_transaction():
 
     await manager.close()
     assert transports[0].requests[-1] == encode_account_v3_frame("12345", "!V0", " ")
+
+
+@pytest.mark.asyncio
+async def test_v31_rejects_plain_negative_v_reply():
+    """Bench allAuthTest1.pcap shows wrong V31 material yields plaintext `-VC`."""
+    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VC\r"])
+    endpoint = PanelEndpoint(
+        host="panel",
+        account="12345",
+        v31_compare_material="",
+        idle_disconnect_seconds=0.01,
+    )
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileV31(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"V31 authentication denied by panel \(-VC\)"):
+            await manager.submit(TransactionQueryAreas())
+        assert transports[0].requests == [
+            b"@12345" + build_v31_auth_body("").encode("ascii") + b"\r"
+        ]
+    finally:
+        await manager.close()
 
 
 @pytest.mark.asyncio
@@ -428,7 +597,7 @@ async def test_v30_manager_executes_wrapped_wa_transaction():
         transport_factory=factory,
     )
 
-    transaction = await manager.submit(TransactionQueryAreas(1))
+    transaction = await manager.submit(TransactionQueryAreas())
 
     assert transaction.session_mode is SessionMode.V30
     assert transaction.response == b"@ 12345*WA01NNNNPERIMETER\x1e--\r"
@@ -442,3 +611,31 @@ async def test_v30_manager_executes_wrapped_wa_transaction():
 
     await manager.close()
     assert transports[0].requests[-1] == encode_account_v3_frame("12345", "!V0", " ")
+
+
+@pytest.mark.asyncio
+async def test_v30_rejects_plain_negative_v_reply():
+    """Bench v30Testing.pcap shows a bad V30 token yields plaintext `-VV`."""
+    factory, transports = make_transport_factory(scripted_replies=[b"\x02@ 12345-VV\r"])
+    endpoint = PanelEndpoint(
+        host="panel",
+        account="12345",
+        panel_serial="00172CD2",
+        user_code="1234",
+        v30_tail4="0000",
+        idle_disconnect_seconds=0.01,
+    )
+    manager = CommandSessionManager(
+        endpoint=endpoint,
+        session_profile=SessionProfileV30(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"V30 authentication denied by panel \(-VV\)"):
+            await manager.submit(TransactionQueryAreas())
+        assert transports[0].requests == [
+            b"@12345" + build_v30_auth_body("12345", "00172CD2", "1234", "0000").encode("ascii") + b"\r"
+        ]
+    finally:
+        await manager.close()

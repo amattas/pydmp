@@ -4,13 +4,17 @@ from pydmp.core import (
     CommandSessionManager,
     CorePanelClient,
     PanelEndpoint,
+    SessionProtocolError,
     SessionProfileBlankV2,
     TransactionQueryUsers,
-    TransactionWriteUser,
     UserFlags,
     UserReply,
-    UserWriteReply,
     parse_user_page,
+)
+from pydmp.core.users import (
+    EXPERIMENTAL_WRITE_USER_MESSAGE,
+    TransactionWriteUser,
+    UserWriteReply,
     parse_user_write_reply,
 )
 
@@ -58,6 +62,7 @@ def test_transaction_query_users_shape():
 def test_transaction_write_user_shape():
     transaction = TransactionWriteUser(
         4444,
+        allow_experimental_write_user=True,
         code="4444",
         name="USER NAME 4444",
         profiles=[1],
@@ -80,6 +85,7 @@ def test_transaction_write_user_shape():
 def test_transaction_write_user_delete_shape():
     transaction = TransactionWriteUser(
         3,
+        allow_experimental_write_user=True,
         name="TEST USER",
         profiles=[99, 8, 9, 10],
         delete=True,
@@ -95,10 +101,20 @@ def test_transaction_write_user_delete_shape():
     assert transaction.plain_record == "0003FFFFFFFFFFFFFFFFFF099008009010000000----YNN000000TEST USER"
 
 
+def test_transaction_write_user_requires_experimental_opt_in():
+    with pytest.raises(RuntimeError, match=EXPERIMENTAL_WRITE_USER_MESSAGE):
+        TransactionWriteUser(
+            3,
+            name="TEST USER",
+            profiles=[1],
+        )
+
+
 def test_transaction_write_user_rejects_user_0000():
     with pytest.raises(ValueError):
         TransactionWriteUser(
             0,
+            allow_experimental_write_user=True,
             code="1234",
             name="BAD ZERO USER",
             profiles=[1],
@@ -139,6 +155,41 @@ def test_parse_user_page():
     assert user3.name == "USER NAME 0003"
 
 
+def test_parse_user_page_empty_terminal():
+    page = parse_user_page(b"\x02@ 12345*P=----\r\x00", account_number=12345)
+
+    assert page.users == []
+    assert page.complete is True
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        b"\x02@ 12345*P=\r\x00",
+        (
+            b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
+            b"\x1e"
+        ),
+        (
+            b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
+            b"\x1e\x1e----\r\x00"
+        ),
+        (
+            b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
+            b"\x1e----\x1e00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003\r\x00"
+        ),
+        (
+            b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
+            b"\x1e00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003"
+            b"\x1e99993D2D168BC5E2F1F8FC226063159207000000----YNN000000DEFAULT USER\x1e----\r\x00"
+        ),
+    ],
+)
+def test_parse_user_page_rejects_malformed_reply(reply):
+    with pytest.raises(SessionProtocolError):
+        parse_user_page(reply, account_number=12345)
+
+
 def test_parse_user_write_reply():
     assert parse_user_write_reply(b"\x02@ 12345+P\r\x00") == UserWriteReply(
         acknowledged=True,
@@ -164,6 +215,9 @@ async def test_core_panel_client_query_users():
                 b"\x02@ 12345*P=000912A3371B0D06CFCD00122192224240555555----YNN555555USER NAME 0009"
                 b"\x1e----\r\x00"
             ),
+            (
+                b"\x02@ 12345*P=----\r\x00"
+            ),
             b"\x02@ 12345+V\r",
         ]
     )
@@ -182,22 +236,27 @@ async def test_core_panel_client_query_users():
         assert transports[0].requests[0] == b"@12345!V2                \r"
         assert transports[0].requests[1] == b"@12345?P=0000\r"
         assert transports[0].requests[2] == b"@12345?P=0004\r"
+        assert transports[0].requests[3] == b"@12345?P=0010\r"
     finally:
         await client.close()
 
 
 @pytest.mark.asyncio
-async def test_manager_query_users_paginates_until_one_user_page():
+async def test_manager_query_users_paginates_until_empty_terminal_page():
     factory, _transports = make_transport_factory(
         scripted_replies=[
             b"\x02@ 12345+V02012345\r",
             (
                 b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
-                b"\x1e00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003\r\x00"
+                b"\x1e00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003"
+                b"\x1e----\r\x00"
             ),
             (
                 b"\x02@ 12345*P=000912A3371B0D06CFCD00122192224240555555----YNN555555USER NAME 0009"
                 b"\x1e----\r\x00"
+            ),
+            (
+                b"\x02@ 12345*P=----\r\x00"
             ),
             b"\x02@ 12345+V\r",
         ]
@@ -211,7 +270,11 @@ async def test_manager_query_users_paginates_until_one_user_page():
     try:
         transaction = await manager.submit(TransactionQueryUsers())
         assert [user.number for user in transaction.parsed_response.users] == ["0002", "0003", "0009"]
-        assert transaction.wire_requests == [b"@12345?P=0000\r", b"@12345?P=0004\r"]
+        assert transaction.wire_requests == [
+            b"@12345?P=0000\r",
+            b"@12345?P=0004\r",
+            b"@12345?P=0010\r",
+        ]
     finally:
         await manager.close()
 
@@ -244,6 +307,36 @@ async def test_manager_query_users_stops_at_9999():
 
 
 @pytest.mark.asyncio
+async def test_manager_query_users_rejects_non_advancing_selector_walk():
+    factory, _transports = make_transport_factory(
+        scripted_replies=[
+            b"\x02@ 12345+V02012345\r",
+            (
+                b"\x02@ 12345*P=0002DE6FD8ECF6FB7DBE5F051087043149555555----YNN555555USER NAME 0002"
+                b"\x1e00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003"
+                b"\x1e----\r\x00"
+            ),
+            (
+                b"\x02@ 12345*P=00038CFB188CC663DC53CC028115185092555555----YNN555555USER NAME 0003"
+                b"\x1e----\r\x00"
+            ),
+            b"\x02@ 12345+V\r",
+        ]
+    )
+    manager = CommandSessionManager(
+        endpoint=PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionProtocolError, match="did not advance"):
+            await manager.submit(TransactionQueryUsers())
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
 async def test_manager_write_user_builds_known_good_record_and_parses_reply():
     factory, transports = make_transport_factory(
         scripted_replies=[
@@ -262,6 +355,7 @@ async def test_manager_write_user_builds_known_good_record_and_parses_reply():
         transaction = await manager.submit(
             TransactionWriteUser(
                 3,
+                allow_experimental_write_user=True,
                 code="4321",
                 name="TEST USER",
                 profiles=[99, 8, 9, 10],
@@ -304,6 +398,7 @@ async def test_manager_write_user_delete_builds_known_good_record_and_parses_rep
         transaction = await manager.submit(
             TransactionWriteUser(
                 3,
+                allow_experimental_write_user=True,
                 name="TEST USER",
                 profiles=[99, 8, 9, 10],
                 delete=True,

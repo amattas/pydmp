@@ -47,23 +47,11 @@ def make_transport_factory(scripted_replies=None):
 
 
 def test_build_query_wa_transactions():
-    first = TransactionQueryAreas(1)
-    assert first.body == "?WA01"
-    assert first.label == "query_areas"
-    assert first.parser is None
-    assert first.area == "01"
+    transaction = TransactionQueryAreas()
 
-    max_area = TransactionQueryAreas(32)
-    assert max_area.body == "?WA32"
-    assert max_area.area == "32"
-
-
-def test_query_wa_transaction_rejects_out_of_range_area_numbers():
-    with pytest.raises(ValueError):
-        TransactionQueryAreas(0)
-
-    with pytest.raises(ValueError):
-        TransactionQueryAreas(33)
+    assert transaction.body == "?WA01"
+    assert transaction.label == "query_areas"
+    assert transaction.parser is None
 
 
 def test_parse_area_status_page_handles_many_area_records():
@@ -79,33 +67,78 @@ def test_parse_area_status_page_handles_many_area_records():
     assert parsed.areas[-1].name == "AREA 16"
 
 
+def test_parse_area_status_page_accepts_area_name_length_boundaries():
+    one_char_reply = b"\x02@ 12345*WA01NNNNA\x1e--\r\x00"
+    max_name = b"A" * 32
+    max_char_reply = b"\x02@ 12345*WA01NNNN" + max_name + b"\x1e--\r\x00"
+
+    assert parse_area_status_page(one_char_reply).areas[0].name == "A"
+    assert parse_area_status_page(max_char_reply).areas[0].name == "A" * 32
+
+
 def test_parse_area_status_page_with_complete_first_page():
     reply = b"\x02@ 12345*WA01NNNNPERIMETER\x1e02NNNNINTERIOR\x1e03NNNNBEDROOMS\x1e--\r\x00"
     parsed = parse_area_status_page(reply)
 
     assert parsed.complete is True
     assert [area.number for area in parsed.areas] == ["01", "02", "03"]
-    assert [area.arming_state for area in parsed.areas] == ["N", "N", "N"]
-    assert [area.status_2 for area in parsed.areas] == ["N", "N", "N"]
-    assert [area.status_3 for area in parsed.areas] == ["N", "N", "N"]
-    assert [area.status_4 for area in parsed.areas] == ["N", "N", "N"]
+    assert [area.state for area in parsed.areas] == ["N", "N", "N"]
+    assert [area.unknown for area in parsed.areas] == ["N", "N", "N"]
+    assert [area.schedule_active for area in parsed.areas] == ["N", "N", "N"]
+    assert [area.late_to_close for area in parsed.areas] == ["N", "N", "N"]
     assert [area.name for area in parsed.areas] == ["PERIMETER", "INTERIOR", "BEDROOMS"]
     assert isinstance(parsed.areas[0].status, AreaStatusBlock)
     assert isinstance(parsed, AreaStatusPage)
 
 
-def test_parse_area_status_block_splits_four_characters():
-    status = parse_area_status_block("YNNN")
+def test_parse_area_status_page_rejects_xt_fixed_name_trailing_status():
+    reply = b"\x02@ 12345*WA01PERIMETER       N---N-\r\x00"
 
-    assert status.arming_state == "Y"
-    assert status.status_2 == "N"
-    assert status.status_3 == "N"
-    assert status.status_4 == "N"
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_page(reply)
+
+
+def test_parse_area_status_block_splits_four_characters():
+    status = parse_area_status_block("YYYY")
+
+    assert status.state == "Y"
+    assert status.unknown == "Y"
+    assert status.schedule_active == "Y"
+    assert status.late_to_close == "Y"
+    assert status.text == "YYYY"
+
+
+def test_parse_area_status_block_allows_special_b_only_in_first_position():
+    status = parse_area_status_block("BNNN")
+
+    assert status.state == "B"
+    assert status.unknown == "N"
+    assert status.schedule_active == "N"
+    assert status.late_to_close == "N"
+
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_block("NBNN")
+
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_block("NNBN")
+
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_block("NNNB")
+
+
+def test_parse_area_status_block_rejects_longer_status_text():
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_block("N---N-")
 
 
 def test_parse_area_status_block_rejects_wrong_length():
     with pytest.raises(SessionProtocolError):
         parse_area_status_block("NNN")
+
+
+def test_parse_area_status_block_rejects_unknown_status_characters():
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_block("N--N")
 
 
 def test_parse_area_status_page_with_exhausted_continuation():
@@ -119,6 +152,25 @@ def test_parse_area_status_page_with_exhausted_continuation():
 def test_parse_area_status_page_rejects_missing_marker():
     with pytest.raises(SessionProtocolError):
         parse_area_status_page(b"\x02@ 12345*WBbad\r\x00")
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        b"\x02@ 12345*WA00NNNNPERIMETER\r\x00",
+        b"\x02@ 12345*WA33NNNNPERIMETER\r\x00",
+        b"\x02@ 12345*WA0ANNNNPERIMETER\r\x00",
+        b"\x02@ 12345*WA\xff1NNNNPERIMETER\r\x00",
+        b"\x02@ 12345*WA01N---PERIMETER\r\x00",
+        b"\x02@ 12345*WA01NNNN\r\x00",
+        b"\x02@ 12345*WA01NNNN" + (b"A" * 33) + b"\r\x00",
+        b"\x02@ 12345*WA01NNNNPERIMETER\x1e\x1e--\r\x00",
+        b"\x02@ 12345*WA01NNNNPERIMETER\x1e--\x1e02NNNNINTERIOR\r\x00",
+    ],
+)
+def test_parse_area_status_page_rejects_malformed_records(reply):
+    with pytest.raises(SessionProtocolError):
+        parse_area_status_page(reply)
 
 
 @pytest.mark.asyncio
@@ -137,10 +189,10 @@ async def test_core_panel_client_query_wa():
     )
 
     try:
-        reply = await client.query_wa(1)
+        reply = await client.query_wa()
         assert reply.complete is True
         assert [area.number for area in reply.areas] == ["01", "02", "03"]
-        assert [area.arming_state for area in reply.areas] == ["N", "N", "N"]
+        assert [area.state for area in reply.areas] == ["N", "N", "N"]
         assert [area.name for area in reply.areas] == ["PERIMETER", "INTERIOR", "A3"]
         assert len(reply.raw_replies) == 1
         assert reply.raw_replies[0] == b"\x02@ 12345*WA01NNNNPERIMETER\x1e02NNNNINTERIOR\x1e03NNNNA3\x1e--\r\x00"
@@ -166,12 +218,12 @@ async def test_manager_applies_wa_parser_automatically():
     )
 
     try:
-        transaction = await client.manager.submit(TransactionQueryAreas(1))
+        transaction = await client.manager.submit(TransactionQueryAreas())
         assert transaction.response is not None
         assert isinstance(transaction.parsed_response, AreaStatusReply)
         assert transaction.parsed_response.complete is True
         assert [area.number for area in transaction.parsed_response.areas] == ["01", "02", "03"]
-        assert [area.arming_state for area in transaction.parsed_response.areas] == ["N", "N", "N"]
+        assert [area.state for area in transaction.parsed_response.areas] == ["N", "N", "N"]
         assert transaction.wire_requests == [b"@12345?WA01\r"]
     finally:
         await client.close()
@@ -194,13 +246,46 @@ async def test_transaction_query_areas_pages_until_complete():
     )
 
     try:
-        transaction = await client.manager.submit(TransactionQueryAreas(1))
+        transaction = await client.manager.submit(TransactionQueryAreas())
         assert transaction.had_reply is True
         assert transaction.wire_requests == [b"@12345?WA01\r", b"@12345?WA\r"]
         assert len(transaction.responses) == 2
         assert isinstance(transaction.parsed_response, AreaStatusReply)
         assert [area.number for area in transaction.parsed_response.areas] == ["01", "02", "03"]
-        assert [area.arming_state for area in transaction.parsed_response.areas] == ["N", "Y", "N"]
+        assert [area.state for area in transaction.parsed_response.areas] == ["N", "Y", "N"]
         assert len(transaction.parsed_response.raw_replies) == 2
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_transaction_query_areas_stops_on_repeated_incomplete_page():
+    repeated_page = b"\x02@ 12345*WA01NNNNPERIMETER\r\x00"
+    factory, transports = make_transport_factory(
+        scripted_replies=[
+            b"\x02@ 12345+V02012345\r",
+            repeated_page,
+            repeated_page,
+            b"\x02@ 12345+V\r",
+        ]
+    )
+    client = CorePanelClient(
+        PanelEndpoint(host="panel", account="12345", idle_disconnect_seconds=0.01),
+        session_profile=SessionProfileBlankV2(),
+        transport_factory=factory,
+    )
+
+    try:
+        transaction = await client.manager.submit(TransactionQueryAreas())
+        assert transaction.had_reply is True
+        assert transaction.wire_requests == [b"@12345?WA01\r", b"@12345?WA\r"]
+        assert len(transaction.responses) == 2
+        assert isinstance(transaction.parsed_response, AreaStatusReply)
+        assert transaction.parsed_response.complete is False
+        assert len(transaction.parsed_response.areas) == 1
+        assert transaction.parsed_response.areas[0].number == "01"
+        assert transaction.parsed_response.areas[0].name == "PERIMETER"
+        assert transaction.parsed_response.areas[0].status_text == "NNNN"
+        assert len(transaction.parsed_response.raw_replies) == 1
     finally:
         await client.close()

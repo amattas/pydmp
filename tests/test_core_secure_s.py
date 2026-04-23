@@ -101,7 +101,7 @@ async def test_secure_s_manager_executes_queries_and_tracks_sequences():
 
     try:
         lockout_transaction = await manager.submit(TransactionQueryLockoutCode())
-        area_transaction = await manager.submit(TransactionQueryAreas(1))
+        area_transaction = await manager.submit(TransactionQueryAreas())
 
         assert lockout_transaction.session_mode is SessionMode.SECURE_S
         assert lockout_transaction.response == zz_payload
@@ -155,6 +155,54 @@ async def test_secure_s_setup_rejects_bare_prefix_reply():
 
 
 @pytest.mark.asyncio
+async def test_secure_s_setup_rejects_wrong_frame_type():
+    passphrase = "1234123412341234"
+    reply_with_wrong_type = build_secure_s_frame(
+        passphrase,
+        seq=0xC4F0,
+        ack=7,
+        frame_type=SECURE_S_FRAME_TYPE_DATA,
+        payload=b"",
+    )
+    factory, _transports = make_transport_factory(scripted_replies=[reply_with_wrong_type])
+    manager = CommandSessionManager(
+        endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase),
+        session_profile=SessionProfileSecureS(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match="wrong frame type"):
+            await manager.submit(TransactionQueryLockoutCode())
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
+async def test_secure_s_setup_rejects_ack_mismatch():
+    passphrase = "1234123412341234"
+    reply_with_bad_ack = build_secure_s_frame(
+        passphrase,
+        seq=0xC4F0,
+        ack=0x0042,
+        frame_type=SECURE_S_FRAME_TYPE_SETUP_REPLY,
+        payload=b"",
+    )
+    factory, _transports = make_transport_factory(scripted_replies=[reply_with_bad_ack])
+    manager = CommandSessionManager(
+        endpoint=PanelEndpoint(host="panel", account="12345", passphrase=passphrase),
+        session_profile=SessionProfileSecureS(),
+        transport_factory=factory,
+    )
+
+    try:
+        with pytest.raises(SessionHandshakeError, match=r"ACK mismatch: got 0x0042, expected 0x0007"):
+            await manager.submit(TransactionQueryLockoutCode())
+    finally:
+        await manager.close()
+
+
+@pytest.mark.asyncio
 async def test_core_panel_client_query_wa_over_secure_s():
     passphrase = "1234123412341234"
     setup_reply = build_secure_s_frame(
@@ -179,7 +227,7 @@ async def test_core_panel_client_query_wa_over_secure_s():
     )
 
     try:
-        reply = await client.query_wa(1)
+        reply = await client.query_wa()
         assert [area.number for area in reply.areas] == ["01", "02"]
         assert [area.name for area in reply.areas] == ["PERIMETER", "INTERIOR"]
         assert transports[0].requests[0] == build_secure_s_setup_frame(passphrase)
@@ -210,7 +258,7 @@ async def test_core_panel_client_query_zones_over_secure_s_tracks_each_exchange(
     )
     wa_reply_frame = parse_secure_s_frame(passphrase, wa_reply)
 
-    wb1_payload = b"\x02@ 12345*WBL009NFIRE9\x1eA001NPERIMETER\x1eL001NDOOR1\x1e-\r\x00"
+    wb1_payload = b"\x02@ 12345*WBL009NFIRE9\x1eA001DPERIMETER\x1eL001NDOOR1\x1e-\r\x00"
     wb1_reply = build_secure_s_frame(
         passphrase,
         seq=0x1030,
@@ -220,17 +268,43 @@ async def test_core_panel_client_query_zones_over_secure_s_tracks_each_exchange(
     )
     wb1_reply_frame = parse_secure_s_frame(passphrase, wb1_reply)
 
-    wb2_payload = b"\x02@ 12345*WBL009NFIRE9\x1eA002NINTERIOR\x1eL002NWINDOW1\x1e-\r\x00"
-    wb2_reply = build_secure_s_frame(
+    wb1_terminal_payload = b"\x02@ 12345*WB-\r\x00"
+    wb1_terminal_reply = build_secure_s_frame(
         passphrase,
         seq=0x1050,
-        ack=0x0048,
+        ack=0x0042,
+        frame_type=SECURE_S_FRAME_TYPE_DATA,
+        payload=wb1_terminal_payload,
+    )
+    wb1_terminal_reply_frame = parse_secure_s_frame(passphrase, wb1_terminal_reply)
+
+    wb2_payload = b"\x02@ 12345*WBL009NFIRE9\x1eA002DINTERIOR\x1eL002NWINDOW1\x1e-\r\x00"
+    wb2_reply = build_secure_s_frame(
+        passphrase,
+        seq=0x1070,
+        ack=0x0059,
         frame_type=SECURE_S_FRAME_TYPE_DATA,
         payload=wb2_payload,
     )
+    wb2_reply_frame = parse_secure_s_frame(passphrase, wb2_reply)
+
+    wb2_terminal_reply = build_secure_s_frame(
+        passphrase,
+        seq=0x1090,
+        ack=0x006A,
+        frame_type=SECURE_S_FRAME_TYPE_DATA,
+        payload=b"\x02@ 12345*WB-\r\x00",
+    )
 
     factory, transports = make_transport_factory(
-        scripted_replies=[setup_reply, wa_reply, wb1_reply, wb2_reply]
+        scripted_replies=[
+            setup_reply,
+            wa_reply,
+            wb1_reply,
+            wb1_terminal_reply,
+            wb2_reply,
+            wb2_terminal_reply,
+        ]
     )
     client = CorePanelClient(
         endpoint,
@@ -268,7 +342,21 @@ async def test_core_panel_client_query_zones_over_secure_s_tracks_each_exchange(
                 seq=0x0031,
                 ack=(wb1_reply_frame.seq + wb1_reply_frame.logical_length) & 0xFFFF,
                 frame_type=SECURE_S_FRAME_TYPE_DATA,
+                payload=format_account_frame(endpoint.normalized_account, "?WB"),
+            ),
+            build_secure_s_frame(
+                passphrase,
+                seq=0x0042,
+                ack=(wb1_terminal_reply_frame.seq + wb1_terminal_reply_frame.logical_length) & 0xFFFF,
+                frame_type=SECURE_S_FRAME_TYPE_DATA,
                 payload=format_account_frame(endpoint.normalized_account, "?WB02Y001"),
+            ),
+            build_secure_s_frame(
+                passphrase,
+                seq=0x0059,
+                ack=(wb2_reply_frame.seq + wb2_reply_frame.logical_length) & 0xFFFF,
+                frame_type=SECURE_S_FRAME_TYPE_DATA,
+                payload=format_account_frame(endpoint.normalized_account, "?WB"),
             ),
         ]
         assert transports[0].requests == expected_requests

@@ -59,6 +59,8 @@ class PanelTransport:
                 f"Failed to connect to {self._endpoint.host}:{self._endpoint.port}: {err}"
             ) from err
 
+        self._last_send_time = 0.0
+
     async def disconnect(self) -> None:
         """Close the transport if it is open."""
         if self._writer is None:

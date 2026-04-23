@@ -9,6 +9,7 @@ from .area_control import (
     TransactionArmAreas,
     TransactionDisarmAreas,
 )
+from .area_settings import AreaSettingsReply, TransactionQueryAreaSettings
 from .area_status import (
     AreaStatusReply,
     TransactionQueryAreas,
@@ -16,6 +17,9 @@ from .area_status import (
 from .lockout_code import LockoutCodeReply, TransactionQueryLockoutCode
 from .manager import CommandSessionManager
 from .models import PanelEndpoint
+from .output_control import OutputControlReply, TransactionSetOutput
+from .output_control import OutputControlMode
+from .output_status import OutputStatusReply, TransactionQueryOutputs
 from .profiles import ProfileReply, TransactionQueryProfiles
 from .sensor_reset import SensorResetReply, TransactionSensorReset
 from .sessions import SessionProfile, SessionProfileBlankV2
@@ -27,6 +31,7 @@ from .zone_control import (
     ZoneControlReply,
 )
 from .zone_status import TransactionQueryZones, ZoneStatusReply
+from .zone_settings import TransactionQueryZoneSettings, ZoneSettingsReply
 
 
 class CorePanelClient:
@@ -54,9 +59,9 @@ class CorePanelClient:
         """Close the underlying manager."""
         await self._manager.close()
 
-    async def query_wa(self, area: int | str = 1) -> AreaStatusReply:
+    async def query_wa(self) -> AreaStatusReply:
         """Run a full `?WA` transaction and return the parsed reply."""
-        transaction = await self._manager.submit(TransactionQueryAreas(area))
+        transaction = await self._manager.submit(TransactionQueryAreas())
         parsed = transaction.parsed_response
         if not isinstance(parsed, AreaStatusReply):
             raise ValueError("Query completed without a parsed WA reply")
@@ -66,7 +71,7 @@ class CorePanelClient:
         self,
         areas,
         *,
-        bypass_faulted: bool = True,
+        bypass_faulted: bool = False,
         force_arm: bool = False,
         instant: bool = False,
     ) -> AreaControlReply:
@@ -99,6 +104,76 @@ class CorePanelClient:
         if not isinstance(parsed, ZoneStatusReply):
             raise ValueError("Query completed without a parsed WB reply")
         return parsed
+
+    async def query_zone_settings(self, zone: int | str) -> ZoneSettingsReply:
+        """Run one `?ZLNNN` zone-settings transaction and return the parsed reply."""
+        transaction = await self._manager.submit(TransactionQueryZoneSettings(zone))
+        parsed = transaction.parsed_response
+        if not isinstance(parsed, ZoneSettingsReply):
+            raise ValueError("Query completed without a parsed ZL reply")
+        return parsed
+
+    async def query_area_settings(self, area: int | str) -> AreaSettingsReply:
+        """Run one `?ZaNN` area-settings transaction and return the parsed reply."""
+        transaction = await self._manager.submit(TransactionQueryAreaSettings(area))
+        parsed = transaction.parsed_response
+        if not isinstance(parsed, AreaSettingsReply):
+            raise ValueError("Query completed without a parsed Za reply")
+        return parsed
+
+    async def query_outputs(
+        self,
+        start_selector: int | str = "001",
+        *,
+        namespace: str | None = None,
+        named_only: bool = True,
+        max_pages: int = 200,
+    ) -> OutputStatusReply:
+        """Run a full `?WQ` output-status transaction and return the parsed reply."""
+        transaction = await self._manager.submit(
+            TransactionQueryOutputs(
+                start_selector,
+                namespace=namespace,
+                named_only=named_only,
+                max_pages=max_pages,
+            )
+        )
+        parsed = transaction.parsed_response
+        if not isinstance(parsed, OutputStatusReply):
+            raise ValueError("Query completed without a parsed WQ reply")
+        return parsed
+
+    async def set_output(
+        self,
+        selector: int | str,
+        mode: str | OutputControlMode,
+    ) -> OutputControlReply:
+        """Run `!Q` for one output selector and return the parsed reply.
+
+        Poll outputs first with `query_outputs()` and keep writes limited to
+        selectors known to exist on the current panel.
+        """
+        transaction = await self._manager.submit(TransactionSetOutput(selector, mode))
+        parsed = transaction.parsed_response
+        if not isinstance(parsed, OutputControlReply):
+            raise ValueError("Command completed without a parsed Q reply")
+        return parsed
+
+    async def turn_output_on(self, selector: int | str) -> OutputControlReply:
+        """Set one output selector steady/on with `!Q...S`."""
+        return await self.set_output(selector, "S")
+
+    async def turn_output_off(self, selector: int | str) -> OutputControlReply:
+        """Set one output selector off with `!Q...O`."""
+        return await self.set_output(selector, "O")
+
+    async def pulse_output(self, selector: int | str) -> OutputControlReply:
+        """Pulse one output selector with `!Q...P`."""
+        return await self.set_output(selector, "P")
+
+    async def momentary_output(self, selector: int | str) -> OutputControlReply:
+        """Momentarily activate one output selector with `!Q...M`."""
+        return await self.set_output(selector, "M")
 
     async def query_lockout_code(self) -> LockoutCodeReply:
         """Run a `?ZZ` lockout-code query and return the parsed reply."""

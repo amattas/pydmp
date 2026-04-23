@@ -20,9 +20,15 @@ USER_REPLY_PREFIXES: Final[tuple[bytes, ...]] = (b"*P=", b"!P=", b"?P=")
 USER_START_SELECTOR: Final[str] = "0000"
 USER_MAX_SELECTOR: Final[int] = 9999
 USER_MAX_PAGES: Final[int] = 200
+USER_MAX_ROWS_PER_PAGE: Final[int] = 2
+USER_PAGE_TERMINATOR: Final[bytes] = b"----"
 USER_LFSR_CONTROL_STRING: Final[str] = "----2222222223333"
 USER_WRITE_REPLY_PREFIXES: Final[tuple[bytes, ...]] = (b"+P", b"-P")
 USER_WRITE_POST_NAME_SUFFIX: Final[str] = "----00000"
+EXPERIMENTAL_WRITE_USER_MESSAGE: Final[str] = (
+    "TransactionWriteUser is experimental and intentionally disabled on the main core surface. "
+    "Pass allow_experimental_write_user=True only on dedicated experimental work."
+)
 
 
 @dataclass(slots=True)
@@ -76,7 +82,7 @@ class UserWriteReply:
 
 
 class TransactionQueryUsers(Transaction):
-    """Complete paged user-table query using the observed 2-record paging rule."""
+    """Complete paged `?P=` user-table query using seeded highest-user continuation."""
 
     __slots__ = ()
 
@@ -103,9 +109,14 @@ class TransactionQueryUsers(Transaction):
         users: list[UserRecord] = []
         raw_replies: list[bytes] = []
         pages = 0
+        seen_start_selectors: set[str] = set()
 
         while pages < USER_MAX_PAGES:
             pages += 1
+            if selector in seen_start_selectors:
+                raise SessionProtocolError(f"User query selector walk repeated at {selector!r}")
+            seen_start_selectors.add(selector)
+
             exchange_result = await exchange(f"?P={selector}", self.completion)
             self.record_exchange(exchange_result, session_mode=session_mode)
 
@@ -129,6 +140,10 @@ class TransactionQueryUsers(Transaction):
                 )
                 return self
 
+            if int(next_selector, 10) <= int(selector, 10):
+                raise SessionProtocolError(
+                    f"User query selector walk did not advance: {selector!r} -> {next_selector!r}"
+                )
             selector = next_selector
 
         raise SessionProtocolError("User query exceeded max page count")
@@ -136,6 +151,9 @@ class TransactionQueryUsers(Transaction):
 
 class TransactionWriteUser(Transaction):
     """Write one local-integrator style `!P=` user record.
+
+    This transaction is intentionally kept experimental until live-write
+    behavior is better proven across panels and edge cases.
 
     This transaction intentionally uses the safest current local write shape:
     - fixed local record layout
@@ -164,6 +182,7 @@ class TransactionWriteUser(Transaction):
         self,
         user_number: int | str,
         *,
+        allow_experimental_write_user: bool = False,
         code: str = "",
         name: str,
         profiles: Iterable[int | str],
@@ -176,6 +195,8 @@ class TransactionWriteUser(Transaction):
         end_date: str = "000000",
         field_40_43: str = "----",
     ) -> None:
+        if not allow_experimental_write_user:
+            raise RuntimeError(EXPERIMENTAL_WRITE_USER_MESSAGE)
         super().__init__(
             body="!P=",
             completion=ack_or_deny(),
@@ -251,20 +272,36 @@ def parse_user_page(
     """Parse one raw panel reply page for the `?P=` family."""
     payload = _extract_user_payload(reply)
     cleaned = payload.rstrip(b"\r\x00")
-    if cleaned == b"----":
+    if cleaned == USER_PAGE_TERMINATOR:
         return UserPage(users=[], complete=True, raw_reply=reply)
+    if not cleaned:
+        raise SessionProtocolError("Empty ?P= reply payload")
 
-    parts = [part for part in cleaned.split(USER_RECORD_SEPARATOR) if part]
+    parts = cleaned.split(USER_RECORD_SEPARATOR)
     users: list[UserRecord] = []
     complete = False
 
     for part in parts:
-        if part == b"----":
+        if not part:
+            raise SessionProtocolError(f"Malformed ?P= reply contained an empty record: {reply!r}")
+        if complete:
+            raise SessionProtocolError(f"Malformed ?P= reply contained data after terminator: {reply!r}")
+        if part == USER_PAGE_TERMINATOR:
             complete = True
             continue
 
-        raw_record = part.decode("ascii", errors="strict")
+        try:
+            raw_record = part.decode("ascii", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise SessionProtocolError(f"Malformed ?P= user record: {reply!r}") from exc
         users.append(_decode_user_record(raw_record, account_number=account_number, remote_key=remote_key))
+        if len(users) > USER_MAX_ROWS_PER_PAGE:
+            raise SessionProtocolError(
+                f"Malformed ?P= reply exceeded {USER_MAX_ROWS_PER_PAGE} rows: {reply!r}"
+            )
+
+    if not complete:
+        raise SessionProtocolError(f"Malformed ?P= reply missing terminator: {reply!r}")
 
     return UserPage(users=users, complete=complete, raw_reply=reply)
 
@@ -353,10 +390,9 @@ def _decode_user_record(
 
 
 def _next_user_selector(users: list[UserRecord]) -> str | None:
-    """Return the next selector using the observed 2-record page behavior."""
-    if len(users) <= 1:
+    """Return the next seeded selector using highest-visible-user progression."""
+    if not users:
         return None
-
     user_numbers = [int(user.number, 10) for user in users if user.number.isdigit()]
     if not user_numbers:
         return None

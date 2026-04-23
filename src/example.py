@@ -84,11 +84,6 @@ def build_args() -> argparse.Namespace:
         help="Optional 4-byte V30 tail override. Default is profile behavior.",
     )
     parser.add_argument(
-        "--area",
-        default="01",
-        help="Starting area for QueryAreas. Default: 01.",
-    )
-    parser.add_argument(
         "--skip-areas",
         action="store_true",
         help="Skip TransactionQueryAreas.",
@@ -121,10 +116,10 @@ def print_area_transaction(transaction) -> None:
     print("Areas:")
     for area in transaction.parsed_response.areas:
         print(f"  number:        {area.number}")
-        print(f"  arming_state:  {area.arming_state}")
-        print(f"  status_2:      {area.status_2}")
-        print(f"  status_3:      {area.status_3}")
-        print(f"  status_4:      {area.status_4}")
+        print(f"  state:         {area.state}")
+        print(f"  unknown:       {area.unknown}")
+        print(f"  scheduleActive: {area.schedule_active}")
+        print(f"  lateToClose:   {area.late_to_close}")
         print(f"  name:          {area.name}")
         print()
 
@@ -142,10 +137,10 @@ def print_zone_transaction(transaction) -> None:
     print("Areas discovered:")
     for area in transaction.parsed_response.areas:
         print(f"  number:        {area.number}")
-        print(f"  arming_state:  {area.arming_state}")
-        print(f"  status_2:      {area.status_2}")
-        print(f"  status_3:      {area.status_3}")
-        print(f"  status_4:      {area.status_4}")
+        print(f"  state:         {area.state}")
+        print(f"  unknown:       {area.unknown}")
+        print(f"  scheduleActive: {area.schedule_active}")
+        print(f"  lateToClose:   {area.late_to_close}")
         print(f"  name:          {area.name}")
         print()
     print("Zones:")
@@ -302,7 +297,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
     try:
         if not args.skip_areas:
-            area_transaction = await manager.submit(TransactionQueryAreas(args.area))
+            area_transaction = await manager.submit(TransactionQueryAreas())
             print_area_transaction(area_transaction)
 
         if not args.skip_zones:

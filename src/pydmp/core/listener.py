@@ -28,6 +28,10 @@ from .secure_s import (
     peek_secure_s_frame_length,
 )
 
+# Serial 3 push bodies delimit fields with a literal backslash byte (0x5C).
+# The Python string literal "\\" is one backslash, matching the on-wire byte.
+SERIAL3_FIELD_DELIMITER = "\\"
+
 
 class PushTransportMode(str, Enum):
     """Wire-level push transport modes seen on the listener lanes."""
@@ -38,7 +42,11 @@ class PushTransportMode(str, Enum):
 
 @dataclass(slots=True)
 class PushEvent:
-    """Structured view of one clear Serial 3 push body."""
+    """Structured view of one clear Serial 3 push body.
+
+    `fields` is the raw body split on the wire-level backslash (0x5C)
+    delimiter; it is not a tokenization of Python escape sequences.
+    """
 
     account: str
     definition: str
@@ -285,7 +293,7 @@ def parse_push_event(account: str | None, normalized_frame: bytes) -> PushEvent 
         device_name=device_name,
         system_code=system_code,
         system_text=SYSTEM_MESSAGES.get(system_code) if system_code else None,
-        fields=raw.split("\\"),
+        fields=raw.split(SERIAL3_FIELD_DELIMITER),
         raw=raw,
     )
 

@@ -50,6 +50,8 @@ def test_normalize_area_list():
     assert normalize_area_list(1) == "01"
     assert normalize_area_list("3") == "03"
     assert normalize_area_list([1, "2", 10]) == "010210"
+    assert normalize_area_list([1, "01", 2, "2", 1]) == "0102"
+    assert normalize_area_list([1, 2, 3]) == "010203"
 
     with pytest.raises(ValueError):
         normalize_area_list([])
@@ -62,18 +64,22 @@ def test_normalize_area_list():
 
 
 def test_transaction_area_control_shapes():
-    arm = TransactionArmAreas([1, 2], bypass_faulted=True, force_arm=False, instant=False)
+    arm = TransactionArmAreas([1, "01", 2])
     disarm = TransactionDisarmAreas("3")
+    arm_three = TransactionArmAreas([1, 2, 3], bypass_faulted=True, force_arm=False, instant=False)
+    disarm_three = TransactionDisarmAreas([1, 2, 3])
 
-    assert arm.body == "!C0102,YNN"
+    assert arm.body == "!C0102,NNN"
     assert arm.label == "arm_areas"
     assert arm.parser is parse_area_arm_reply
     assert arm.area_numbers == "0102"
+    assert arm_three.body == "!C010203,YNN"
 
     assert disarm.body == "!O03,"
     assert disarm.label == "disarm_areas"
     assert disarm.parser is parse_area_disarm_reply
     assert disarm.area_numbers == "03"
+    assert disarm_three.body == "!O010203,"
 
 
 def test_parse_area_control_replies():
@@ -113,7 +119,7 @@ async def test_core_panel_client_area_control_over_blank_v2():
         assert arm == AreaControlReply(command="C", acknowledged=True, detail=None)
         assert disarm == AreaControlReply(command="O", acknowledged=True, detail=None)
         assert transports[0].requests[0] == b"@12345!V2                \r"
-        assert transports[0].requests[1] == b"@12345!C0102,YNN\r"
+        assert transports[0].requests[1] == b"@12345!C0102,NNN\r"
         assert transports[0].requests[2] == b"@12345!O01,\r"
     finally:
         await client.close()
@@ -142,6 +148,6 @@ async def test_manager_applies_area_control_parser_automatically():
             acknowledged=True,
             detail="B",
         )
-        assert transaction.wire_requests == [b"@12345!C01,YNN\r"]
+        assert transaction.wire_requests == [b"@12345!C01,NNN\r"]
     finally:
         await manager.close()

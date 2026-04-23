@@ -9,7 +9,12 @@ from .errors import (
     SessionHandshakeError,
     SessionProtocolError,
 )
-from .framing import BLANK_V2_COMPARE, format_account_frame, has_v_failure, has_v_success
+from .framing import (
+    BLANK_V2_COMPARE,
+    extract_v_denials,
+    format_account_frame,
+    is_v_banner_success,
+)
 from .models import (
     PanelEndpoint,
     SessionMode,
@@ -66,6 +71,14 @@ class SessionProfile(Protocol):
         """Execute one transaction inside the active session."""
 
 
+# Only `-VB` is bench-confirmed as non-fatal (armAwayDisarm.pcap flow 50784:
+# `!V2` -> `-VB` -> `?WB**Y001` -> full zone data -> `!V0` -> `+V`). Every
+# other `-V[A-Z]` code must be treated as fatal until its precondition is
+# pinned down in firmware, otherwise an unknown denial silently opens a
+# broken session.
+_BLANK_V2_SOFT_DENIALS = (b"-VB",)
+
+
 @dataclass(slots=True)
 class SessionProfileBlankV2:
     """Blank local `!V2` profile for the permissive Integrator lane."""
@@ -77,12 +90,21 @@ class SessionProfileBlankV2:
         request = format_account_frame(endpoint.normalized_account, b"!V2" + BLANK_V2_COMPARE)
         reply = await transport.exchange(request, payload_required())
 
-        if has_v_failure(reply):
-            raise SessionHandshakeError("Blank V2 authentication failed")
-        if not has_v_success(reply):
+        denials = extract_v_denials(reply)
+        fatal = next((d for d in denials if d not in _BLANK_V2_SOFT_DENIALS), None)
+        if fatal is not None:
+            raise SessionHandshakeError(
+                f"Blank V2 authentication denied by panel ({fatal.decode('ascii')})"
+            )
+
+        soft_denial = denials[0] if denials else None
+        if soft_denial is None and not is_v_banner_success(reply):
             raise SessionHandshakeError("Blank V2 authentication reply was not recognized")
 
-        return SessionState(mode=self.mode, metadata={"auth_reply": reply})
+        return SessionState(
+            mode=self.mode,
+            metadata={"auth_reply": reply, "auth_denial_code": soft_denial},
+        )
 
     async def close(
         self,
@@ -180,6 +202,13 @@ async def _execute_wrapped_v3_transaction(
     )
 
 
+# Firmware auth gate shares the V2 path between blank and keyed (only the
+# compare_source differs), so the soft allowlist matches BlankV2. Only `-VB`
+# is bench-confirmed non-fatal; every other `-V[A-Z]` code is treated as
+# fatal until its precondition is pinned down.
+_KEYED_V2_SOFT_DENIALS = (b"-VB",)
+
+
 @dataclass(slots=True)
 class SessionProfileKeyedV2:
     """Keyed `!V2` session profile."""
@@ -195,15 +224,22 @@ class SessionProfileKeyedV2:
         request = format_account_frame(endpoint.normalized_account, f"!V2{remote_key}")
         reply = await transport.exchange(request, payload_required())
 
-        if has_v_failure(reply):
-            raise SessionHandshakeError("Keyed V2 authentication failed")
-        if not has_v_success(reply):
+        denials = extract_v_denials(reply)
+        fatal = next((d for d in denials if d not in _KEYED_V2_SOFT_DENIALS), None)
+        if fatal is not None:
+            raise SessionHandshakeError(
+                f"Keyed V2 authentication denied by panel ({fatal.decode('ascii')})"
+            )
+
+        soft_denial = denials[0] if denials else None
+        if soft_denial is None and not is_v_banner_success(reply):
             raise SessionHandshakeError("Keyed V2 authentication reply was not recognized")
 
         return SessionState(
             mode=self.mode,
             metadata={
                 "auth_reply": reply,
+                "auth_denial_code": soft_denial,
                 "remote_key": remote_key,
             },
         )
@@ -267,8 +303,15 @@ class SessionProfileV31:
         )
         raw_reply = await transport.exchange(request, payload_required())
 
-        if has_v_failure(raw_reply):
-            raise SessionHandshakeError("V31 authentication failed")
+        # V31 denials come back plaintext; only success enters wrapped mode.
+        # Bench allAuthTest1.pcap confirms `!V31XXXXXXXXXX` -> `-VC` plain, and
+        # `!V3000...` -> `-VV` plain. Since V31 is the wrap-enabling handshake,
+        # any denial means there's no wrapped session to continue with.
+        denials = extract_v_denials(raw_reply)
+        if denials:
+            raise SessionHandshakeError(
+                f"V31 authentication denied by panel ({denials[0].decode('ascii')})"
+            )
 
         try:
             normalized_reply, _wrapped = normalize_wrapped_reply(raw_reply)
@@ -282,6 +325,7 @@ class SessionProfileV31:
             mode=self.mode,
             metadata={
                 "auth_reply": normalized_reply,
+                "auth_denial_code": None,
                 "compare_material": compare_material or "",
             },
         )
@@ -336,8 +380,16 @@ class SessionProfileV30:
         )
         raw_reply = await transport.exchange(request, payload_required())
 
-        if has_v_failure(raw_reply):
-            raise SessionHandshakeError("V30 authentication failed")
+        # V30 denials come back plaintext; only success enters wrapped mode.
+        # Bench v30Testing.pcap/v30Testing2.pcap show `!V30<wrong 32-hex>` -> `-VV`
+        # plain, matching the firmware parser (subtype '3', subsubtype != '1' ->
+        # 0x29 / `-VV`). Since V30 is the wrap-enabling handshake, any denial
+        # means there's no wrapped session to continue with.
+        denials = extract_v_denials(raw_reply)
+        if denials:
+            raise SessionHandshakeError(
+                f"V30 authentication denied by panel ({denials[0].decode('ascii')})"
+            )
 
         try:
             normalized_reply, _wrapped = normalize_wrapped_reply(raw_reply)
@@ -351,6 +403,7 @@ class SessionProfileV30:
             mode=self.mode,
             metadata={
                 "auth_reply": normalized_reply,
+                "auth_denial_code": None,
                 "code": code,
                 "panel_serial": panel_serial,
                 "tail4": tail4,

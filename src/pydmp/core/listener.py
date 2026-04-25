@@ -41,6 +41,86 @@ REALTIME_EVENT_TYPE_CODES = frozenset({"DO", "DC", "HO", "FO", "ON", "OF", "PL",
 USER_CODE_EVENT_TYPE_CODES = frozenset({"AD", "CH", "DE", "IN"})
 SCHEDULE_NAMED_TYPE_CODES = frozenset({"PE", "TE", "PR", "SE", "S1", "S2", "S3", "S4"})
 
+# These label maps give application code a stable, readable layer above the
+# short on-wire two-character codes. The raw codes are still preserved.
+ZONE_EVENT_TYPE_NAMES = {
+    "BL": "blank",
+    "FI": "fire",
+    "BU": "burglary",
+    "SV": "supervisory",
+    "PN": "panic",
+    "EM": "emergency",
+    "A1": "auxiliary_1",
+    "A2": "auxiliary_2",
+    "CO": "carbon_monoxide",
+    "VA": "video_alarm",
+    "HU": "holdup",
+}
+AREA_EVENT_ACTIONS = {"CL": "armed", "OP": "disarmed", "LA": "late_to_arm"}
+AREA_EVENT_TYPE_NAMES = {"CL": "armed", "OP": "disarmed", "LA": "late to arm"}
+REALTIME_EVENT_ACTIONS = {
+    "DO": "open",
+    "DC": "closed",
+    "HO": "held_open",
+    "FO": "forced_open",
+    "ON": "on",
+    "OF": "off",
+    "PL": "pulse",
+    "TP": "temporal",
+    "MO": "momentary",
+}
+REALTIME_EVENT_TYPE_NAMES = {
+    "DO": "door open",
+    "DC": "door closed",
+    "HO": "door held open",
+    "FO": "door forced open",
+    "ON": "output on",
+    "OF": "output off",
+    "PL": "output pulse",
+    "TP": "output temporal",
+    "MO": "output momentary",
+}
+ACCESS_EVENT_ACTIONS = {
+    "DA": "granted",
+    "AA": "armed_area_denied",
+    "IA": "invalid_area_denied",
+    "IT": "invalid_time_denied",
+    "AP": "anti_passback_denied",
+    "IC": "invalid_code_denied",
+    "IL": "invalid_level_denied",
+    "WP": "wrong_pin_denied",
+    "IN": "inactive_user_denied",
+}
+ACCESS_EVENT_TYPE_NAMES = {
+    "DA": "door access granted",
+    "AA": "armed area access denied",
+    "IA": "invalid area access denied",
+    "IT": "invalid time access denied",
+    "AP": "anti-passback access denied",
+    "IC": "invalid code access denied",
+    "IL": "invalid level access denied",
+    "WP": "wrong pin access denied",
+    "IN": "inactive user access denied",
+}
+USER_CODE_EVENT_ACTIONS = {"AD": "added", "CH": "changed", "DE": "deleted", "IN": "inactive"}
+USER_CODE_EVENT_TYPE_NAMES = {
+    "AD": "added user code",
+    "CH": "changed user code",
+    "DE": "deleted user code",
+    "IN": "inactive user code",
+}
+SCHEDULE_TYPE_NAMES = {
+    "PE": "permanent_schedule",
+    "TE": "temporary_schedule",
+    "PR": "primary_schedule",
+    "SE": "secondary_schedule",
+    "S1": "shift_one",
+    "S2": "shift_two",
+    "S3": "shift_three",
+    "S4": "shift_four",
+}
+EVENT_QUALIFIER_NAMES = {"DT": "service", "AC": "all_areas_armed", "LC": "local_alarm_restore"}
+
 
 class PushTransportMode(str, Enum):
     """Wire-level push transport modes seen on the listener lanes."""
@@ -60,11 +140,63 @@ class PushEvent:
     parsed: object | None = None
     parser_name: str | None = None
 
+    @property
+    def group(self) -> str | None:
+        """Return the broad event group used by application code."""
+        return getattr(self.parsed, "group", None)
+
+    @property
+    def kind(self) -> str | None:
+        """Return the more specific event kind, such as `zone_alarm`."""
+        return getattr(self.parsed, "kind", None)
+
+    @property
+    def action(self) -> str | None:
+        """Return one normalized action name when the event is well understood."""
+        return getattr(self.parsed, "action", None)
+
+    @property
+    def type_code(self) -> str | None:
+        """Return the raw two-character type code when present."""
+        return getattr(self.parsed, "type_code", None)
+
+    @property
+    def type_name(self) -> str | None:
+        """Return a readable label for the type code when one is known."""
+        return getattr(self.parsed, "type_name", None)
+
+    @property
+    def target_id(self) -> str | None:
+        """Return the main target identifier, such as one area, zone, or device."""
+        return getattr(self.parsed, "target_id", None)
+
+    @property
+    def target_name(self) -> str | None:
+        """Return the main target display name when one was present."""
+        return getattr(self.parsed, "target_name", None)
+
+    @property
+    def actor_id(self) -> str | None:
+        """Return the user identifier that appears to have caused the event."""
+        return getattr(self.parsed, "actor_id", None)
+
+    @property
+    def actor_name(self) -> str | None:
+        """Return the user display name that appears to have caused the event."""
+        return getattr(self.parsed, "actor_name", None)
+
+    @property
+    def summary(self) -> str:
+        """Return one readable summary line that is easy to log or branch on."""
+        summary = getattr(self.parsed, "summary", None)
+        return summary or self.raw
+
 
 @dataclass(slots=True)
 class PushParsedTaggedEvent:
     """Parsed data for one tag-oriented `Z*` push event."""
 
+    definition: str
     event_code: str | None
     type_code: str | None
     event_qualifier: str | None
@@ -84,11 +216,82 @@ class PushParsedTaggedEvent:
     system_code: str | None
     system_text: str | None
 
+    @property
+    def group(self) -> str:
+        return "area" if self.definition == "Zq" else "system"
+
+    @property
+    def kind(self) -> str:
+        return "area_state" if self.definition == "Zq" else "system_message"
+
+    @property
+    def action(self) -> str | None:
+        if self.definition == "Zq":
+            return AREA_EVENT_ACTIONS.get(self.type_code)
+        if self.definition == "Zs":
+            return "message"
+        return None
+
+    @property
+    def type_name(self) -> str | None:
+        if self.definition == "Zq":
+            return AREA_EVENT_TYPE_NAMES.get(self.type_code)
+        return self.system_text
+
+    @property
+    def qualifier_name(self) -> str | None:
+        return EVENT_QUALIFIER_NAMES.get(self.event_qualifier)
+
+    @property
+    def actor_user(self) -> str | None:
+        return self.user
+
+    @property
+    def actor_user_name(self) -> str | None:
+        return self.user_name
+
+    @property
+    def target_id(self) -> str | None:
+        if self.definition == "Zq":
+            return self.area
+        return None
+
+    @property
+    def target_name(self) -> str | None:
+        if self.definition == "Zq":
+            return self.area_name
+        return None
+
+    @property
+    def actor_id(self) -> str | None:
+        return self.user
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.user_name
+
+    @property
+    def summary(self) -> str:
+        if self.definition == "Zq":
+            target_text = _format_named_target("Area", self.area, self.area_name)
+            action_text = self.action or (self.type_name or "state change")
+            actor_text = _format_actor(self.user, self.user_name)
+            qualifier_text = self.qualifier_name or self.event_qualifier
+            summary = f"{target_text} {action_text}"
+            if actor_text:
+                summary += f" by {actor_text}"
+            if qualifier_text:
+                summary += f" ({qualifier_text})"
+            return summary
+        system_text = self.system_text or self.system_code or "system message"
+        return f"System message {system_text}"
+
 
 @dataclass(slots=True)
 class PushParsedZoneEvent:
     """Parsed data for zone-style event families like `Zc`, `Zx`, and `Zr`."""
 
+    definition: str
     event_code: str | None
     type_code: str | None
     target_kind: str | None
@@ -101,11 +304,74 @@ class PushParsedZoneEvent:
     actor_user: str | None
     actor_user_name: str | None
 
+    @property
+    def group(self) -> str:
+        return "zone"
+
+    @property
+    def kind(self) -> str:
+        return {
+            "Za": "zone_alarm",
+            "Zc": "zone_state",
+            "Zr": "zone_restore",
+            "Zt": "zone_trouble",
+            "Zx": "zone_bypass",
+            "Zy": "zone_unbypass",
+        }.get(self.definition, "zone_event")
+
+    @property
+    def action(self) -> str | None:
+        if self.definition == "Zc":
+            return REALTIME_EVENT_ACTIONS.get(self.type_code)
+        return {
+            "Za": "alarm",
+            "Zr": "restore",
+            "Zt": "trouble",
+            "Zx": "bypass",
+            "Zy": "unbypass",
+        }.get(self.definition)
+
+    @property
+    def type_name(self) -> str | None:
+        if self.definition == "Zc":
+            return REALTIME_EVENT_TYPE_NAMES.get(self.type_code)
+        return ZONE_EVENT_TYPE_NAMES.get(self.type_code)
+
+    @property
+    def target_id(self) -> str | None:
+        return self.zone or self.device
+
+    @property
+    def target_name(self) -> str | None:
+        return self.zone_name or self.device_name
+
+    @property
+    def actor_id(self) -> str | None:
+        return self.actor_user
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.actor_user_name
+
+    @property
+    def summary(self) -> str:
+        target_label = "Zone" if self.zone is not None else "Device"
+        target_text = _format_named_target(target_label, self.target_id, self.target_name)
+        action_text = self.action or "event"
+        summary = f"{target_text} {action_text}"
+        if self.definition != "Zc" and self.type_name:
+            summary += f" ({self.type_name})"
+        actor_text = _format_actor(self.actor_user, self.actor_user_name)
+        if actor_text and self.definition in {"Zx", "Zy"}:
+            summary += f" by {actor_text}"
+        return summary
+
 
 @dataclass(slots=True)
 class PushParsedAccessEvent:
     """Parsed data for access / keypad events like `Zj`."""
 
+    definition: str
     event_code: str | None
     type_code: str | None
     device: str | None
@@ -114,11 +380,56 @@ class PushParsedAccessEvent:
     actor_user_name: str | None
     entered_code: str | None
 
+    @property
+    def group(self) -> str:
+        return "access"
+
+    @property
+    def kind(self) -> str:
+        return "access_event"
+
+    @property
+    def action(self) -> str | None:
+        return ACCESS_EVENT_ACTIONS.get(self.type_code)
+
+    @property
+    def type_name(self) -> str | None:
+        return ACCESS_EVENT_TYPE_NAMES.get(self.type_code)
+
+    @property
+    def target_id(self) -> str | None:
+        return self.device
+
+    @property
+    def target_name(self) -> str | None:
+        return self.device_name
+
+    @property
+    def actor_id(self) -> str | None:
+        return self.actor_user
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.actor_user_name
+
+    @property
+    def summary(self) -> str:
+        target_text = _format_named_target("Device", self.device, self.device_name)
+        action_text = self.type_name or self.action or "access event"
+        actor_text = _format_actor(self.actor_user, self.actor_user_name)
+        summary = f"{target_text} {action_text}"
+        if actor_text:
+            summary += f" for {actor_text}"
+        if self.entered_code:
+            summary += f" using code {self.entered_code}"
+        return summary
+
 
 @dataclass(slots=True)
 class PushParsedScheduleEvent:
     """Parsed data for schedule events like `Zl`."""
 
+    definition: str
     event_code: str | None
     type_code: str | None
     schedule_name: str | None
@@ -129,11 +440,65 @@ class PushParsedScheduleEvent:
     actor_user: str | None
     actor_user_name: str | None
 
+    @property
+    def group(self) -> str:
+        return "schedule"
+
+    @property
+    def kind(self) -> str:
+        return "schedule_event"
+
+    @property
+    def action(self) -> str:
+        return "schedule_update"
+
+    @property
+    def type_name(self) -> str:
+        if self.type_code and re.fullmatch(r"\d{2}", self.type_code):
+            return "numeric_schedule"
+        return SCHEDULE_TYPE_NAMES.get(self.type_code, "schedule")
+
+    @property
+    def target_id(self) -> str | None:
+        if self.type_code and re.fullmatch(r"\d{2}", self.type_code):
+            return self.type_code
+        return None
+
+    @property
+    def target_name(self) -> str | None:
+        return self.schedule_name
+
+    @property
+    def actor_id(self) -> str | None:
+        return self.actor_user
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.actor_user_name
+
+    @property
+    def summary(self) -> str:
+        target_text = self.schedule_name or (f"Schedule {self.type_code}" if self.type_code else "Schedule")
+        parts = [target_text]
+        if self.open_time:
+            parts.append(f"open {self.open_time}")
+            if self.open_day:
+                parts[-1] += f" {self.open_day}"
+        if self.close_time:
+            parts.append(f"close {self.close_time}")
+            if self.close_day:
+                parts[-1] += f" {self.close_day}"
+        actor_text = _format_actor(self.actor_user, self.actor_user_name)
+        if actor_text:
+            parts.append(f"by {actor_text}")
+        return " ".join(parts)
+
 
 @dataclass(slots=True)
 class PushParsedUserCodeEvent:
     """Parsed data for user-code events like `Zu`."""
 
+    definition: str
     event_code: str | None
     type_code: str | None
     subject_user: str | None
@@ -142,12 +507,93 @@ class PushParsedUserCodeEvent:
     actor_user_name: str | None
     protected_hex: str | None
 
+    @property
+    def group(self) -> str:
+        return "user_code"
+
+    @property
+    def kind(self) -> str:
+        return "user_code_event"
+
+    @property
+    def action(self) -> str | None:
+        return USER_CODE_EVENT_ACTIONS.get(self.type_code)
+
+    @property
+    def type_name(self) -> str | None:
+        return USER_CODE_EVENT_TYPE_NAMES.get(self.type_code)
+
+    @property
+    def target_id(self) -> str | None:
+        return self.subject_user
+
+    @property
+    def target_name(self) -> str | None:
+        return self.subject_user_name
+
+    @property
+    def actor_id(self) -> str | None:
+        return self.actor_user
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.actor_user_name
+
+    @property
+    def summary(self) -> str:
+        target_text = _format_named_target("User", self.subject_user, self.subject_user_name)
+        action_text = self.action or "changed"
+        actor_text = _format_actor(self.actor_user, self.actor_user_name)
+        summary = f"{target_text} {action_text}"
+        if actor_text:
+            summary += f" by {actor_text}"
+        return summary
+
 
 @dataclass(slots=True)
 class PushParsedCheckinEvent:
     """Parsed data for a host-output `s070` check-in frame."""
 
+    definition: str
     interval_minutes: int | None
+
+    @property
+    def group(self) -> str:
+        return "checkin"
+
+    @property
+    def kind(self) -> str:
+        return "checkin"
+
+    @property
+    def action(self) -> str:
+        return "checkin"
+
+    @property
+    def type_name(self) -> str:
+        return "listener check-in"
+
+    @property
+    def target_id(self) -> str | None:
+        return None
+
+    @property
+    def target_name(self) -> str | None:
+        return None
+
+    @property
+    def actor_id(self) -> str | None:
+        return None
+
+    @property
+    def actor_name(self) -> str | None:
+        return None
+
+    @property
+    def summary(self) -> str:
+        if self.interval_minutes is None:
+            return "Check-in"
+        return f"Check-in every {self.interval_minutes} minutes"
 
 
 @dataclass(slots=True)
@@ -434,6 +880,24 @@ def _parse_time_day_segment(value: bytes | None) -> tuple[str | None, str | None
     return time_text or None, day_text or None
 
 
+def _format_named_target(label: str, identifier: str | None, name: str | None) -> str:
+    """Build one readable target phrase like `Zone 502 FRONT DOOR`."""
+    parts = [label]
+    if identifier:
+        parts.append(identifier)
+    if name:
+        parts.append(name)
+    return " ".join(parts)
+
+
+def _format_actor(identifier: str | None, name: str | None) -> str | None:
+    """Build one readable actor phrase like `32764 REMOTE USER`."""
+    parts = [part for part in (identifier, name) if part]
+    if not parts:
+        return None
+    return " ".join(parts)
+
+
 def _parse_tagged_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedTaggedEvent:
     """Parse the flexible tagged shape used by `Zq` and `Zs`."""
     definition = payload[:2].decode("ascii", errors="replace")
@@ -454,6 +918,7 @@ def _parse_tagged_push_event(_account: str, payload: bytes, _raw: str) -> PushPa
         if system_code is None:
             return None
     return PushParsedTaggedEvent(
+        definition=definition,
         event_code=event_code,
         type_code=type_code,
         event_qualifier=event_qualifier,
@@ -489,6 +954,7 @@ def _parse_zone_push_event(_account: str, payload: bytes, _raw: str) -> PushPars
     if event_code is None or type_code not in allowed_types or target_kind is None:
         return None
     return PushParsedZoneEvent(
+        definition=definition,
         event_code=event_code,
         type_code=type_code,
         target_kind=target_kind,
@@ -505,6 +971,7 @@ def _parse_zone_push_event(_account: str, payload: bytes, _raw: str) -> PushPars
 
 def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedAccessEvent:
     """Parse keypad and access-style pushes such as `Zj`."""
+    definition = payload[:2].decode("ascii", errors="replace")
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     device, device_name = _extract_tag(payload, b"v", 3)
@@ -513,6 +980,7 @@ def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushPa
     if event_code is None or type_code not in ACCESS_EVENT_TYPE_CODES or device is None:
         return None
     return PushParsedAccessEvent(
+        definition=definition,
         event_code=event_code,
         type_code=type_code,
         device=device,
@@ -525,6 +993,7 @@ def _parse_access_push_event(_account: str, payload: bytes, _raw: str) -> PushPa
 
 def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedScheduleEvent:
     """Parse schedule pushes such as `Zl`."""
+    definition = payload[:2].decode("ascii", errors="replace")
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     schedule_name = _strip_optional_quote(_decode_segment_body(_extract_simple_segment_body(payload, b"n")))
@@ -541,6 +1010,7 @@ def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> Push
     ):
         return None
     return PushParsedScheduleEvent(
+        definition=definition,
         event_code=event_code,
         type_code=type_code,
         schedule_name=schedule_name,
@@ -555,6 +1025,7 @@ def _parse_schedule_push_event(_account: str, payload: bytes, _raw: str) -> Push
 
 def _parse_user_code_push_event(_account: str, payload: bytes, _raw: str) -> PushParsedUserCodeEvent:
     """Parse user-code administration pushes such as `Zu`."""
+    definition = payload[:2].decode("ascii", errors="replace")
     event_code = _extract_event_code(payload)
     type_code = _extract_type_code(payload)
     subject_user, subject_user_name = _extract_tag(payload, b"um", 5)
@@ -567,6 +1038,7 @@ def _parse_user_code_push_event(_account: str, payload: bytes, _raw: str) -> Pus
     ):
         return None
     return PushParsedUserCodeEvent(
+        definition=definition,
         event_code=event_code,
         type_code=type_code,
         subject_user=subject_user,
@@ -581,9 +1053,7 @@ def _parse_checkin_s070_event(_account: str, _payload: bytes, raw: str) -> PushP
     """Parse the simple `s070` check-in push."""
     match = re.search(r"s070(?P<interval>\d{4})?$", raw.strip())
     interval_text = match.group("interval") if match else None
-    return PushParsedCheckinEvent(
-        interval_minutes=int(interval_text) if interval_text is not None else None
-    )
+    return PushParsedCheckinEvent(definition="s070", interval_minutes=int(interval_text) if interval_text is not None else None)
 
 
 DEFAULT_PUSH_EVENT_PARSERS: dict[str, PushEventParser] = {

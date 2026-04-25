@@ -57,13 +57,20 @@ def test_listener_profile_parses_clear_push_and_builds_s3_ack() -> None:
     assert message.ack_frame == b"\x0212345\x06\r"
     assert message.event is not None
     assert message.event.definition == "Zq"
+    assert message.event.group == "area"
+    assert message.event.kind == "area_state"
+    assert message.event.action == "armed"
+    assert message.event.target_id == "003"
+    assert message.event.actor_id == "00000"
     assert isinstance(message.event.parsed, PushParsedTaggedEvent)
     assert message.event.parser_name == "_parse_tagged_push_event"
     assert message.event.parsed.type_code == "CL"
+    assert message.event.parsed.type_name == "armed"
     assert message.event.parsed.area == "003"
     assert message.event.parsed.area_name == "A3"
     assert message.event.parsed.user == "00000"
     assert message.event.parsed.user_name == "NO CODE REQUIRED"
+    assert message.event.summary == "Area 003 A3 armed by 00000 NO CODE REQUIRED"
 
 
 def test_listener_profile_parses_host_output_system_message() -> None:
@@ -153,6 +160,11 @@ def test_parse_push_event_parses_zone_state_event_with_zone_target() -> None:
 
     assert event is not None
     assert event.definition == "Zc"
+    assert event.group == "zone"
+    assert event.kind == "zone_state"
+    assert event.action == "open"
+    assert event.type_name == "door open"
+    assert event.target_id == "002"
     assert isinstance(event.parsed, PushParsedZoneEvent)
     assert event.parser_name == "_parse_zone_push_event"
     assert event.parsed.event_code == "020"
@@ -170,6 +182,10 @@ def test_parse_push_event_parses_zone_state_event_with_device_target() -> None:
 
     assert event is not None
     assert event.definition == "Zc"
+    assert event.kind == "zone_state"
+    assert event.action == "off"
+    assert event.type_name == "output off"
+    assert event.target_id == "580"
     assert isinstance(event.parsed, PushParsedZoneEvent)
     assert event.parsed.event_code == "020"
     assert event.parsed.type_code == "OF"
@@ -188,6 +204,10 @@ def test_parse_push_event_parses_bypass_event() -> None:
 
     assert event is not None
     assert event.definition == "Zx"
+    assert event.kind == "zone_bypass"
+    assert event.action == "bypass"
+    assert event.type_name == "burglary"
+    assert event.actor_id == "32764"
     assert isinstance(event.parsed, PushParsedZoneEvent)
     assert event.parsed.event_code == "085"
     assert event.parsed.type_code == "BU"
@@ -196,6 +216,39 @@ def test_parse_push_event_parses_bypass_event() -> None:
     assert event.parsed.zone_name == "FRONT DOOR"
     assert event.parsed.area == "001"
     assert event.parsed.actor_user == "32764"
+    assert event.summary == "Zone 502 FRONT DOOR bypass (burglary) by 32764 REMOTE USER"
+
+
+def test_parse_push_event_parses_alarm_event() -> None:
+    normalized = b'9545  12345 &    0Za\\037\\t "FI\\z 009"Z9FIRE          \\'
+
+    event = parse_push_event("12345", normalized)
+
+    assert event is not None
+    assert event.definition == "Za"
+    assert event.kind == "zone_alarm"
+    assert event.action == "alarm"
+    assert event.type_name == "fire"
+    assert event.target_id == "009"
+    assert event.target_name == "Z9FIRE"
+    assert event.summary == "Zone 009 Z9FIRE alarm (fire)"
+
+
+def test_parse_push_event_parses_trouble_and_restore_events() -> None:
+    trouble = parse_push_event("12345", b'01EF  12345 &    0Zt\\037\\t "SV\\z 580"SUP             \\')
+    restore = parse_push_event("12345", b'4D6F  12345 &    0Zr\\037\\t "SV\\z 580"SUP             \\')
+
+    assert trouble is not None
+    assert trouble.kind == "zone_trouble"
+    assert trouble.action == "trouble"
+    assert trouble.type_name == "supervisory"
+    assert trouble.summary == "Zone 580 SUP trouble (supervisory)"
+
+    assert restore is not None
+    assert restore.kind == "zone_restore"
+    assert restore.action == "restore"
+    assert restore.type_name == "supervisory"
+    assert restore.summary == "Zone 580 SUP restore (supervisory)"
 
 
 def test_parse_push_event_parses_access_event() -> None:
@@ -208,6 +261,10 @@ def test_parse_push_event_parses_access_event() -> None:
 
     assert event is not None
     assert event.definition == "Zj"
+    assert event.group == "access"
+    assert event.kind == "access_event"
+    assert event.action == "invalid_code_denied"
+    assert event.type_name == "invalid code access denied"
     assert isinstance(event.parsed, PushParsedAccessEvent)
     assert event.parser_name == "_parse_access_push_event"
     assert event.parsed.event_code == "070"
@@ -216,6 +273,7 @@ def test_parse_push_event_parses_access_event() -> None:
     assert event.parsed.device_name == "KEYPAD"
     assert event.parsed.actor_user == "00000"
     assert event.parsed.entered_code == "0016"
+    assert event.summary == "Device 001 KEYPAD invalid code access denied for 00000 INVALID CODE using code 0016"
 
 
 def test_parse_push_event_parses_schedule_event() -> None:
@@ -228,6 +286,9 @@ def test_parse_push_event_parses_schedule_event() -> None:
 
     assert event is not None
     assert event.definition == "Zl"
+    assert event.group == "schedule"
+    assert event.kind == "schedule_event"
+    assert event.action == "schedule_update"
     assert isinstance(event.parsed, PushParsedScheduleEvent)
     assert event.parser_name == "_parse_schedule_push_event"
     assert event.parsed.event_code == "083"
@@ -238,6 +299,7 @@ def test_parse_push_event_parses_schedule_event() -> None:
     assert event.parsed.close_time == "10:20"
     assert event.parsed.close_day == "MON"
     assert event.parsed.actor_user == "00001"
+    assert event.summary == "SCHEDULE NAME 01 open 09:00 MON close 10:20 MON by 00001 USER NAME 0001"
 
 
 def test_parse_push_event_parses_schedule_event_without_name() -> None:
@@ -270,6 +332,10 @@ def test_parse_push_event_parses_user_code_event() -> None:
 
     assert event is not None
     assert event.definition == "Zu"
+    assert event.group == "user_code"
+    assert event.kind == "user_code_event"
+    assert event.action == "added"
+    assert event.type_name == "added user code"
     assert isinstance(event.parsed, PushParsedUserCodeEvent)
     assert event.parser_name == "_parse_user_code_push_event"
     assert event.parsed.event_code == "143"
@@ -280,6 +346,7 @@ def test_parse_push_event_parses_user_code_event() -> None:
     assert event.parsed.actor_user_name == "DEFAULT USER"
     assert event.parsed.protected_hex is not None
     assert event.parsed.protected_hex.startswith("18DD36F4")
+    assert event.summary == "User 00001 USER NAME 0001 added by 09999 DEFAULT USER"
 
 
 def test_parse_push_event_parses_arming_event_path_info_and_qualifier() -> None:
@@ -292,6 +359,7 @@ def test_parse_push_event_parses_arming_event_path_info_and_qualifier() -> None:
 
     assert event is not None
     assert event.definition == "Zq"
+    assert event.kind == "area_state"
     assert isinstance(event.parsed, PushParsedTaggedEvent)
     assert event.parsed.event_code == "070"
     assert event.parsed.type_code == "CL"
@@ -317,6 +385,7 @@ def test_parse_push_event_parses_arming_event_plain_qualifier() -> None:
     assert event.parsed.type_code == "CL"
     assert event.parsed.area == "001"
     assert event.parsed.event_qualifier == "AC"
+    assert event.parsed.qualifier_name == "all_areas_armed"
     assert event.parsed.path_number is None
 
 
@@ -327,6 +396,10 @@ def test_parse_push_event_parses_system_message_path_info() -> None:
 
     assert event is not None
     assert event.definition == "Zs"
+    assert event.group == "system"
+    assert event.kind == "system_message"
+    assert event.action == "message"
+    assert event.summary == "System message Local Programming"
     assert isinstance(event.parsed, PushParsedTaggedEvent)
     assert event.parsed.system_code == "086"
     assert event.parsed.path_number == "01"
@@ -465,6 +538,7 @@ def test_listener_profile_supports_custom_event_parser_registration() -> None:
     assert message.event is not None
     assert message.event.definition == "Zx"
     assert message.event.parser_name == "parse_zx"
+    assert message.event.summary == 'Zx\\999\\t "??\\'
     assert message.event.parsed == {
         "account": "12345",
         "payload": 'Zx\\999\\t "??\\',

@@ -38,6 +38,16 @@ def render_message_block(message: PushMessage) -> str:
 
     if message.event is not None:
         lines.append(f"event_definition: {message.event.definition}")
+        lines.append(f"event_group: {message.event.group or '<none>'}")
+        lines.append(f"event_kind: {message.event.kind or '<none>'}")
+        lines.append(f"event_action: {message.event.action or '<none>'}")
+        lines.append(f"event_type_code: {message.event.type_code or '<none>'}")
+        lines.append(f"event_type_name: {message.event.type_name or '<none>'}")
+        lines.append(f"event_target_id: {message.event.target_id or '<none>'}")
+        lines.append(f"event_target_name: {message.event.target_name or '<none>'}")
+        lines.append(f"event_actor_id: {message.event.actor_id or '<none>'}")
+        lines.append(f"event_actor_name: {message.event.actor_name or '<none>'}")
+        lines.append(f"event_summary: {message.event.summary}")
         lines.append(f"event_raw: {message.event.raw}")
         lines.append(f"event_fields: {pretty_json(message.event.fields)}")
         lines.append(f"event_parser: {message.event.parser_name or '<none>'}")

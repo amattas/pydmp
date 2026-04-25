@@ -26,7 +26,7 @@ Example (Sync):
     >>> panel.disconnect()
 """
 
-from . import const, exceptions
+from . import const, exceptions, wrapper
 from .area import Area, AreaSync
 from .crypto import DMPCrypto
 from .output import Output, OutputSync
@@ -64,6 +64,7 @@ __all__ = [
     # Submodules
     "const",
     "exceptions",
+    "wrapper",
     # Version
     "__version__",
 ]

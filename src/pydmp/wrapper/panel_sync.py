@@ -1,25 +1,19 @@
-"""Historic sync panel surface backed by the wrapper layer."""
+"""Synchronous compatibility wrapper for the new-core-backed panel facade."""
 
 from __future__ import annotations
 
 import asyncio
 from typing import Any
 
+from ..const.protocol import DEFAULT_PORT
 from .area import Area, AreaSync
-from .const.protocol import DEFAULT_PORT
 from .output import Output, OutputSync
 from .panel import DMPPanel
 from .zone import Zone, ZoneSync
 
 
 class DMPPanelSync:
-    """Sync wrapper that keeps the old `pydmp.panel_sync` import path alive.
-
-    This file intentionally holds a local copy of the thin sync bridge instead
-    of re-exporting `pydmp.wrapper.panel_sync.DMPPanelSync`. Older tests patch
-    `pydmp.panel_sync.DMPPanel` directly, so this module needs its own global
-    `DMPPanel` reference.
-    """
+    """Sync wrapper that mirrors the old `pydmp.DMPPanelSync` shape."""
 
     def __init__(self, port: int = DEFAULT_PORT, timeout: float = 10.0):
         self._panel = DMPPanel(port, timeout)
@@ -29,6 +23,11 @@ class DMPPanelSync:
         self._output_sync_cache: dict[int, OutputSync] = {}
 
     def _get_loop(self) -> asyncio.AbstractEventLoop:
+        """Return a loop for sync wrapper calls.
+
+        This keeps the old simple `run_until_complete` style rather than
+        introducing a more advanced thread-based bridge right away.
+        """
         if self._loop is None or self._loop.is_closed():
             try:
                 self._loop = asyncio.get_running_loop()
@@ -77,10 +76,10 @@ class DMPPanelSync:
     def sensor_reset(self) -> None:
         self._run(self._panel.sensor_reset())
 
-    def get_user_codes(self):
+    def get_user_codes(self) -> list[Any]:
         return self._run(self._panel.get_user_codes())
 
-    def get_user_profiles(self):
+    def get_user_profiles(self) -> list[Any]:
         return self._run(self._panel.get_user_profiles())
 
     def check_code(self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True):
@@ -126,7 +125,4 @@ class DMPPanelSync:
         self.disconnect()
 
     def __repr__(self) -> str:
-        return f"<DMPPanelSync {self._panel}>"
-
-
-__all__ = ["DMPPanelSync", "DMPPanel"]
+        return f"<WrapperDMPPanelSync {self._panel}>"

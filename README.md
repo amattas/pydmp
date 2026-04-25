@@ -89,6 +89,14 @@ pre-commit run -a                  # optional: format all files once
 
 Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-version = py310`).
 
+## New Core Architecture
+
+The stateless protocol core lives in `pydmp.core`. It provides transaction-based
+command/query handling, multiple session profiles, and a modular push listener.
+
+For the high-level architecture, current transaction list, session flow, and
+listener model, see [src/pydmp/core/README.md](src/pydmp/core/README.md).
+
 ## Quick Start
 
 ### Async API (Recommended)

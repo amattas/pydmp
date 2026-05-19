@@ -9,7 +9,7 @@ jobs:
   create-draft-release:
     name: Create Draft Release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/release/') && !endsWith(github.ref, '/latest')
+    if: startsWith(github.ref, 'refs/heads/release/') && !endsWith(github.ref, '/latest') && !endsWith(github.ref, '/stable')
     permissions:
       contents: write
     steps:

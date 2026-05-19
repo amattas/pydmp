@@ -34,7 +34,8 @@ jobs:
 
           # Allowed targets:
           #   - release/latest (from main)
-          #   - release/x.y.z-<suffix> (from release/latest)
+          #   - release/x.y.z and release/x.y.z-<suffix> (from release/latest)
+          #   - release/stable (from release/latest)
 
           # Rule 1: release/latest can ONLY accept from main
           if [[ "$TARGET" == "release/latest" ]]; then
@@ -63,10 +64,10 @@ jobs:
             exit 0
           fi
 
-          # Rule 2: release/x.y.z-* can ONLY accept from release/latest
-          # Regex for prerelease with suffix: release/1.2.3-alpha.1
-          if [[ "$TARGET" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+-[-0-9A-Za-z.]+$ ]]; then
-            echo "Rule: Version release branches (release/x.y.z-*) can only accept PRs from 'release/latest'"
+          # Rule 2: release/x.y.z, release/x.y.z-*, and release/stable can ONLY accept from release/latest
+          # Regex matches: release/1.2.3, release/1.2.3-alpha.1, release/stable
+          if [[ "$TARGET" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+(-[-0-9A-Za-z.]+)?|stable)$ ]]; then
+            echo "Rule: Version release branches (release/x.y.z[-suffix], release/stable) can only accept PRs from 'release/latest'"
             if [[ "$SOURCE" != "release/latest" ]]; then
               echo "FAILED: Source branch must be 'release/latest', got '$SOURCE'"
               echo ""
@@ -93,7 +94,7 @@ jobs:
 
           # Any other release/* target is not allowed
           echo "FAILED: Target branch not allowed for release workflows: $TARGET"
-          echo "Allowed targets: release/latest (from main), release/x.y.z-* (from release/latest)"
+          echo "Allowed targets: release/latest (from main), release/x.y.z[-suffix] or release/stable (from release/latest)"
           {
             echo "## Validate Branch Flow - FAILED"
             echo "- Rule: target must be release/latest or release/x.y.z-*"

@@ -1,4 +1,6 @@
 // @ts-check
+const { themes: prismThemes } = require('prism-react-renderer');
+
 const config = {
   title: 'PyDMP',
   tagline: 'Python library for controlling DMP alarm systems',
@@ -12,6 +14,13 @@ const config = {
     // No defaultMode: follow the visitor's OS/browser preference. (A manual
     // toggle persists in localStorage and overrides this — by design.)
     colorMode: { respectPrefersColorScheme: true },
+    // Docusaurus's default prism theme (palenight) is a dark-background token
+    // palette in BOTH modes — unreadable on light panels. Per-mode themes:
+    prism: {
+      theme: prismThemes.github,
+      darkTheme: prismThemes.nightOwl,
+      additionalLanguages: ['bash', 'python'],
+    },
     navbar: {
       title: 'PyDMP',
       logo: { src: 'img/logo.svg', width: 26, height: 26 },

@@ -3,25 +3,14 @@ slug: /
 sidebar_position: 1
 sidebar_label: Overview
 title: PyDMP
-hide_title: true
 ---
 
 import Link from '@docusaurus/Link';
 
-<div className="pd-hero">
-  <div className="pd-hero-badge"><span className="pd-led"></span> system online · apache-2.0</div>
-  <h1>Control DMP alarm panels from Python.</h1>
-  <div className="pd-hero-sub">
-    PyDMP is a platform-agnostic library for DMP (Digital Monitoring Products)
-    alarm systems over TCP/IP — dual async/sync APIs, high-level panel/area/zone
-    abstractions, built-in rate limiting, and real-time S3 event handling. No
-    vendor lock-in.
-  </div>
-  <div className="pd-hero-actions">
-    <Link className="button button--primary button--lg" to="/guide/getting-started">Get started</Link>
-    <Link className="button button--secondary button--lg" to="/api/reference">API reference</Link>
-  </div>
-</div>
+PyDMP is a platform-agnostic Python library for controlling DMP (Digital
+Monitoring Products) alarm panels over TCP/IP — dual async/sync APIs,
+high-level panel/area/zone abstractions, built-in rate limiting, and real-time
+S3 event handling. No vendor lock-in.
 
 <div className="pd-cards">
   <Link className="pd-card" to="/guide/getting-started">

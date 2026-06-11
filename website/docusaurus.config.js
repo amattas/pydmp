@@ -9,7 +9,9 @@ const config = {
   onBrokenLinks: 'throw',
   favicon: 'img/favicon.svg',
   themeConfig: {
-    colorMode: { defaultMode: 'light', respectPrefersColorScheme: true },
+    // No defaultMode: follow the visitor's OS/browser preference. (A manual
+    // toggle persists in localStorage and overrides this — by design.)
+    colorMode: { respectPrefersColorScheme: true },
     navbar: {
       title: 'PyDMP',
       logo: { src: 'img/logo.svg', width: 26, height: 26 },
@@ -17,6 +19,7 @@ const config = {
         { to: '/guide/getting-started', label: 'Guide', position: 'left' },
         { to: '/api/reference', label: 'API', position: 'left' },
         { to: '/compatibility', label: 'Compatibility', position: 'left' },
+        { type: 'docsVersionDropdown', position: 'right' },
         {
           href: 'https://github.com/amattas/pydmp',
           label: 'GitHub',
@@ -34,7 +37,17 @@ const config = {
     [
       '@docusaurus/preset-classic',
       {
-        docs: { routeBasePath: '/', sidebarPath: './sidebars.js' },
+        docs: {
+          routeBasePath: '/',
+          sidebarPath: './sidebars.js',
+          // Latest cut release serves at the site root; main's docs live at
+          // /dev. Cutting a version is part of the release-bump PR:
+          //   (generate website/docs/api/reference.md)
+          //   npm run docusaurus docs:version X.Y.Z
+          versions: {
+            current: { label: 'dev (main)', path: 'dev' },
+          },
+        },
         blog: false,
         theme: { customCss: './src/css/custom.css' },
         sitemap: { lastmod: 'date', changefreq: 'weekly', priority: 0.5, filename: 'sitemap.xml' },

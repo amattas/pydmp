@@ -1,3 +1,6 @@
+---
+sidebar_position: 5
+---
 # Migration Guide
 
 This page highlights recent breaking changes that removed temporary compatibility aliases and shims.

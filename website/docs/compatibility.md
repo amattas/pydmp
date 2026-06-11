@@ -1,3 +1,6 @@
+---
+sidebar_position: 2
+---
 # Panel Compatibility
 
 PyDMP aims to support all DMP panels with TCP/IP capability. This page tracks tested hardware and community-reported compatibility.

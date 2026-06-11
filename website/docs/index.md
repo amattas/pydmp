@@ -1,3 +1,7 @@
+---
+slug: /
+sidebar_position: 1
+---
 # PyDMP
 
 PyDMP is a platform-agnostic Python library for controlling DMP (Digital Monitoring Products) alarm panels over TCP/IP. Built for developers who need reliable, straightforward access to DMP systems without vendor lock-in.
@@ -71,4 +75,4 @@ asyncio.run(run())
 - [Realtime Status (S3)](guide/realtime-status.md) - S3 listener and event parsing
 - [Encryption & User Data](guide/encryption.md) - User code decryption and remote key behavior
 - [Migration Guide](guide/migration.md) - Breaking API changes and upgrade notes
-- [API Reference](api/panel.md) - Complete API documentation for Panel, Entities, Protocol, and more
+- [API Reference](api/reference.md) - Complete API documentation for Panel, Entities, Protocol, and more

@@ -1,3 +1,6 @@
+---
+sidebar_position: 3
+---
 # Realtime Status (Serial 3)
 
 PyDMP can run a lightweight TCP server that accepts Serial 3 (S3) Z-messages pushed by the panel. You can parse each message into a structured event and update your application accordingly.
@@ -34,7 +37,7 @@ asyncio.run(on_start())
   - Equipment (Ze): `DMPEquipmentEvent`
   - System message (Zs): `SYSTEM_MESSAGES[code]`
 
-Use `parse_s3_message` to build a `ParsedEvent` with both raw codes and typed enums. See the [API Reference](../api/status.md) for complete details.
+Use `parse_s3_message` to build a `ParsedEvent` with both raw codes and typed enums. See the [API Reference](../api/reference.md) for complete details.
 
 ## ACK Behavior
 

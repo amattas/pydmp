@@ -1,6 +1,6 @@
 /**
  * PyDMP docs — "panel room" industrial aesthetic.
- * IBM Plex Sans/Mono · graphite + signal-amber · LED status motif.
+ * IBM Plex Sans/Mono · graphite + keypad-blue · LED status motif.
  */
 
 @import '@fontsource/ibm-plex-sans/400.css';
@@ -12,19 +12,19 @@
 @import '@fontsource/ibm-plex-mono/600.css';
 
 :root {
-  /* signal amber, dark enough for AA on paper */
-  --ifm-color-primary: #b35309;
-  --ifm-color-primary-dark: #a14a08;
-  --ifm-color-primary-darker: #984607;
-  --ifm-color-primary-darkest: #7d3a06;
-  --ifm-color-primary-light: #c55c0a;
-  --ifm-color-primary-lighter: #ce600a;
-  --ifm-color-primary-lightest: #e86d0c;
+  /* keypad blue (DMP panels are blue-lit), dark enough for AA on paper */
+  --ifm-color-primary: #155fb8;
+  --ifm-color-primary-dark: #1356a6;
+  --ifm-color-primary-darker: #12519c;
+  --ifm-color-primary-darkest: #0f4381;
+  --ifm-color-primary-light: #1769ca;
+  --ifm-color-primary-lighter: #186dd3;
+  --ifm-color-primary-lightest: #2b7fe4;
 
   --pd-ink: #16191d;
-  --pd-paper: #f7f5f1;
+  --pd-paper: #f6f7f9;
   --pd-panel: #ffffff;
-  --pd-hairline: #e4dfd6;
+  --pd-hairline: #dde2e9;
   --pd-led: #2da44e;
   --pd-grid-line: rgba(22, 25, 29, 0.045);
 
@@ -52,25 +52,25 @@
   --ifm-table-border-color: var(--pd-hairline);
   --ifm-blockquote-border-left-width: 2px;
 
-  --ifm-menu-color-background-active: rgba(179, 83, 9, 0.07);
+  --ifm-menu-color-background-active: rgba(21, 95, 184, 0.07);
   --ifm-menu-color-background-hover: rgba(22, 25, 29, 0.04);
 
-  --docusaurus-highlighted-code-line-bg: rgba(179, 83, 9, 0.09);
+  --docusaurus-highlighted-code-line-bg: rgba(21, 95, 184, 0.09);
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #f59e3d;
-  --ifm-color-primary-dark: #f4922a;
-  --ifm-color-primary-darker: #f38c1d;
-  --ifm-color-primary-darkest: #d97708;
-  --ifm-color-primary-light: #f6aa50;
-  --ifm-color-primary-lighter: #f7b05c;
-  --ifm-color-primary-lightest: #f9c283;
+  --ifm-color-primary: #5ba8f5;
+  --ifm-color-primary-dark: #4a9ef4;
+  --ifm-color-primary-darker: #4299f3;
+  --ifm-color-primary-darkest: #1f7fe8;
+  --ifm-color-primary-light: #6cb2f6;
+  --ifm-color-primary-lighter: #7dbbf7;
+  --ifm-color-primary-lightest: #a0cdf9;
 
   --pd-ink: #e8e6e1;
-  --pd-paper: #101316;
-  --pd-panel: #171b20;
-  --pd-hairline: #262c33;
+  --pd-paper: #0f1318;
+  --pd-panel: #161b22;
+  --pd-hairline: #262d36;
   --pd-led: #3fb950;
   --pd-grid-line: rgba(232, 230, 225, 0.035);
 
@@ -79,10 +79,10 @@
   --ifm-font-color-base: var(--pd-ink);
   --ifm-navbar-background-color: rgba(16, 19, 22, 0.85);
 
-  --ifm-menu-color-background-active: rgba(245, 158, 61, 0.08);
+  --ifm-menu-color-background-active: rgba(91, 168, 245, 0.08);
   --ifm-menu-color-background-hover: rgba(232, 230, 225, 0.05);
 
-  --docusaurus-highlighted-code-line-bg: rgba(245, 158, 61, 0.12);
+  --docusaurus-highlighted-code-line-bg: rgba(91, 168, 245, 0.12);
 }
 
 /* ---------------------------------------------------------------- chrome */

@@ -2,8 +2,7 @@
 
 **Python library for controlling DMP (Digital Monitoring Products) alarm systems**
 
-[![Tests](https://img.shields.io/badge/tests-passing-green.svg)](https://github.com/amattas/pydmp/actions)
-[![codecov](https://codecov.io/gh/amattas/pydmp/branch/main/graph/badge.svg)](https://codecov.io/gh/amattas/pydmp)
+[![CI](https://github.com/amattas/pydmp/actions/workflows/ci.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/ci.yml)
 [![Docs Workflow](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
 [![Pages](https://img.shields.io/badge/docs-GitHub%20Pages-0A7ACC)](https://amattas.github.io/pydmp/)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)

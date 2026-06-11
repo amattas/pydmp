@@ -1,0 +1,72 @@
+# Release — fires when you push a SemVer tag. Releasing is:
+#   git tag 1.2.3 && git push origin 1.2.3
+# Bump __version__ in src/pydmp/__init__.py FIRST (hatch dynamic version); the
+# workflow refuses a tag that doesn't match the built version.
+# (Starter kit: amattas/aviato/starter — version check adapted for dynamic
+# versioning: compared against the built wheel via packaging, so PEP 440
+# normalization of prereleases is handled.)
+#
+# One-time: PyPI trusted publisher = workflow `release.yml`, environment `release`.
+# The GitHub release is created LAST, after a successful publish.
+name: Release
+
+on:
+  push:
+    tags: ["**"]
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release # must match the trusted publisher registration
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # PyPI trusted publishing (OIDC)
+    steps:
+      - name: Validate tag format
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s\n' "${TAG}" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$'; then
+            echo "::error::Tag '${TAG}' is not X.Y.Z (optionally -alphaN/-betaN)"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build and check
+        run: |
+          python -m pip install --quiet build==1.5.0 twine==6.2.0
+          python -m build
+          python -m twine check dist/*
+      - name: Verify tag matches the built version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - "${TAG}" dist/*.whl <<'PY'
+          import sys
+          from pathlib import Path
+          from packaging.version import Version
+
+          tag, wheel = sys.argv[1], Path(sys.argv[2]).name
+          built = Version(wheel.split("-")[1])
+          if Version(tag) != built:
+              sys.exit(f"::error::built version {built} != tag {tag} — bump src/pydmp/__init__.py first")
+          PY
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          args=(--generate-notes --verify-tag)
+          case "${TAG}" in *-alpha*|*-beta*) args+=(--prerelease) ;; esac
+          gh release create "${TAG}" "${args[@]}" dist/*

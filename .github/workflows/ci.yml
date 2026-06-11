@@ -29,7 +29,9 @@ jobs:
           ruff check .
           black --check --diff src tests
       - name: Test
-        run: python -m pytest -q
+        # --no-cov: pyproject addopts force coverage (+ an HTML report) on every
+        # run — useful locally, wasted I/O in CI with no uploader.
+        run: python -m pytest -q --no-cov
       - name: Build
         run: |
           python -m pip install --quiet build==1.5.0

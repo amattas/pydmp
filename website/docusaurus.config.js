@@ -7,11 +7,16 @@ const config = {
   organizationName: 'amattas',
   projectName: 'pydmp',
   onBrokenLinks: 'throw',
+  favicon: 'img/favicon.svg',
   themeConfig: {
     colorMode: { defaultMode: 'light', respectPrefersColorScheme: true },
     navbar: {
       title: 'PyDMP',
+      logo: { src: 'img/logo.svg', width: 26, height: 26 },
       items: [
+        { to: '/guide/getting-started', label: 'Guide', position: 'left' },
+        { to: '/api/reference', label: 'API', position: 'left' },
+        { to: '/compatibility', label: 'Compatibility', position: 'left' },
         {
           href: 'https://github.com/amattas/pydmp',
           label: 'GitHub',
@@ -31,7 +36,20 @@ const config = {
       {
         docs: { routeBasePath: '/', sidebarPath: './sidebars.js' },
         blog: false,
+        theme: { customCss: './src/css/custom.css' },
         sitemap: { lastmod: 'date', changefreq: 'weekly', priority: 0.5, filename: 'sitemap.xml' },
+      },
+    ],
+  ],
+  themes: [
+    [
+      // Self-hosted full-text search — no external service, indexed at build time.
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        docsRouteBasePath: '/',
+        indexBlog: false,
+        highlightSearchTermsOnTargetPage: true,
       },
     ],
   ],

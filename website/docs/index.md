@@ -1,18 +1,60 @@
 ---
 slug: /
 sidebar_position: 1
+sidebar_label: Overview
+title: PyDMP
+hide_title: true
 ---
-# PyDMP
 
-PyDMP is a platform-agnostic Python library for controlling DMP (Digital Monitoring Products) alarm panels over TCP/IP. Built for developers who need reliable, straightforward access to DMP systems without vendor lock-in.
+import Link from '@docusaurus/Link';
 
-**Key Features:**
+<div className="pd-hero">
+  <div className="pd-hero-badge"><span className="pd-led"></span> system online · apache-2.0</div>
+  <h1>Control DMP alarm panels from Python.</h1>
+  <div className="pd-hero-sub">
+    PyDMP is a platform-agnostic library for DMP (Digital Monitoring Products)
+    alarm systems over TCP/IP — dual async/sync APIs, high-level panel/area/zone
+    abstractions, built-in rate limiting, and real-time S3 event handling. No
+    vendor lock-in.
+  </div>
+  <div className="pd-hero-actions">
+    <Link className="button button--primary button--lg" to="/guide/getting-started">Get started</Link>
+    <Link className="button button--secondary button--lg" to="/api/reference">API reference</Link>
+  </div>
+</div>
 
-- **Dual APIs**: Choose async for modern applications or sync for simple scripts
-- **High-level abstractions**: Work with panels, areas, zones, and outputs instead of raw protocol commands
-- **Built-in rate limiting**: Automatic command throttling prevents panel overload
-- **Real-time events**: Serial 3 (S3) status server with event parsing and callbacks
-- **Type safety**: Full type hints throughout the codebase
+<div className="pd-cards">
+  <Link className="pd-card" to="/guide/getting-started">
+    <span className="pd-card-kicker">Guide</span>
+    <span className="pd-card-title">Getting started</span>
+    <span className="pd-card-desc">Installation, connecting to a panel, and the command flow.</span>
+  </Link>
+  <Link className="pd-card" to="/guide/cli">
+    <span className="pd-card-kicker">Guide</span>
+    <span className="pd-card-title">CLI</span>
+    <span className="pd-card-desc">Drive panels from the command line with the bundled CLI.</span>
+  </Link>
+  <Link className="pd-card" to="/guide/realtime-status">
+    <span className="pd-card-kicker">Guide</span>
+    <span className="pd-card-title">Realtime status (S3)</span>
+    <span className="pd-card-desc">Run the S3 status server and parse live panel events.</span>
+  </Link>
+  <Link className="pd-card" to="/guide/encryption">
+    <span className="pd-card-kicker">Guide</span>
+    <span className="pd-card-title">Encryption &amp; user data</span>
+    <span className="pd-card-desc">User code decryption and remote key behavior.</span>
+  </Link>
+  <Link className="pd-card" to="/compatibility">
+    <span className="pd-card-kicker">Reference</span>
+    <span className="pd-card-title">Panel compatibility</span>
+    <span className="pd-card-desc">Tested panels and community compatibility reports.</span>
+  </Link>
+  <Link className="pd-card" to="/api/reference">
+    <span className="pd-card-kicker">Reference</span>
+    <span className="pd-card-title">API reference</span>
+    <span className="pd-card-desc">Panel, entities, protocol, and the S3 server — generated from docstrings.</span>
+  </Link>
+</div>
 
 ## Installation
 
@@ -20,7 +62,7 @@ PyDMP is a platform-agnostic Python library for controlling DMP (Digital Monitor
 pip install pydmp
 # CLI
 pip install pydmp[cli]
-# Docs (to build locally)
+# Docs tooling (to build the API reference locally)
 pip install pydmp[docs]
 ```
 
@@ -67,12 +109,6 @@ async def run():
 asyncio.run(run())
 ```
 
-## Where to Next
+## Migration
 
-- [Getting Started](guide/getting-started.md) - Installation, connection, and command flow
-- [Panel Compatibility](compatibility.md) - Tested panels and compatibility reports
-- [CLI Guide](guide/cli.md) - Command-line interface usage
-- [Realtime Status (S3)](guide/realtime-status.md) - S3 listener and event parsing
-- [Encryption & User Data](guide/encryption.md) - User code decryption and remote key behavior
-- [Migration Guide](guide/migration.md) - Breaking API changes and upgrade notes
-- [API Reference](api/reference.md) - Complete API documentation for Panel, Entities, Protocol, and more
+Upgrading from an earlier version? See the [migration guide](guide/migration.md) for breaking API changes.

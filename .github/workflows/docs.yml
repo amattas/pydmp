@@ -1,102 +1,60 @@
+# Docs — build and deploy to GitHub Pages on every push to the default branch.
+# Deliberately NOT tied to release tags: docs ship when they merge.
+# (Starter kit docs-site/docs.yml + a pydoc-markdown step: the API reference is
+# generated from docstrings at build time, replacing the old mkdocstrings pages.)
 name: Docs
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - 'release/**'
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write  # allow mike to push to gh-pages
+  contents: read
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy-docs:
+  docs:
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-
-      - name: Fetch gh-pages branch (if exists)
-        run: |
-          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
-            git fetch origin gh-pages:gh-pages
-          else
-            echo "gh-pages branch does not exist yet; will be created by mike"
-          fi
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
-
-      - name: Install dependencies
+          python-version: "3.12"
+      - name: Generate API reference from docstrings
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[docs]"
-
-      - name: Determine version and alias
-        id: version
+          python -m pip install --quiet -e . "pydoc-markdown==4.8.2"
+          mkdir -p website/docs/api
+          {
+            # mdx.format md: the generated body is plain markdown; docstring braces
+            # like {area} are JSX expressions to MDX and break the static build.
+            printf -- '---\ntitle: API Reference\nmdx:\n  format: md\n---\n\n'
+            pydoc-markdown -I src -p pydmp
+          } > website/docs/api/reference.md
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Build
+        working-directory: website
         run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-
-          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" ]]; then
-            # Main branch: unique version + 'dev' alias
-            SHORT_SHA="${GITHUB_SHA::7}"
-            echo "version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
-            echo "alias=dev" >> $GITHUB_OUTPUT
-            echo "update_aliases=true" >> $GITHUB_OUTPUT
-            echo "set_default=false" >> $GITHUB_OUTPUT
-          elif [[ "$BRANCH_NAME" == "release/latest" ]]; then
-            # Latest release: extract version from code
-            VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from pydmp import __version__; print(__version__)")
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "alias=latest" >> $GITHUB_OUTPUT
-            echo "update_aliases=true" >> $GITHUB_OUTPUT
-            echo "set_default=true" >> $GITHUB_OUTPUT
-          elif [[ "$BRANCH_NAME" =~ ^release/(.+)$ ]]; then
-            # Specific release branch: use version from branch name
-            VERSION=${BASH_REMATCH[1]}
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "alias=" >> $GITHUB_OUTPUT
-            echo "update_aliases=false" >> $GITHUB_OUTPUT
-            echo "set_default=false" >> $GITHUB_OUTPUT
-          else
-            echo "Unknown branch: $BRANCH_NAME"
-            exit 1
-          fi
-
-      - name: Deploy docs with mike (push to gh-pages)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          ALIAS="${{ steps.version.outputs.alias }}"
-          UPDATE_ALIASES="${{ steps.version.outputs.update_aliases }}"
-
-          # If a version exists with the same name as the alias,
-          # delete it first to free the alias name.
-          if [[ -n "$ALIAS" ]]; then
-            mike delete --push "$ALIAS" || true
-          fi
-
-          if [[ "$UPDATE_ALIASES" == "true" && -n "$ALIAS" && "$ALIAS" != "$VERSION" ]]; then
-            mike deploy --push --update-aliases "$VERSION" "$ALIAS"
-          else
-            mike deploy --push "$VERSION"
-          fi
-
-          if [[ "${{ steps.version.outputs.set_default }}" == "true" ]]; then
-            mike set-default --push latest
-          fi
-
-          echo "Deployed docs for version: $VERSION (alias: ${ALIAS:-none})"
+          npm ci
+          npm run build
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: website/build
+      - uses: actions/deploy-pages@v5
+        id: deployment

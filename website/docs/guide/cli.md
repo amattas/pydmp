@@ -1,3 +1,6 @@
+---
+sidebar_position: 2
+---
 # Command-Line Interface (CLI)
 
 PyDMP ships with a simple CLI for common operations. Install it with:

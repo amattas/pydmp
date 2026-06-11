@@ -1,3 +1,6 @@
+---
+sidebar_position: 4
+---
 # Encryption & User Data
 
 Some user data returned by the panel (e.g., `?P=` user codes) is obfuscated with a weak LFSR algorithm. PyDMP implements the same logic used by the reference Lua driver.

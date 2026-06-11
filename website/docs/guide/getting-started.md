@@ -1,3 +1,6 @@
+---
+sidebar_position: 1
+---
 # Getting Started
 
 This guide walks you through connecting to your DMP panel, reading status, and sending commands.

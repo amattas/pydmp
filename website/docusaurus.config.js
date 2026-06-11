@@ -9,7 +9,9 @@ const config = {
   onBrokenLinks: 'throw',
   favicon: 'img/favicon.svg',
   themeConfig: {
-    colorMode: { defaultMode: 'light', respectPrefersColorScheme: true },
+    // No defaultMode: follow the visitor's OS/browser preference. (A manual
+    // toggle persists in localStorage and overrides this — by design.)
+    colorMode: { respectPrefersColorScheme: true },
     navbar: {
       title: 'PyDMP',
       logo: { src: 'img/logo.svg', width: 26, height: 26 },

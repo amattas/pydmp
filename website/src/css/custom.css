@@ -32,7 +32,7 @@
   --ifm-font-color-base: var(--pd-ink);
   --ifm-font-family-base: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
   --ifm-font-family-monospace: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
-  --ifm-code-font-size: 0.86em;
+  --ifm-code-font-size: 0.9em;
   --ifm-font-size-base: 15.5px;
   --ifm-line-height-base: 1.72;
 

@@ -280,46 +280,31 @@ cli = ["click>=8.1", "pyyaml>=6.0", "rich>=13.0"]
 pydmp = "pydmp.cli:main"
 ```
 
-## Documentation Versioning (Mike)
+## Documentation (Zensical + mike)
 
-Uses [mike](https://github.com/jimporter/mike) for versioned docs at `https://amattas.github.io/pydmp/`.
+Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, content: `docs/`) and versioned with the [Zensical fork of mike](https://github.com/squidfunk/mike) at `https://amattas.github.io/pydmp/`. The mike fork is not on PyPI — CI installs it from GitHub pinned by commit (see `.github/workflows/docs.yml`).
 
-### Branch → Version Mapping
+### Version Mapping (handled by `docs.yml`)
 
-| Branch | Version | Alias | Description |
-|--------|---------|-------|-------------|
-| `main` | `dev` | `latest` (default) | Development docs (auto-deploys on push) |
-| `release/latest` | From `__version__` | `latest` | Latest release (may be alpha/beta) |
-| `release/stable` | From `__version__` | `stable` | Production-ready stable release |
-| `release/X.Y.Z` | `X.Y.Z` | none | Specific version |
+| Trigger | Version | Alias |
+|---------|---------|-------|
+| Push to `main` | `dev` | none |
+| Release published (stable) | `X.Y.Z` | `latest` (default) |
+| Release published (alpha/beta) | `X.Y.Z` | none |
+| `workflow_dispatch` with `version` input | as given | `latest` |
 
-### Publishing Flow
-
-**Development Release** (`release/latest`):
-```bash
-git checkout -b release/1.0.0-alpha.1
-# Update version in src/pydmp/__init__.py
-git push -u origin release/1.0.0-alpha.1
-git checkout release/latest && git merge release/1.0.0-alpha.1 && git push
-```
-
-**Stable Release** (`release/stable`):
-```bash
-git checkout release/stable && git merge release/1.0.0 && git push
-```
+mike commits each built version to the `gh-pages` branch; the workflow then publishes that branch's tree through the standard Pages actions (Pages source stays "GitHub Actions").
 
 ### Local Testing
 ```bash
 pip install -e ".[docs]"
-mike deploy --update-aliases dev latest
-mike deploy --update-aliases 1.0.0 stable
-mike set-default latest
-mike serve  # http://127.0.0.1:8000/
+pydoc-markdown -I src -p pydmp > docs/api/reference.md  # generated, gitignored
+zensical serve  # http://127.0.0.1:8000/
 ```
 
 ### Troubleshooting
-- Docs not updating: Check [GitHub Actions](https://github.com/amattas/pydmp/actions), verify `gh-pages` branch exists, Pages source = `gh-pages`
-- Version selector missing: Ensure `mkdocs.yml` has `extra.version.provider: mike` and `default: latest`
+- Docs not updating: check [GitHub Actions](https://github.com/amattas/pydmp/actions) and that the `gh-pages` branch exists
+- Version selector missing: ensure `zensical.toml` has `[project.extra.version]` with `provider = "mike"` and `default = "latest"`
 - Wrong default: `mike set-default --push latest`
 
 ## License

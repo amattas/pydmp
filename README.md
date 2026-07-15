@@ -26,7 +26,7 @@ PyDMP is a standalone, platform-agnostic Python library for interfacing with DMP
 
 PyDMP has been fully tested with the **DMP XR150** panel. Other DMP panels using the same TCP/IP protocol should work, but have not been extensively tested.
 
-**For detailed compatibility information**, see the [Panel Compatibility](https://amattas.github.io/pydmp/compatibility/) documentation, which includes:
+**For detailed compatibility information**, see the [Panel Compatibility](https://amattas.github.io/pydmp/latest/compatibility/) documentation, which includes:
 - Tested panel models and firmware versions
 - Feature compatibility matrices
 - Network topology compatibility
@@ -57,7 +57,7 @@ pip install -e ".[dev]"
 
 ## CLI Overview
 
-PyDMP includes a CLI for common operations. See the full guide: docs/guide/cli.md
+PyDMP includes a CLI for common operations. See the [full guide](https://amattas.github.io/pydmp/latest/guide/cli/).
 
 - Global options
   - `--config, -c PATH` — path to YAML file (default: `config.yaml`)
@@ -381,17 +381,18 @@ ruff check src/ tests/
 
 ## Documentation
 
-Online docs (MkDocs + mkdocstrings) include concepts, realtime status (S3), encryption details, and full API reference.
+Online docs (Zensical) include concepts, realtime status (S3), encryption details, and full API reference.
 Hosted: https://amattas.github.io/pydmp/
 
 - Build locally:
 
 ```bash
 pip install -e ".[docs]"
-mkdocs serve
+pydoc-markdown -I src -p pydmp > docs/api/reference.md
+zensical serve
 ```
 
-- CI deploys docs to GitHub Pages on push to main.
+- CI deploys versioned docs to GitHub Pages: every push to main updates `dev`, every release publishes its version and updates `latest`.
 
 ## Testing
 

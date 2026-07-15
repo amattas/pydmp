@@ -183,9 +183,7 @@ config.yaml
 *.pdf
 *.lua
 
-# Docusaurus site (website/)
-website/node_modules/
-website/build/
-website/.docusaurus/
+# Zensical docs site (built output is /site, already ignored above)
+.cache/
 # generated at docs build time by pydoc-markdown
-website/docs/api/reference.md
+docs/api/reference.md

@@ -1,0 +1,106 @@
+# Zensical configuration — https://zensical.org/docs/setup/basics/
+# Docs versioning is handled by the Zensical fork of mike (see docs.yml);
+# versions live on the gh-pages branch, "latest" is the default alias.
+
+[project]
+site_name = "PyDMP"
+site_description = "Python library for controlling DMP alarm systems over TCP/IP"
+site_author = "Anthony Mattas"
+site_url = "https://amattas.github.io/pydmp/"
+repo_url = "https://github.com/amattas/pydmp"
+docs_dir = "docs"
+site_dir = "site"
+copyright = "Copyright &copy; Anthony Mattas"
+
+extra_css = ["stylesheets/extra.css"]
+
+# Explicit nav: ordering used to come from Docusaurus sidebar_position
+# frontmatter, which Zensical does not read.
+nav = [
+    { "Overview" = "index.md" },
+    { "Guide" = [{ "Getting started" = "guide/getting-started.md" }, { "CLI" = "guide/cli.md" }, { "Realtime status (S3)" = "guide/realtime-status.md" }, { "Encryption & user data" = "guide/encryption.md" }, { "Migration" = "guide/migration.md" }] },
+    { "Reference" = [{ "Panel compatibility" = "compatibility.md" }, { "API reference" = "api/reference.md" }] },
+]
+
+[project.extra.version]
+provider = "mike"
+default = "latest"
+alias = true
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/amattas/pydmp"
+
+[project.theme]
+logo = "assets/logo.svg"
+favicon = "assets/favicon.svg"
+# Fonts are self-hosted via docs/stylesheets/extra.css (IBM Plex Sans/Mono);
+# disable the Google Fonts loader.
+font = false
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "content.footnote.tooltips",
+    "content.tooltips",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.attr_list]
+
+[project.markdown_extensions.def_list]
+
+[project.markdown_extensions.footnotes]
+
+[project.markdown_extensions.md_in_html]
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.betterem]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+
+[project.markdown_extensions.pymdownx.keys]
+
+[project.markdown_extensions.pymdownx.magiclink]
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true

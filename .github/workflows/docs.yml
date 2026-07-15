@@ -1,13 +1,24 @@
-# Docs — build and deploy to GitHub Pages on every push to the default branch.
-# Deliberately NOT tied to release tags: docs ship when they merge.
-# (Starter kit docs-site/docs.yml + a pydoc-markdown step: the API reference is
-# generated from docstrings at build time, replacing the old mkdocstrings pages.)
+# Docs — Zensical + mike (versioned), deployed to GitHub Pages.
+#   push to main        → deploys the "dev" version
+#   release published   → deploys "X.Y.Z" + updates the "latest" alias
+#   workflow_dispatch   → deploys an explicit version (one-time seeding/fixups)
+# mike stores every built version on the gh-pages branch; the Pages deployment
+# then publishes that branch's tree via the standard Pages actions, so the
+# Pages source stays "GitHub Actions" (no repo settings change).
+# The API reference is generated from docstrings at build time (pydoc-markdown).
 name: Docs
 
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deploy (e.g. 1.0.1); aliases it as latest. Empty = dev."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -20,6 +31,7 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     permissions:
+      contents: write # mike commits versions to the gh-pages branch
       pages: write
       id-token: write
     environment:
@@ -28,33 +40,53 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          fetch-depth: 0 # mike needs the gh-pages branch history
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Install docs tooling
+        # mike: Zensical-compatible fork, not on PyPI yet — pinned by commit.
+        # https://zensical.org/docs/setup/versioning/
+        run: |
+          python -m pip install --quiet ".[docs]" \
+            "git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac"
       - name: Generate API reference from docstrings
         run: |
-          python -m pip install --quiet -e . "pydoc-markdown==4.8.2"
-          mkdir -p website/docs/api
           {
-            # mdx.format md: the generated body is plain markdown; docstring braces
-            # like {area} are JSX expressions to MDX and break the static build.
-            printf -- '---\ntitle: API Reference\nmdx:\n  format: md\n---\n\n'
+            printf -- '---\ntitle: API Reference\n---\n\n'
             pydoc-markdown -I src -p pydmp
-          } > website/docs/api/reference.md
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: website/package-lock.json
-      - name: Build
-        working-directory: website
+          } > docs/api/reference.md
+      - name: Deploy version with mike
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          npm ci
-          npm run build
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          case "${EVENT}" in
+            release) VERSION="${RELEASE_TAG}" ;;
+            workflow_dispatch) VERSION="${INPUT_VERSION}" ;;
+            *) VERSION="" ;;
+          esac
+          if [ -z "${VERSION}" ]; then
+            mike deploy --push dev
+          elif [ "${PRERELEASE}" = "true" ]; then
+            # alpha/beta: publish the version but don't move "latest"
+            mike deploy --push "${VERSION}"
+          else
+            mike deploy --push --update-aliases "${VERSION}" latest
+            mike set-default --push latest
+          fi
+      - name: Collect site from gh-pages
+        run: |
+          set -euo pipefail
+          git worktree add /tmp/pages gh-pages
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: website/build
+          path: /tmp/pages
       - uses: actions/deploy-pages@v5
         id: deployment

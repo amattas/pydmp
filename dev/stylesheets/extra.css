@@ -1,0 +1,173 @@
+/**
+ * PyDMP docs — "panel room" industrial aesthetic.
+ * IBM Plex Sans/Mono · graphite + keypad-blue.
+ * Fonts are self-hosted (docs/assets/fonts); theme.font is disabled in
+ * zensical.toml so nothing is fetched from Google Fonts.
+ */
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-sans-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
+}
+
+:root {
+  --md-text-font: 'IBM Plex Sans';
+  --md-code-font: 'IBM Plex Mono';
+}
+
+/* keypad blue (DMP panels are blue-lit), dark enough for AA on paper */
+[data-md-color-scheme='default'] {
+  --md-primary-fg-color: #155fb8;
+  --md-primary-fg-color--light: #2b7fe4;
+  --md-primary-fg-color--dark: #0f4381;
+  --md-accent-fg-color: #1769ca;
+
+  --pd-hairline: #dde2e9;
+}
+
+[data-md-color-scheme='slate'] {
+  --md-primary-fg-color: #155fb8;
+  --md-primary-fg-color--light: #5ba8f5;
+  --md-primary-fg-color--dark: #0f4381;
+  --md-accent-fg-color: #5ba8f5;
+
+  /* graphite, not Material's default indigo-tinted slate */
+  --md-hue: 215;
+
+  --pd-hairline: #262d36;
+}
+
+/* ---------------------------------------------------------------- content */
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.md-typeset h2 {
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--pd-hairline);
+}
+
+.md-typeset table:not([class]) th {
+  font-family: var(--md-code-font-family);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- landing */
+
+/* card grid */
+.pd-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.9rem;
+  margin: 1.25rem 0 2.25rem;
+}
+
+.pd-card {
+  position: relative;
+  display: block;
+  padding: 1.05rem 1.1rem 1rem;
+  border: 1px solid var(--pd-hairline);
+  border-radius: 8px;
+  background-color: var(--md-default-bg-color);
+  color: var(--md-default-fg-color) !important;
+  text-decoration: none !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+}
+
+.pd-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--md-primary-fg-color--light);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.pd-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-primary-fg-color--light);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+}
+
+.pd-card:hover::before {
+  opacity: 1;
+}
+
+.pd-card-kicker {
+  display: block;
+  font-family: var(--md-code-font-family);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--md-primary-fg-color--light);
+  margin-bottom: 0.35rem;
+}
+
+.pd-card-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.01em;
+}
+
+.pd-card-desc {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  opacity: 0.75;
+}

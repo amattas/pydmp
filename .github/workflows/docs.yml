@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: write # mike commits versions to the gh-pages branch
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # mike needs the gh-pages branch history
       - uses: actions/setup-python@v6

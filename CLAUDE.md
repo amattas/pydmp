@@ -293,7 +293,7 @@ Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, c
 | Release published (alpha/beta) | `X.Y.Z` | none |
 | `workflow_dispatch` with `version` input | as given | `latest` |
 
-mike commits each built version to the `gh-pages` branch; the workflow then publishes that branch's tree through the standard Pages actions (Pages source stays "GitHub Actions").
+mike commits each built version to the `gh-pages` branch, which GitHub Pages serves directly (Pages source = `gh-pages` branch, classic mike setup).
 
 ### Local Testing
 ```bash

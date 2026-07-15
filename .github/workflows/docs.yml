@@ -2,9 +2,9 @@
 #   push to main        → deploys the "dev" version
 #   release published   → deploys "X.Y.Z" + updates the "latest" alias
 #   workflow_dispatch   → deploys an explicit version (one-time seeding/fixups)
-# mike stores every built version on the gh-pages branch; the Pages deployment
-# then publishes that branch's tree via the standard Pages actions, so the
-# Pages source stays "GitHub Actions" (no repo settings change).
+# mike stores every built version on the gh-pages branch; GitHub Pages serves
+# that branch directly (Pages source = gh-pages, classic mike setup), so no
+# artifact upload/deploy steps are needed here.
 # The API reference is generated from docstrings at build time (pydoc-markdown).
 name: Docs
 
@@ -32,11 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # mike commits versions to the gh-pages branch
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -81,13 +76,3 @@ jobs:
             mike deploy --push --update-aliases "${VERSION}" latest
             mike set-default --push latest
           fi
-      - name: Collect site from gh-pages
-        run: |
-          set -euo pipefail
-          git worktree add /tmp/pages gh-pages
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: /tmp/pages
-      - uses: actions/deploy-pages@v5
-        id: deployment

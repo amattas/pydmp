@@ -56,7 +56,7 @@ def _runtime_version() -> str:
         pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
         version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
         if not isinstance(version, str):
-            raise RuntimeError(f"{pyproject} does not define a string project.version")
+            raise RuntimeError(f"{pyproject} does not define a string project.version") from None
         return version
 
 

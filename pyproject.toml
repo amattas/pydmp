@@ -33,6 +33,9 @@ dev = [
     "mypy==2.3.0",
     "ruff==0.15.22",
     "pre-commit==4.6.0",
+    # CI installs .[dev] only; the test suite imports pydmp.cli, whose deps live in
+    # the cli extra — ride it along via self-reference.
+    "pydmp[cli]",
 ]
 cli = [
     "click==8.4.1",

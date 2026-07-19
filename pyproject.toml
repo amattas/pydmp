@@ -33,9 +33,14 @@ dev = [
     "mypy==2.3.0",
     "ruff==0.15.22",
     "pre-commit==4.6.0",
-    # CI installs .[dev] only; the test suite imports pydmp.cli, whose deps live in
-    # the cli extra — ride it along via self-reference.
-    "pydmp[cli]",
+    # The verify's build job runs `python -m build` from the dev install.
+    "build==1.5.0",
+    # CI installs .[dev] only and the test suite imports pydmp.cli — the cli deps must
+    # ride along. Inlined (not a pydmp[cli] self-reference) because the §11.3 pin-form
+    # gate doesn't yet recognize self-referential extras; keep in sync with [cli].
+    "click==8.4.1",
+    "pyyaml==6.0.3",
+    "rich==15.0.0",
 ]
 cli = [
     "click==8.4.1",

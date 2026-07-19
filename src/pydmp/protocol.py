@@ -133,7 +133,7 @@ class DMPProtocol:
             # Build full message: @[ACCOUNT][COMMAND]\r
             message = f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
 
-_LOGGER.debug("Encoded command: %s", message.strip())
+            _LOGGER.debug("Encoded command: %s", message.strip())
             return message.encode()
 
         except (KeyError, ValueError) as e:

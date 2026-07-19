@@ -9,9 +9,7 @@ from pydmp.protocol import UserCode
 
 def _write_cfg(tmp_path: Path) -> Path:
     p = tmp_path / "cfg.yaml"
-    p.write_text(
-        "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n"
-    )
+    p.write_text("panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n")
     return p
 
 

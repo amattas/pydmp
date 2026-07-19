@@ -89,9 +89,7 @@ class Output:
         try:
             _LOGGER.info("Setting output %s to mode %s", self.number, mode)
 
-            response = await self.panel._send_command(
-                DMPCommand.OUTPUT.value, output=self.formatted_number, mode=mode
-            )
+            response = await self.panel._send_command(DMPCommand.OUTPUT.value, output=self.formatted_number, mode=mode)
 
             if response == "NAK":
                 raise DMPOutputError(f"Panel rejected mode {mode} for output {self.number}")

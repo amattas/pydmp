@@ -131,9 +131,7 @@ class DMPProtocol:
             formatted_command = command.format(**kwargs)
 
             # Build full message: @[ACCOUNT][COMMAND]\r
-            message = (
-                f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
-            )
+            message = f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
 
             _LOGGER.debug(f"Encoded command: {message.strip()}")
             return message.encode()
@@ -197,11 +195,7 @@ class DMPProtocol:
                         break
 
                 # Command starts right after ACK/NAK; may be '!X' or short 'X'
-                cmd_with_prefix = (
-                    line[ack_pos + 1 : ack_pos + 3]
-                    if ack_pos != -1 and len(line) > ack_pos + 2
-                    else ""
-                )
+                cmd_with_prefix = line[ack_pos + 1 : ack_pos + 3] if ack_pos != -1 and len(line) > ack_pos + 2 else ""
 
                 # Authentication/disconnect response (!V)
                 if cmd_with_prefix == "!V":
@@ -214,9 +208,7 @@ class DMPProtocol:
                     len(cmd_with_prefix) == 2
                     and cmd_with_prefix[0] == "!"
                     and cmd_with_prefix[1] in ["C", "O", "X", "Y", "Q"]
-                ) or (
-                    len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"]
-                ):  # short form
+                ) or (len(cmd_with_prefix) >= 1 and cmd_with_prefix[0:1] in ["C", "O", "X", "Y", "Q"]):  # short form
                     if ack_nak_char == DMPResponse.ACK.value:
                         return "ACK"
                     elif ack_nak_char == DMPResponse.NAK.value:

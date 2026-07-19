@@ -30,21 +30,9 @@ async def test_arm_areas_flag_variants(monkeypatch):
     await p.arm_areas([3], bypass_faulted=False, force_arm=False, instant=None)
 
     assert recorded[0][0] == DMPCommand.ARM.value
-    assert (
-        recorded[0][1]["instant"] == "Y"
-        and recorded[0][1]["bypass"] == "Y"
-        and recorded[0][1]["force"] == "N"
-    )
-    assert (
-        recorded[1][1]["instant"] == "N"
-        and recorded[1][1]["bypass"] == "N"
-        and recorded[1][1]["force"] == "Y"
-    )
-    assert (
-        recorded[2][1]["instant"] == ""
-        and recorded[2][1]["bypass"] == "N"
-        and recorded[2][1]["force"] == "N"
-    )
+    assert recorded[0][1]["instant"] == "Y" and recorded[0][1]["bypass"] == "Y" and recorded[0][1]["force"] == "N"
+    assert recorded[1][1]["instant"] == "N" and recorded[1][1]["bypass"] == "N" and recorded[1][1]["force"] == "Y"
+    assert recorded[2][1]["instant"] == "" and recorded[2][1]["bypass"] == "N" and recorded[2][1]["force"] == "N"
 
 
 @pytest.mark.asyncio

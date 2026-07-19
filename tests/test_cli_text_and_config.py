@@ -7,9 +7,7 @@ import pydmp.cli as cli
 
 def _cfg(tmp_path: Path) -> Path:
     p = tmp_path / "cfg.yaml"
-    p.write_text(
-        "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n"
-    )
+    p.write_text("panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n")
     return p
 
 
@@ -78,9 +76,7 @@ def test_cli_config_errors(monkeypatch, tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text("panel: [1, 2")  # malformed YAML to trigger parser error
     out = CliRunner().invoke(cli.cli, ["-c", str(bad), "arm", "1"])
-    assert out.exit_code != 0 and (
-        "Error parsing config" in out.output or "Invalid config" in out.output
-    )
+    assert out.exit_code != 0 and ("Error parsing config" in out.output or "Invalid config" in out.output)
 
     # Invalid shape triggers invalid config message
     inv = tmp_path / "inv.yaml"

@@ -8,9 +8,7 @@ import pydmp.cli as cli
 
 def _cfg(tmp_path: Path) -> Path:
     p = tmp_path / "cfg.yaml"
-    p.write_text(
-        "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n"
-    )
+    p.write_text("panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n")
     return p
 
 
@@ -72,9 +70,7 @@ def test_cli_listen_text(monkeypatch):
         device: str
         system_text: str
 
-    monkeypatch.setattr(
-        cli, "parse_s3_message", lambda msg: Parsed("Zc", "ON", "1", "2", "3", "OK")
-    )
+    monkeypatch.setattr(cli, "parse_s3_message", lambda msg: Parsed("Zc", "ON", "1", "2", "3", "OK"))
 
     async def no_sleep(_):
         return None

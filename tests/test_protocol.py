@@ -40,9 +40,7 @@ class TestDMPProtocol:
     def test_encode_arm(self):
         """Test arm command encoding."""
         protocol = DMPProtocol("1", "")
-        encoded = protocol.encode_command(
-            DMPCommand.ARM.value, area="01", bypass="N", force="N", instant=""
-        )
+        encoded = protocol.encode_command(DMPCommand.ARM.value, area="01", bypass="N", force="N", instant="")
         assert encoded == b"@    1!C01,NN\r"
 
     def test_encode_bypass_zone(self):

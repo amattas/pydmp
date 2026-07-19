@@ -65,9 +65,7 @@ class DMPStatusServer:
         server.close()
         await server.wait_closed()
 
-    async def _handle_client(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
+    async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
         _LOGGER.info("S3 status connection from %s", peer)
         buf = b""

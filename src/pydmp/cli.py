@@ -139,11 +139,7 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(p.get("host", "")),
             "account": str(p.get("account", "")),
             "remote_key": str(p.get("remote_key", "")),
-            "port": (
-                int(p.get("port", DEFAULT_PORT))
-                if str(p.get("port", "")).strip() != ""
-                else DEFAULT_PORT
-            ),
+            "port": (int(p.get("port", DEFAULT_PORT)) if str(p.get("port", "")).strip() != "" else DEFAULT_PORT),
             "timeout": float(p.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -153,11 +149,7 @@ def _normalize_config(raw: Any) -> dict | None:
             "host": str(data.get("host", "")),
             "account": str(data.get("account", "")),
             "remote_key": str(data.get("remote_key", "")),
-            "port": (
-                int(data.get("port", DEFAULT_PORT))
-                if str(data.get("port", "")).strip() != ""
-                else DEFAULT_PORT
-            ),
+            "port": (int(data.get("port", DEFAULT_PORT)) if str(data.get("port", "")).strip() != "" else DEFAULT_PORT),
             "timeout": float(data.get("timeout", 10.0)),
         }
         return {"panel": p}
@@ -234,9 +226,7 @@ def arm_cmd(
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(
                     f"[cyan]Arming areas {area_list} "
@@ -250,9 +240,7 @@ def arm_cmd(
                 force_arm,
                 instant,
             )
-            await panel.arm_areas(
-                area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant
-            )
+            await panel.arm_areas(area_list, bypass_faulted=bypass_faulted, force_arm=force_arm, instant=instant)
             if not as_json:
                 console.print(f"[green]Areas {area_list} armed[/green]")
             else:
@@ -285,13 +273,9 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(f"[cyan]Disarming area {area}[/cyan]")
             _LOG.info("CLI: disarming area %s", area)
@@ -326,20 +310,14 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(f"[cyan]Bypassing zone {zone}[/cyan]")
             _LOG.info("CLI: bypassing zone %s", zone)
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = (
-                    panel._protocol.last_nak_detail
-                    if hasattr(panel, "_protocol") and panel._protocol
-                    else ""
-                )
+                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -372,20 +350,14 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print(f"[cyan]Restoring zone {zone}[/cyan]")
             _LOG.info("CLI: restoring zone %s", zone)
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = (
-                    panel._protocol.last_nak_detail
-                    if hasattr(panel, "_protocol") and panel._protocol
-                    else ""
-                )
+                detail = panel._protocol.last_nak_detail if hasattr(panel, "_protocol") and panel._protocol else ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -418,13 +390,9 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             output_obj = await panel.get_output(output)
             if not as_json:
                 console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
@@ -442,9 +410,7 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             if not as_json:
                 console.print(f"[green]Output {output} set to {action}[/green]")
             else:
-                click.echo(
-                    json.dumps({"ok": True, "action": "output", "output": output, "mode": action})
-                )
+                click.echo(json.dumps({"ok": True, "action": "output", "output": output, "mode": action}))
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
@@ -475,9 +441,7 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             users = await panel.get_user_codes()
             if not as_json:
                 table = Table(title="Users")
@@ -528,9 +492,7 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             profiles = await panel.get_user_profiles()
             if not as_json:
                 table = Table(title="Profiles")
@@ -579,9 +541,7 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             # Fetch current status
             await panel.update_output_status()
             outputs = await panel.get_outputs()
@@ -621,9 +581,7 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             if not as_json:
                 console.print("[cyan]Sending sensor reset[/cyan]")
             _LOG.info("CLI: sensor reset")
@@ -664,9 +622,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
     async def run():
         panel = DMPPanel()
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             user = await panel.check_code(code, include_pin=include_pin)
             if not as_json:
                 if user:
@@ -676,11 +632,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
             else:
                 from dataclasses import asdict
 
-                click.echo(
-                    json.dumps(
-                        {"ok": True, "found": bool(user), "user": (asdict(user) if user else None)}
-                    )
-                )
+                click.echo(json.dumps({"ok": True, "found": bool(user), "user": (asdict(user) if user else None)}))
         except Exception as e:
             if as_json:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
@@ -744,16 +696,12 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
             _LOG.info("CLI: get-zones connect")
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             await panel.update_status()
             areas = await panel.get_areas()
             if as_json:
@@ -767,9 +715,7 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
             for area in areas:
                 state_style = "green" if area.is_disarmed else "red"
                 state_text = AREA_STATUS.get(area.state, area.state)
-                table.add_row(
-                    str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]"
-                )
+                table.add_row(str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]")
             console.print(table)
         finally:
             await panel.disconnect()
@@ -787,16 +733,12 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
             _LOG.info("CLI: get-areas connect")
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             await panel.update_status()
             zones = await panel.get_zones()
             if as_json:
@@ -841,13 +783,9 @@ def set_output(ctx: click.Context, output: int, action: str) -> None:
 
     async def run():
         pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+        panel = DMPPanel(port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0)))
         try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
+            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
             output_obj = await panel.get_output(output)
             console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
             _LOG.info("CLI: set-output %s %s", output, action)

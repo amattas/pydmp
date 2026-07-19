@@ -107,9 +107,7 @@ class Zone:
         try:
             _LOGGER.info("Bypassing zone %s", self.number)
 
-            response = await self.panel._send_command(
-                DMPCommand.BYPASS_ZONE.value, zone=self.formatted_number
-            )
+            response = await self.panel._send_command(DMPCommand.BYPASS_ZONE.value, zone=self.formatted_number)
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected bypass command for zone {self.number}")
@@ -128,9 +126,7 @@ class Zone:
         try:
             _LOGGER.info("Restoring zone %s", self.number)
 
-            response = await self.panel._send_command(
-                DMPCommand.RESTORE_ZONE.value, zone=self.formatted_number
-            )
+            response = await self.panel._send_command(DMPCommand.RESTORE_ZONE.value, zone=self.formatted_number)
 
             if response == "NAK":
                 raise DMPZoneError(f"Panel rejected restore command for zone {self.number}")

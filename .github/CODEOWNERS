@@ -1,0 +1,3 @@
+# Default reviewers for everything in this repository (review routing).
+# Seed-once: refine per-path ownership as the project grows.
+* @amattas

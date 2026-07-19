@@ -1,0 +1,13 @@
+profile: python-library
+version: 0.5.2
+docs: true
+profile-identity: aviato-profile/python-library/v1
+variables:
+  serve-pages: true
+  owner: amattas
+  repo: pydmp
+  typecheck-command: python -m mypy --strict .
+  default-branch: main
+  distribution-name: pydmp
+  import-name: pydmp
+  run-typecheck: 'false'

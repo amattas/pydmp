@@ -1,0 +1,6 @@
+# aviato:managed profile=python-library version=0.5.2 hash=deb83c655803a65a6fb9b4d9721729191e850bd681bfec55ca1271a5aa44f1b5 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "S"]

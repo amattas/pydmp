@@ -52,8 +52,8 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch):
             return self.connected
 
     monkeypatch.setattr(ts, "DMPTransport", _OkTransport)
-    with DMPTransportSync("h", "1", "KEY") as s:
-        assert s.is_connected or True
+    with DMPTransportSync("h", "1", "KEY"):
+        assert True
 
 
 def test_send_command_pass_through(monkeypatch):

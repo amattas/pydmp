@@ -26,6 +26,8 @@ Example (Sync):
     >>> panel.disconnect()
 """
 
+from importlib.metadata import version as _dist_version
+
 from . import const, exceptions
 from .area import Area, AreaSync
 from .crypto import DMPCrypto
@@ -39,7 +41,9 @@ from .transport import DMPTransport
 from .transport_sync import DMPTransportSync
 from .zone import Zone, ZoneSync
 
-__version__ = "1.0.1"
+# pyproject's static version is the single source of truth (the aviato release
+# automation writes it); derive the attribute from installed metadata.
+__version__ = _dist_version("pydmp")
 
 __all__ = [
     # High-level API (recommended)

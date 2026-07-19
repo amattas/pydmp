@@ -307,7 +307,7 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -451,7 +451,7 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -510,7 +510,7 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -561,7 +561,7 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -603,7 +603,7 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -638,7 +638,7 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -687,7 +687,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 

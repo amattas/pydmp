@@ -1,9 +1,9 @@
 """DMP protocol commands."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class DMPCommand(str, Enum):
+class DMPCommand(StrEnum):
     """DMP panel commands."""
 
     # Authentication

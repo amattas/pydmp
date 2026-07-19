@@ -18,9 +18,8 @@ class FakeConnection:
     async def send_command(self, cmd: str, **kwargs):
         self.calls.append((cmd, kwargs))
         # Return the next StatusResponse for WB queries; else ACK
-        if cmd in (DMPCommand.GET_ZONE_STATUS.value, DMPCommand.GET_ZONE_STATUS_CONT.value):
-            if self._responses:
-                return self._responses.pop(0)
+        if cmd in (DMPCommand.GET_ZONE_STATUS.value, DMPCommand.GET_ZONE_STATUS_CONT.value) and self._responses:
+            return self._responses.pop(0)
         return "ACK"
 
     async def keep_alive(self):

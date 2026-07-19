@@ -101,9 +101,7 @@ class Output:
                 self._state = DMPRealTimeStatusEvent.OUTPUT_OFF.value
             elif mode == "P":
                 self._state = DMPRealTimeStatusEvent.OUTPUT_PULSE.value
-            elif mode == "S":
-                self._state = DMPRealTimeStatusEvent.OUTPUT_ON.value
-            elif mode == "M":
+            elif mode == "S" or mode == "M":
                 self._state = DMPRealTimeStatusEvent.OUTPUT_ON.value
 
             _LOGGER.info("Output %s set to mode %s", self.number, mode)

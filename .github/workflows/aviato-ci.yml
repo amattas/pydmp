@@ -1,0 +1,317 @@
+# aviato:managed profile=python-library version=0.6.0 hash=48ce50636014a93da4f035b8ff71c192b2a6c3b7e828227a0ac485bced15633c inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+name: Aviato Python Library
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+    tags:
+      - "*.*.*"
+  schedule:
+    - cron: "23 5 * * 1"
+  # §5.9: lets the release propose phase dispatch this workflow at the
+  # release/<next> branch (workflow_dispatch is exempt from GITHUB_TOKEN event
+  # suppression), so the release PR reports the same required status checks as
+  # any human branch.
+  workflow_dispatch:
+
+# Granted to the UNION of every called reusable workflow's permissions: a caller
+# cannot elevate the token for a called workflow, so it must grant >= their needs
+# (release propose-dispatch: actions:write). PyPI OIDC and attestation writes are
+# granted only to the consumer-local publisher job below.
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+  actions: write
+  statuses: write
+
+jobs:
+  ci:
+    if: ${{ github.ref_type != 'tag' && github.event_name != 'schedule' }}
+    uses: amattas/aviato/.github/workflows/reusable-python-ci.yml@0.6.0
+    with:
+      python-version: "3.12"
+      install-command: "python -m pip install -e .[dev]"
+      lint-command: "python -m ruff check ."
+      test-command: "python -m pytest --cov --cov-report=term-missing"
+      build-command: "python -m build"
+      typecheck-command: "python -m mypy --strict ."
+      run-typecheck: false
+      run-build: true
+
+  security:
+    # Runs on PRs AND on the release tag, so source scans gate the verify pipeline
+    # and are re-run on the release ref before any deploy (§2.13/§5.14).
+    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.0
+    with:
+      codeql-languages: "python"
+
+  common-lint:
+    if: ${{ github.ref_type != 'tag' }}
+    uses: amattas/aviato/.github/workflows/reusable-common-lint.yml@0.6.0
+    with:
+      aviato-ref: 0.6.0
+      local-install: false
+
+  status-bridge:
+    if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+    needs: [ci, security, common-lint]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Publish Python CI status
+        env:
+          STATUS_CONTEXT: "ci / Python CI"
+          STATUS_STATE: ${{ needs.ci.result == 'success' && 'success' || 'failure' }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="${STATUS_STATE}" \
+            -f context="${STATUS_CONTEXT}"
+      - name: Publish security baseline status
+        env:
+          STATUS_CONTEXT: "security / Security baseline heartbeat"
+          STATUS_STATE: ${{ needs.security.result == 'success' && 'success' || 'failure' }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="${STATUS_STATE}" \
+            -f context="${STATUS_CONTEXT}"
+      - name: Publish common lint status
+        env:
+          STATUS_CONTEXT: "common-lint / Common lint"
+          STATUS_STATE: ${{ needs.common-lint.result == 'success' && 'success' || 'failure' }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="${STATUS_STATE}" \
+            -f context="${STATUS_CONTEXT}"
+
+  release:
+    if: ${{ github.ref_type != 'tag' && github.event_name == 'push' }}
+    needs: [ci, security, common-lint]
+    uses: amattas/aviato/.github/workflows/reusable-release.yml@0.6.0
+    with:
+      aviato-ref: 0.6.0
+      local-install: false
+
+  # Gate before deploy. Two entry points: IN-RUN (release just tagged on this push;
+  # release-tag = its output) or a manual tag push (classic tag-ref context).
+  release-gate:
+    needs: [release]
+    if: ${{ always() && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
+    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.0
+    with:
+      default-branch: main
+      require-merged-pr: true
+      release-tag: ${{ needs.release.outputs.tag }}
+
+  pypi:
+    needs: [release, release-gate, security]
+    if: ${{ always() && needs.release-gate.result == 'success' && needs.security.result == 'success' && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
+    uses: amattas/aviato/.github/workflows/reusable-pypi-publish.yml@0.6.0
+    with:
+      python-version: "3.12"
+      working-directory: "."
+      packages-dir: "dist"
+      release-tag: ${{ needs.release.outputs.tag }}
+      gated-sha: ${{ needs.release-gate.outputs.gated-sha }}
+      consumer-publisher-present: true
+
+  # PyPI Trusted Publishing authenticates the registered consumer workflow identity,
+  # so this job must stay local rather than move into the reusable workflow.
+  pypi-publish:
+    name: Publish Python package
+    needs: [release-gate, pypi]
+    if: ${{ always() && needs.release-gate.result == 'success' && needs.pypi.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    concurrency:
+      group: aviato-pypi-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download vetted build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.pypi.outputs.artifact-name }}
+          path: .
+
+      - name: Verify fresh remote tag after artifact download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.pypi.outputs.resolved-tag }}
+          GATED_SHA: ${{ needs.release-gate.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          read -r object_type actual < <(gh api -H "Cache-Control: no-cache" "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.type + " " + .object.sha')
+          for _ in 1 2 3 4 5; do
+            [ "${object_type}" = "tag" ] || break
+            read -r object_type actual < <(gh api -H "Cache-Control: no-cache" "repos/${GITHUB_REPOSITORY}/git/tags/${actual}" --jq '.object.type + " " + .object.sha')
+          done
+          if [ "${object_type}" != "commit" ] || [ "${actual}" != "${GATED_SHA}" ]; then
+            echo "::error::Fresh remote tag ${RELEASE_TAG} does not peel to gated commit ${GATED_SHA} (type=${object_type}, sha=${actual})."
+            exit 1
+          fi
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: "dist/*"
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v4
+        with:
+          subject-path: "dist/*"
+          sbom-path: "sbom.cyclonedx.json"
+
+      - name: Resolve simple index endpoint
+        id: index
+        shell: bash
+        env:
+          REPOSITORY_URL: ${{ vars.PYPI_REPOSITORY_URL }}
+          SIMPLE_INDEX_URL: ${{ vars.PYPI_SIMPLE_INDEX_URL }}
+        run: |
+          set -euo pipefail
+          resolved="$(python - "${REPOSITORY_URL}" "${SIMPLE_INDEX_URL}" <<'PY'
+          import sys
+          import urllib.parse
+
+          upload, explicit_simple = sys.argv[1:3]
+
+          def validated(url: str, suffix: str) -> urllib.parse.SplitResult:
+              try:
+                  parsed = urllib.parse.urlsplit(url)
+                  _ = parsed.port
+              except ValueError as exc:
+                  raise SystemExit(f"invalid PyPI endpoint: {exc}") from exc
+              if parsed.scheme != "https" or not parsed.hostname:
+                  raise SystemExit("PyPI endpoints must use HTTPS and include a hostname")
+              if parsed.username is not None or parsed.password is not None:
+                  raise SystemExit("credentials are forbidden in PyPI endpoint URLs")
+              if parsed.query or parsed.fragment or not parsed.path.endswith(suffix):
+                  raise SystemExit(f"PyPI endpoint must end in {suffix!r} with no query or fragment")
+              return parsed
+
+          if upload:
+              upload_parts = validated(upload, "/legacy/")
+              derived_path = upload_parts.path[: -len("legacy/")] + "simple/"
+              derived = urllib.parse.urlunsplit(("https", upload_parts.netloc, derived_path, "", ""))
+          else:
+              derived = "https://pypi.org/simple/"
+          if explicit_simple:
+              validated(explicit_simple, "/simple/")
+              resolved = explicit_simple
+          else:
+              resolved = derived
+          print(resolved)
+          PY
+          )"
+          echo "simple-index-url=${resolved}" >> "${GITHUB_OUTPUT}"
+
+      - name: Final fresh remote tag verification
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.pypi.outputs.resolved-tag }}
+          GATED_SHA: ${{ needs.release-gate.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          read -r object_type actual < <(gh api -H "Cache-Control: no-cache" "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.type + " " + .object.sha')
+          for _ in 1 2 3 4 5; do
+            [ "${object_type}" = "tag" ] || break
+            read -r object_type actual < <(gh api -H "Cache-Control: no-cache" "repos/${GITHUB_REPOSITORY}/git/tags/${actual}" --jq '.object.type + " " + .object.sha')
+          done
+          if [ "${object_type}" != "commit" ] || [ "${actual}" != "${GATED_SHA}" ]; then
+            echo "::error::Fresh remote tag ${RELEASE_TAG} does not peel to gated commit ${GATED_SHA} (type=${object_type}, sha=${actual})."
+            exit 1
+          fi
+
+      - name: Publish distributions
+        if: ${{ vars.PYPI_REPOSITORY_URL == '' }}
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          packages-dir: dist
+
+      - name: Publish distributions to alternate repository
+        if: ${{ vars.PYPI_REPOSITORY_URL != '' }}
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          packages-dir: dist
+          repository-url: ${{ vars.PYPI_REPOSITORY_URL }}
+
+      - name: Confirm published artifacts
+        shell: bash
+        env:
+          SIMPLE_INDEX_URL: ${{ steps.index.outputs.simple-index-url }}
+          DISTRIBUTION_NAME: ${{ needs.pypi.outputs.distribution-name }}
+          EXPECTED_VERSION: ${{ needs.pypi.outputs.package-version }}
+          RELEASE_TAG: ${{ needs.pypi.outputs.resolved-tag }}
+          DIST_DIR: dist
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          release_tag = os.environ["RELEASE_TAG"]
+          expected_from_tag = re.sub(r"-(alpha|beta)([0-9]+)$", lambda m: {"alpha": "a", "beta": "b"}[m.group(1)] + m.group(2), release_tag)
+          if os.environ["EXPECTED_VERSION"] != expected_from_tag:
+              raise SystemExit(f"builder version {os.environ['EXPECTED_VERSION']!r} does not match release tag {release_tag!r}")
+
+          dist = pathlib.Path(os.environ["DIST_DIR"])
+          local = {
+              path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in sorted(dist.iterdir())
+              # Distributions only: pypa/gh-action-pypi-publish >= 1.14 writes
+              # *.publish.attestation sidecars into dist/ during upload, and the
+              # simple index never lists sidecars (live 0.4.0 false-negative).
+              if path.is_file() and path.name.endswith((".whl", ".tar.gz"))
+          }
+          if not local:
+              raise SystemExit("no local distribution artifacts to confirm")
+          normalized_name = re.sub(r"[-_.]+", "-", os.environ["DISTRIBUTION_NAME"]).lower()
+          url = urllib.parse.urljoin(os.environ["SIMPLE_INDEX_URL"], urllib.parse.quote(normalized_name) + "/")
+          request = urllib.request.Request(url, headers={"Accept": "application/vnd.pypi.simple.v1+json"})
+          last_error = "index returned no matching files"
+          for attempt in range(1, 11):
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      payload = json.load(response)
+                  remote = {}
+                  for entry in payload.get("files", []):
+                      filename = entry.get("filename")
+                      sha256 = (entry.get("hashes") or {}).get("sha256")
+                      if isinstance(filename, str) and isinstance(sha256, str):
+                          remote[filename] = sha256.lower()
+                  mismatches = [name for name, digest in local.items() if remote.get(name) != digest]
+                  if not mismatches:
+                      print(f"Confirmed {len(local)} published artifact(s) for {os.environ['DISTRIBUTION_NAME']}=={os.environ['EXPECTED_VERSION']} via PEP 691 metadata.")
+                      raise SystemExit(0)
+                  last_error = f"missing or hash-mismatched files: {mismatches}"
+              except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as exc:
+                  last_error = str(exc)
+              print(f"PEP 691 confirmation attempt {attempt}/10 failed: {last_error}")
+              if attempt < 10:
+                  time.sleep(30)
+          raise SystemExit(f"published artifacts did not become verifiable: {last_error}")
+          PY

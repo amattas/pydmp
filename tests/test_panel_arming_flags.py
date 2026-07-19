@@ -1,6 +1,7 @@
 import pytest
 
 from pydmp.const.commands import DMPCommand
+from pydmp.exceptions import DMPConnectionError
 from pydmp.panel import DMPPanel
 
 
@@ -59,5 +60,5 @@ async def test_disarm_nak(monkeypatch):
         return "NAK"
 
     monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
-    with pytest.raises(Exception):
+    with pytest.raises(DMPConnectionError):
         await p.disarm_areas([1, 2])

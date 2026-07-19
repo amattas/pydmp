@@ -9,7 +9,7 @@ from pydmp.transport import DMPTransport
 @pytest.mark.asyncio
 async def test_transport_connect_timeouts(monkeypatch):
     async def raise_timeout(host, port):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     monkeypatch.setattr(asyncio, "open_connection", raise_timeout)
     t = DMPTransport("h", 1, timeout=0.01)

@@ -43,7 +43,7 @@ class TestDMPProtocol:
         encoded = protocol.encode_command(
             DMPCommand.ARM.value, area="01", bypass="N", force="N", instant=""
         )
-        assert b"@    1!C01,NN\r" == encoded
+        assert encoded == b"@    1!C01,NN\r"
 
     def test_encode_bypass_zone(self):
         """Test bypass zone command encoding."""

@@ -14,12 +14,12 @@ echo "Running pre-commit checks..."
 FAILED=0
 
 if command -v ruff &>/dev/null; then
-    if ! OUTPUT=$(ruff format --check src tests 2>&1); then
+    if ! OUTPUT=$(ruff format --check . 2>&1); then
         echo "FAILED: ruff format"
         echo "$OUTPUT"
         FAILED=1
     fi
-    if ! OUTPUT=$(ruff check src tests 2>&1); then
+    if ! OUTPUT=$(ruff check . 2>&1); then
         echo "FAILED: ruff"
         echo "$OUTPUT"
         FAILED=1

@@ -34,9 +34,12 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch):
     assert not t.is_connected
 
     # Context manager calls connect/disconnect without raising (use OK transport)
+    created: list = []
+
     class _OkTransport:
         def __init__(self, *a, **k):
             self.connected = False
+            created.append(self)
 
         async def connect(self):  # noqa: D401
             self.connected = True
@@ -51,14 +54,6 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch):
         def is_connected(self):  # noqa: D401
             return self.connected
 
-    created: list[_OkTransport] = []
-    original_init = _OkTransport.__init__
-
-    def tracking_init(self, *a, **k):
-        original_init(self, *a, **k)
-        created.append(self)
-
-    _OkTransport.__init__ = tracking_init
     monkeypatch.setattr(ts, "DMPTransport", _OkTransport)
     with DMPTransportSync("h", "1", "KEY"):
         assert created and created[0].connected

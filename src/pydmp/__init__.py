@@ -26,6 +26,7 @@ Example (Sync):
     >>> panel.disconnect()
 """
 
+from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 
 from . import const, exceptions
@@ -41,9 +42,25 @@ from .transport import DMPTransport
 from .transport_sync import DMPTransportSync
 from .zone import Zone, ZoneSync
 
-# pyproject's static version is the single source of truth (the aviato release
-# automation writes it); derive the attribute from installed metadata.
-__version__ = _dist_version("pydmp")
+
+def _runtime_version() -> str:
+    """pyproject's static version is the single source of truth (the aviato release
+    automation writes it); derive from installed metadata, falling back to reading
+    pyproject directly for uninstalled source checkouts."""
+    try:
+        return _dist_version("pydmp")
+    except PackageNotFoundError:
+        import tomllib
+        from pathlib import Path
+
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+        if not isinstance(version, str):
+            raise RuntimeError(f"{pyproject} does not define a string project.version")
+        return version
+
+
+__version__ = _runtime_version()
 
 __all__ = [
     # High-level API (recommended)

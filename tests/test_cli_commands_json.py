@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 import pydmp.cli as cli
-from pydmp.protocol import UserCode
+from pydmp.protocol import DMPProtocol, UserCode
 
 
 def _cfg(tmp_path: Path) -> Path:
@@ -38,8 +39,16 @@ class _Out:
 
 
 class _Panel:
+    """Fake panel that routes bypass/restore NAK responses through the real
+    DMPProtocol.decode_response(), so tests exercise the genuine NAK-detail path
+    (PYDMP-023) rather than a stubbed `last_nak_detail`.
+    """
+
+    #: Set True on a subclass/instance to make `_send_command` return a genuine NAK.
+    nak = False
+
     def __init__(self, *a, **k):
-        self._protocol = type("P", (), {"last_nak_detail": "XU"})()
+        self._protocol = DMPProtocol("1")
 
     async def connect(self, *a, **k):
         return None
@@ -51,10 +60,11 @@ class _Panel:
         return None
 
     async def _send_command(self, cmd, **kwargs):
-        # simulate success first, then NAK for restore to exercise both paths in separate runs
-        if cmd.endswith("X") or cmd.endswith("Y"):
-            return "ACK"
-        return "ACK"
+        letter = "X" if "!X" in cmd else "Y" if "!Y" in cmd else "C"
+        ack_nak = "-" if self.nak else "+"
+        line = f"@    1{ack_nak}{letter}U"
+        raw = ("\x02" + line + "\r").encode()
+        return self._protocol.decode_response(raw)
 
     async def update_output_status(self):
         return None
@@ -100,44 +110,44 @@ def test_cli_disarm_and_output_json(monkeypatch, tmp_path):
     assert payload["ok"] and payload["output"] == 1 and payload["mode"] == "on"
 
 
-def test_cli_zone_bypass_restore_json(monkeypatch, tmp_path):
+@pytest.mark.parametrize("command", ["set-zone-bypass", "set-zone-restore"])
+def test_cli_zone_bypass_restore_ack_json(monkeypatch, tmp_path, command):
+    """ACK path (no NAK) succeeds for both bypass and restore."""
     cfg = _cfg(tmp_path)
     runner = CliRunner()
 
-    class P1(_Panel):
-        async def _send_command(self, cmd, **kwargs):
-            return "ACK"
-
-    monkeypatch.setattr(cli, "DMPPanel", P1)
-    # bypass ok (uses P1)
-    r1 = runner.invoke(cli.cli, ["-c", str(cfg), "set-zone-bypass", "5", "--json"])
-    assert r1.exit_code == 0
-
-    # restore error path should exit non-zero
-    class P2(_Panel):
-        async def _send_command(self, cmd, **kwargs):
-            return "NAK"
-
-    monkeypatch.setattr(cli, "DMPPanel", P2)
-    r2 = runner.invoke(cli.cli, ["-c", str(cfg), "set-zone-restore", "5", "--json"])
-    assert r2.exit_code != 0
-    data = json.loads(r2.output)
-    assert not data["ok"] and "restore zone" in data["error"]
+    monkeypatch.setattr(cli, "DMPPanel", _Panel)  # nak=False by default
+    res = runner.invoke(cli.cli, ["-c", str(cfg), command, "5", "--json"])
+    assert res.exit_code == 0
+    assert json.loads(res.output)["ok"]
 
 
-def test_cli_zone_bypass_nak_json(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    ("command", "expect_phrase", "expect_detail"),
+    [
+        ("set-zone-bypass", "bypass zone", "(-XU)"),
+        ("set-zone-restore", "restore zone", "(-YU)"),
+    ],
+)
+def test_cli_zone_bypass_restore_nak_json(monkeypatch, tmp_path, command, expect_phrase, expect_detail):
+    """NAK path is decoded via the real DMPProtocol.decode_response() and the
+    '(-XU)'/'(undefined)' detail rendering (cli.py ~319-330/358-369) is exercised genuinely
+    (PYDMP-023), not through a stubbed last_nak_detail.
+    """
     cfg = _cfg(tmp_path)
     runner = CliRunner()
 
-    class P(_Panel):
-        async def _send_command(self, cmd, **kwargs):
-            return "NAK"
+    class NakPanel(_Panel):
+        nak = True
 
-    monkeypatch.setattr(cli, "DMPPanel", P)
-    r = runner.invoke(cli.cli, ["-c", str(cfg), "set-zone-bypass", "5", "--json"])
-    assert r.exit_code != 0
-    data = json.loads(r.output)
-    assert not data["ok"] and "bypass zone" in data["error"]
+    monkeypatch.setattr(cli, "DMPPanel", NakPanel)
+    res = runner.invoke(cli.cli, ["-c", str(cfg), command, "5", "--json"])
+    assert res.exit_code != 0
+    data = json.loads(res.output)
+    assert not data["ok"]
+    assert expect_phrase in data["error"]
+    assert expect_detail in data["error"]
+    assert "(undefined)" in data["error"]
 
 
 def test_cli_sensor_and_check_code_json(monkeypatch, tmp_path):
@@ -151,12 +161,12 @@ def test_cli_sensor_and_check_code_json(monkeypatch, tmp_path):
     assert json.loads(r.output)["ok"]
 
     # check-code found
-    r2 = runner.invoke(cli.cli, ["-c", str(cfg), "check-code", "1234", "--json"])
+    r2 = runner.invoke(cli.cli, ["-c", str(cfg), "check-code", "--code", "1234", "--json"])
     assert r2.exit_code == 0
     d = json.loads(r2.output)
     assert d["ok"] and d["found"] and d["user"]["number"] == "0001"
     # not found
-    r3 = runner.invoke(cli.cli, ["-c", str(cfg), "check-code", "9999", "--json"])
+    r3 = runner.invoke(cli.cli, ["-c", str(cfg), "check-code", "--code", "9999", "--json"])
     assert r3.exit_code == 0
     d2 = json.loads(r3.output)
     assert d2["ok"] and not d2["found"] and d2["user"] is None

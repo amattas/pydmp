@@ -53,6 +53,9 @@ def test_cli_output_text(monkeypatch, tmp_path):
 def test_cli_zone_bypass_restore_text_paths(monkeypatch, tmp_path):
     # Bypass success
     class P1:
+        def __init__(self, *a, **k):
+            pass
+
         async def connect(self, *a, **k):
             return None
 

@@ -91,6 +91,9 @@ def test_cli_config_errors(monkeypatch, tmp_path):
 
 def test_cli_debug_flag_executes(monkeypatch, tmp_path):
     class P:
+        def __init__(self, *a, **k):
+            pass
+
         async def connect(self, *a, **k):
             return None
 

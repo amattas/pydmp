@@ -16,6 +16,9 @@ def _cfg(tmp_path: Path) -> Path:
 
 def test_cli_check_code_text(monkeypatch, tmp_path):
     class P:
+        def __init__(self, *a, **k):
+            pass
+
         async def connect(self, *a, **k):
             return None
 
@@ -39,10 +42,44 @@ def test_cli_check_code_text(monkeypatch, tmp_path):
 
     monkeypatch.setattr(cli, "DMPPanel", P)
     cfg = _cfg(tmp_path)
-    r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "check-code", "1234"])  # text found
+    r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "check-code", "--code", "1234"])  # text found
     assert r1.exit_code == 0 and "Match" in r1.output
-    r2 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "check-code", "9999"])  # text not found
+    r2 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "check-code", "--code", "9999"])  # text not found
     assert r2.exit_code == 0 and "No match" in r2.output
+
+
+def test_cli_check_code_prompts_for_code(monkeypatch, tmp_path):
+    """PYDMP-015: code is no longer a positional argv argument; it is prompted securely."""
+
+    class P:
+        def __init__(self, *a, **k):
+            pass
+
+        async def connect(self, *a, **k):
+            return None
+
+        async def disconnect(self):
+            return None
+
+        async def check_code(self, code: str, include_pin: bool = True):
+            from pydmp.protocol import UserCode
+
+            if code == "1234":
+                return UserCode(
+                    number="0001",
+                    code="1234",
+                    pin="",
+                    profiles=("001", "002", "003", "004"),
+                    temp_date="010125",
+                    exp_date="0900",
+                    name="USER",
+                )
+            return None
+
+    monkeypatch.setattr(cli, "DMPPanel", P)
+    cfg = _cfg(tmp_path)
+    r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "check-code"], input="1234\n")
+    assert r.exit_code == 0 and "Match" in r.output
 
 
 def test_cli_listen_text(monkeypatch):

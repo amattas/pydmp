@@ -130,6 +130,9 @@ def test_cli_get_users_profiles_text(monkeypatch, tmp_path):
 
 def test_cli_quiet_and_debug_flags_via_arm(monkeypatch, tmp_path):
     class P:
+        def __init__(self, *a, **k):
+            pass
+
         async def connect(self, *a, **k):
             return None
 

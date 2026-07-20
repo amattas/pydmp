@@ -21,12 +21,16 @@ def test_encode_command_redacts_remote_key(caplog):
     assert "!V2<redacted>" in logged
 
 
-def test_decode_nak_detail_and_unknown_states():
+def test_decode_nak_detail():
     p = DMPProtocol("1", "")
 
     # NAK with detail -XU
     res = p.decode_response(_frame("-XU"))
     assert res == "NAK" and p.last_nak_detail == "XU"
+
+
+def test_decode_unknown_states():
+    p = DMPProtocol("1", "")
 
     # Area with unknown state
     sr = p.decode_response(_frame("+!WBA  1ZAreaOne\x1e-"))
@@ -39,13 +43,16 @@ def test_decode_nak_detail_and_unknown_states():
     assert sr2.zones["001"].state == "unknown"
 
 
-def test_empty_status_segments_and_output_decode():
+def test_empty_status_segments():
     p = DMPProtocol("1", "")
     # Empty WB
     sr = p.decode_response(_frame("+!WB-"))
     assert isinstance(sr, StatusResponse)
     assert not sr.areas and not sr.zones
 
+
+def test_output_status_decode():
+    p = DMPProtocol("1", "")
     # Output status single item
     orsp = p.decode_response(_frame("+*WQ001SRelay1\x1e-"))
     assert isinstance(orsp, OutputsResponse)

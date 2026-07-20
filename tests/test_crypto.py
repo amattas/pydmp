@@ -14,13 +14,11 @@ class TestDMPCrypto:
         assert crypto.account_number == 123
         assert crypto.remote_key == "ABCD1234"
 
-    def test_init_invalid_account(self):
+    @pytest.mark.parametrize("account", [0, 100000])
+    def test_init_invalid_account(self, account):
         """Test invalid account number."""
         with pytest.raises(ValueError, match="Account number must be between"):
-            DMPCrypto(0, "")
-
-        with pytest.raises(ValueError, match="Account number must be between"):
-            DMPCrypto(100000, "")
+            DMPCrypto(account, "")
 
     def test_generate_seed(self):
         """Test seed generation."""
@@ -66,15 +64,17 @@ class TestDMPCrypto:
         assert len(encrypted) == 6  # Padded to 6 digits
         assert encrypted != "123400"  # Should be encrypted
 
-    def test_encrypt_user_code_invalid(self):
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "123",  # Too short
+            "1234567",  # Too long
+            "abcd",  # Not digits
+        ],
+    )
+    def test_encrypt_user_code_invalid(self, code):
         """Test invalid user code."""
         crypto = DMPCrypto(1, "")
 
         with pytest.raises(ValueError, match="User code must be 4-6 digits"):
-            crypto.encrypt_user_code("123")  # Too short
-
-        with pytest.raises(ValueError, match="User code must be 4-6 digits"):
-            crypto.encrypt_user_code("1234567")  # Too long
-
-        with pytest.raises(ValueError, match="User code must be 4-6 digits"):
-            crypto.encrypt_user_code("abcd")  # Not digits
+            crypto.encrypt_user_code(code)

@@ -5,6 +5,149 @@ import pytest
 from pydmp.const.events import DMPEventType
 from pydmp.panel import DMPPanel
 from pydmp.protocol import OutputsResponse, OutputStatus
+from pydmp.user import UserCode
+
+
+class _FakeTransport:
+    """Minimal stand-in for DMPTransport used by connect()."""
+
+    def __init__(self, host, port, timeout):
+        self.host = host
+        self.port = port
+        self._up = True
+
+    @property
+    def is_connected(self):
+        return self._up
+
+    async def connect(self):
+        self._up = True
+
+    async def send_and_receive(self, data):
+        return "ACK"
+
+    async def disconnect(self):
+        self._up = False
+
+
+class _FakeProtocol:
+    def __init__(self, account, remote_key):
+        self.account = account
+
+    def encode_command(self, *a, **k):
+        return b"x"
+
+
+def _install_fake_transport(monkeypatch):
+    import pydmp.panel as panel_mod
+
+    monkeypatch.setattr(panel_mod, "DMPTransport", _FakeTransport)
+    monkeypatch.setattr(panel_mod, "DMPProtocol", _FakeProtocol)
+
+
+@pytest.mark.asyncio
+async def test_disconnect_releases_guard_after_socket_drop(monkeypatch):
+    # PYDMP-001: an unexpected socket drop must not permanently block reconnect.
+    import pydmp.panel as panel_mod
+
+    _install_fake_transport(monkeypatch)
+    p = DMPPanel()
+    await p.connect("1.2.3.4", "00001", "KEY")
+    key = ("1.2.3.4", p.port, "00001")
+    assert key in panel_mod._ACTIVE_CONNECTIONS
+
+    # Simulate an unexpected drop: transport reports not-connected.
+    p._connection._up = False  # type: ignore[attr-defined]
+    assert not p.is_connected
+
+    # disconnect() must still release the registration despite the drop.
+    await p.disconnect()
+    assert key not in panel_mod._ACTIVE_CONNECTIONS
+    assert p._active_key is None
+
+    # A subsequent connect() on the same instance succeeds.
+    await p.connect("1.2.3.4", "00001", "KEY")
+    assert p.is_connected
+    await p.disconnect()
+    assert key not in panel_mod._ACTIVE_CONNECTIONS
+
+
+@pytest.mark.asyncio
+async def test_reconnect_same_instance_after_drop_without_disconnect(monkeypatch):
+    # PYDMP-001: connect() directly after a drop (no disconnect) must succeed;
+    # the instance's own stale registration must not block it.
+    _install_fake_transport(monkeypatch)
+    p = DMPPanel()
+    await p.connect("1.2.3.4", "00001", "KEY")
+
+    p._connection._up = False  # type: ignore[attr-defined]  # unexpected drop
+    assert not p.is_connected
+
+    await p.connect("1.2.3.4", "00001", "KEY")
+    assert p.is_connected
+    await p.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_second_live_instance_same_key_rejected(monkeypatch):
+    # PYDMP-001: a genuinely different live panel with the same (host, port,
+    # account) is still rejected.
+    from pydmp.exceptions import DMPConnectionError
+
+    _install_fake_transport(monkeypatch)
+    p1 = DMPPanel()
+    await p1.connect("1.2.3.4", "00001", "KEY")
+    try:
+        p2 = DMPPanel()
+        with pytest.raises(DMPConnectionError):
+            await p2.connect("1.2.3.4", "00001", "KEY")
+    finally:
+        await p1.disconnect()
+
+
+def _make_user(code="1234", pin=""):
+    return UserCode(
+        number="0001",
+        code=code,
+        pin=pin,
+        profiles=("001", "002", "003", "004"),
+        temp_date="010125",
+        exp_date="0900",
+        name="USER",
+    )
+
+
+@pytest.mark.asyncio
+async def test_refresh_user_cache_no_empty_window(monkeypatch):
+    # PYDMP-006: a concurrent refresh must never expose an emptied cache to
+    # check_code; the live dict is only replaced via an atomic swap.
+    p = DMPPanel()
+    old = _make_user()
+    new = _make_user()
+    p._user_cache_by_code = {"1234": old}
+    p._user_cache_by_pin = {}
+
+    gate = asyncio.Event()
+
+    async def slow_get_user_codes():
+        # Mid-refresh the live cache must still expose the old entry
+        # (no clear-then-repopulate window).
+        assert p._user_cache_by_code.get("1234") is old
+        await gate.wait()
+        return [new]
+
+    monkeypatch.setattr(p, "get_user_codes", slow_get_user_codes)
+
+    task = asyncio.create_task(p._refresh_user_cache())
+    await asyncio.sleep(0)  # let refresh reach the await inside get_user_codes
+
+    # Concurrent reader during the refresh window still resolves the code.
+    got = await p.check_code("1234", refresh_if_missing=False)
+    assert got is old
+
+    gate.set()
+    await task
+    assert p._user_cache_by_code["1234"] is new
 
 
 @pytest.mark.asyncio

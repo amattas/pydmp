@@ -61,3 +61,42 @@ async def test_disarm_nak(monkeypatch):
     monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
     with pytest.raises(Exception):
         await p.disarm_areas([1, 2])
+
+
+@pytest.mark.parametrize("method", ["arm_areas", "disarm_areas"])
+@pytest.mark.parametrize("areas", [[0], [9], [99], [1, 0], [1, 9]])
+@pytest.mark.asyncio
+async def test_arm_disarm_reject_out_of_range_area(monkeypatch, method, areas):
+    # Area must be 1-8 to match Area's own validation (PYDMP-022).
+    p = DMPPanel()
+
+    class _Conn:
+        is_connected = True
+
+    p._connection = _Conn()  # type: ignore[attr-defined]
+
+    async def fake_send(self, command: str, **kwargs):
+        return "ACK"
+
+    monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
+    with pytest.raises(ValueError):
+        await getattr(p, method)(areas)
+
+
+@pytest.mark.parametrize("method", ["arm_areas", "disarm_areas"])
+@pytest.mark.parametrize("areas", [[1], [8], [1, 8]])
+@pytest.mark.asyncio
+async def test_arm_disarm_accept_valid_area(monkeypatch, method, areas):
+    p = DMPPanel()
+
+    class _Conn:
+        is_connected = True
+
+    p._connection = _Conn()  # type: ignore[attr-defined]
+
+    async def fake_send(self, command: str, **kwargs):
+        return "ACK"
+
+    monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
+    # Should not raise for in-range areas.
+    await getattr(p, method)(areas)

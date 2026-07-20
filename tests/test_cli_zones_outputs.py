@@ -99,7 +99,7 @@ def test_cli_output_text(monkeypatch, cli_cfg):
 
     monkeypatch.setattr(cli, "DMPPanel", P)
     cfg = cli_cfg()
-    r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "output", "3", "pulse"])  # text
+    r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "3", "pulse"])  # text
     assert r.exit_code == 0 and "Setting output 3 to pulse" in r.output
 
 
@@ -107,7 +107,7 @@ def test_cli_output_json(monkeypatch, cli_cfg):
     """JSON-mode output command returns a payload describing the applied mode."""
     cfg = cli_cfg()
     monkeypatch.setattr(cli, "DMPPanel", _Panel)
-    res = CliRunner().invoke(cli.cli, ["-c", str(cfg), "output", "1", "on", "--json"])
+    res = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on", "--json"])
     assert res.exit_code == 0
     payload = json.loads(res.output)
     assert payload["ok"] and payload["output"] == 1 and payload["mode"] == "on"
@@ -127,7 +127,7 @@ def test_cli_output_error_json(monkeypatch, cli_cfg):
             return OutputStub()
 
     monkeypatch.setattr(cli, "DMPPanel", P)
-    r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "output", "1", "on", "--json"])
+    r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on", "--json"])
     assert r.exit_code != 0
     data = json.loads(r.output)
     assert not data["ok"] and "fail" in data["error"]

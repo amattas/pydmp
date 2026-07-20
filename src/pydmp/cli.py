@@ -176,7 +176,7 @@ def _make_panel(panel_config: dict[str, Any]) -> DMPPanel:
             ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"],
         ),
         ("Zones", ["set-zone-bypass", "set-zone-restore"]),
-        ("Outputs", ["output"]),
+        ("Outputs", ["set-output"]),
         ("Realtime", ["listen"]),
     ],
 )
@@ -396,12 +396,12 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
+@cli.command("set-output", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
+def set_output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
     """Control an output."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
@@ -441,9 +441,10 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
     asyncio.run(run())
 
 
-# Command object for the deprecated 'set-output' alias to forward to; the
-# name 'output' is shadowed by that command's own parameter inside its body.
-_OUTPUT_COMMAND = output
+# Command object for the deprecated 'output' alias to forward to; the alias
+# body can't reference the function directly because its own 'output'
+# parameter shadows any same-named module attribute.
+_SET_OUTPUT_COMMAND = set_output
 
 
 # removed: arm-areas (use 'arm')
@@ -813,18 +814,18 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
 
 
 @cli.command(
-    "set-output",
+    "output",
     context_settings={"help_option_names": ["-h", "--help"]},
     hidden=True,
-    deprecated="Use 'output' instead.",
+    deprecated="Use 'set-output' instead.",
 )
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def set_output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
-    """Control an output (deprecated alias for 'output')."""
-    ctx.forward(_OUTPUT_COMMAND)
+def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
+    """Control an output (deprecated alias for 'set-output')."""
+    ctx.forward(_SET_OUTPUT_COMMAND)
 
 
 # removed: 'outputs' alias; use 'get-outputs'

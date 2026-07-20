@@ -121,10 +121,13 @@ def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
     assert "Traceback" not in result.output
 
 
-def test_cli_set_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
-    """set-output is hidden from help and forwards to 'output' (incl. --json), warning on stderr."""
+def test_cli_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
+    """'output' is hidden from help and forwards to 'set-output' (incl. --json), warning on stderr."""
+    import re
+
     help_result = CliRunner().invoke(cli.cli, ["--help"])
-    assert "set-output" not in help_result.output
+    assert "set-output" in help_result.output
+    assert not re.search(r"^\s+output\b", help_result.output, re.MULTILINE)
 
     calls = {}
 
@@ -148,7 +151,7 @@ def test_cli_set_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
 
     monkeypatch.setattr(cli, "DMPPanel", Panel)
     cfg = cli_cfg()
-    result = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on", "--json"])
+    result = CliRunner().invoke(cli.cli, ["-c", str(cfg), "output", "1", "on", "--json"])
 
     assert result.exit_code == 0
     assert calls == {"output": 1, "on": True}

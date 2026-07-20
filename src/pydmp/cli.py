@@ -176,7 +176,7 @@ def _make_panel(panel_config: dict[str, Any]) -> DMPPanel:
             ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"],
         ),
         ("Zones", ["set-zone-bypass", "set-zone-restore"]),
-        ("Outputs", ["output", "set-output"]),
+        ("Outputs", ["output"]),
         ("Realtime", ["listen"]),
     ],
 )
@@ -439,6 +439,11 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             await panel.disconnect()
 
     asyncio.run(run())
+
+
+# Command object for the deprecated 'set-output' alias to forward to; the
+# name 'output' is shadowed by that command's own parameter inside its body.
+_OUTPUT_COMMAND = output
 
 
 # removed: arm-areas (use 'arm')
@@ -807,39 +812,19 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command("set-output", context_settings={"help_option_names": ["-h", "--help"]})
+@cli.command(
+    "set-output",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    hidden=True,
+    deprecated="Use 'output' instead.",
+)
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def set_output(ctx: click.Context, output: int, action: str) -> None:
-    """Control an output."""
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run() -> None:
-        panel = _make_panel(panel_config)
-        try:
-            await panel.connect(panel_config["host"], panel_config["account"], panel_config["remote_key"])
-            output_obj = await panel.get_output(output)
-            console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
-            _LOG.info("CLI: set-output %s %s", output, action)
-            if action == "on":
-                await output_obj.turn_on()
-            elif action == "off":
-                await output_obj.turn_off()
-            elif action == "pulse":
-                await output_obj.pulse()
-            elif action == "toggle":
-                await output_obj.toggle()
-            console.print(f"[green]Output {output} set to {action}[/green]")
-        except Exception as e:
-            _LOG.error("CLI command failed: %s", e)
-            console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1) from e
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
+def set_output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
+    """Control an output (deprecated alias for 'output')."""
+    ctx.forward(_OUTPUT_COMMAND)
 
 
 # removed: 'outputs' alias; use 'get-outputs'

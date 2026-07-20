@@ -99,7 +99,7 @@ def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, 
 
 
 def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
-    """set-output has no --json flag; a failure must still print a clean error, not a traceback."""
+    """set-output (deprecated alias) failures still print a clean error, not a traceback."""
 
     class FailingPanel:
         def __init__(self, *a, **k):
@@ -119,3 +119,38 @@ def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
     assert result.exc_info is None or result.exc_info[0] in (SystemExit, None)
     assert "boom" in result.output
     assert "Traceback" not in result.output
+
+
+def test_cli_set_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
+    """set-output is hidden from help and forwards to 'output' (incl. --json), warning on stderr."""
+    help_result = CliRunner().invoke(cli.cli, ["--help"])
+    assert "set-output" not in help_result.output
+
+    calls = {}
+
+    class Out:
+        async def turn_on(self):
+            calls["on"] = True
+
+    class Panel:
+        def __init__(self, *a, **k):
+            pass
+
+        async def connect(self, *a, **k):
+            return None
+
+        async def disconnect(self):
+            return None
+
+        async def get_output(self, n):
+            calls["output"] = n
+            return Out()
+
+    monkeypatch.setattr(cli, "DMPPanel", Panel)
+    cfg = cli_cfg()
+    result = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on", "--json"])
+
+    assert result.exit_code == 0
+    assert calls == {"output": 1, "on": True}
+    assert json.loads(result.stdout) == {"ok": True, "action": "output", "output": 1, "mode": "on"}
+    assert "deprecated" in result.stderr.lower()

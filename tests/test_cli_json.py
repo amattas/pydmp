@@ -200,7 +200,9 @@ def _make_users_profiles_panel():
     ],
 )
 @pytest.mark.parametrize("as_json", [False, True])
-def test_cli_get_users_profiles(monkeypatch, cli_cfg, as_json, command, key, expected_text, expected_value):
+def test_cli_get_users_profiles(
+    monkeypatch, cli_cfg, as_json, command, key, expected_text, expected_value
+):
     monkeypatch.setattr(cli, "DMPPanel", _make_users_profiles_panel())
     cfg = cli_cfg()
     args = ["-c", str(cfg), command] + (["--json"] if as_json else [])

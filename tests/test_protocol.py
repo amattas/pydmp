@@ -68,7 +68,10 @@ class TestDMPProtocol:
                 b"\x02@    1+!WBA  1DArea 1\x1eL001NFront\x1eL002OBack\x1e-\r",
                 {
                     "areas": {"1": {"state": "D", "name": "Area 1"}},
-                    "zones": {"001": {"state": "N", "name": "Front"}, "002": {"state": "O", "name": "Back"}},
+                    "zones": {
+                        "001": {"state": "N", "name": "Front"},
+                        "002": {"state": "O", "name": "Back"},
+                    },
                 },
             ),
         ],

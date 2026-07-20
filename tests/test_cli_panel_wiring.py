@@ -24,7 +24,9 @@ _BARE_PANEL_COMMANDS = [
 
 
 @pytest.mark.parametrize(("command", "extra_args"), _BARE_PANEL_COMMANDS)
-def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg, command, extra_args):
+def test_cli_commands_propagate_configured_port_and_timeout(
+    monkeypatch, cli_cfg, command, extra_args
+):
     recorded = {}
 
     class RecordingPanel:
@@ -78,7 +80,9 @@ def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg
         ("get-zones", ["--json"]),
     ],
 )
-def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, command, extra_args):
+def test_cli_commands_emit_json_error_contract_on_failure(
+    monkeypatch, cli_cfg, command, extra_args
+):
     class FailingPanel:
         def __init__(self, *a, **k):
             pass
@@ -122,7 +126,7 @@ def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
 
 
 def test_cli_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
-    """'output' is hidden from help and forwards to 'set-output' (incl. --json), warning on stderr."""
+    """'output' is hidden from help, forwards to 'set-output' (incl. --json), warns on stderr."""
     import re
 
     help_result = CliRunner().invoke(cli.cli, ["--help"])

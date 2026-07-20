@@ -67,7 +67,9 @@ def test_cli_config_yaml_parse_error(tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text("panel: [1, 2")  # malformed YAML to trigger parser error
     out = CliRunner().invoke(cli.cli, ["-c", str(bad), "arm", "1"])
-    assert out.exit_code != 0 and ("Error parsing config" in out.output or "Invalid config" in out.output)
+    assert out.exit_code != 0 and (
+        "Error parsing config" in out.output or "Invalid config" in out.output
+    )
 
 
 def test_cli_config_invalid_shape(tmp_path):

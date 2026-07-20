@@ -62,7 +62,12 @@ class FakePanelConnection:
     """
 
     def __init__(
-        self, responses: list[Any] | None = None, *, host: str = "h", port: int = 0, account: str = "a"
+        self,
+        responses: list[Any] | None = None,
+        *,
+        host: str = "h",
+        port: int = 0,
+        account: str = "a",
     ) -> None:
         self.is_connected = True
         self._responses = list(responses or [])
@@ -81,7 +86,9 @@ class FakePanelConnection:
         self.calls.append(("!H", {}))
 
 
-def install_fake_transport(monkeypatch: Any, fake_transport_cls: type, fake_protocol_cls: type) -> None:
+def install_fake_transport(
+    monkeypatch: Any, fake_transport_cls: type, fake_protocol_cls: type
+) -> None:
     """Patch ``pydmp.panel``'s transport/protocol classes with fakes for connect()."""
     import pydmp.panel as panel_mod
 
@@ -89,7 +96,9 @@ def install_fake_transport(monkeypatch: Any, fake_transport_cls: type, fake_prot
     monkeypatch.setattr(panel_mod, "DMPProtocol", fake_protocol_cls)
 
 
-def make_user_code(code: str = "1234", pin: str = "", number: str = "0001", name: str = "USER") -> Any:
+def make_user_code(
+    code: str = "1234", pin: str = "", number: str = "0001", name: str = "USER"
+) -> Any:
     """Build a ``UserCode`` with sensible defaults, for cache/check_code tests."""
     from pydmp.user import UserCode
 
@@ -116,10 +125,13 @@ def cli_cfg(tmp_path: Path) -> Callable[..., Path]:
     def _make(*, top_level: bool = False, port: int = 2011, timeout: float = 1) -> Path:
         p = tmp_path / "cfg.yaml"
         if top_level:
-            p.write_text(f"host: h\naccount: '1'\nremote_key: 'K'\nport: {port}\ntimeout: {timeout}\n")
+            p.write_text(
+                f"host: h\naccount: '1'\nremote_key: 'K'\nport: {port}\ntimeout: {timeout}\n"
+            )
         else:
             p.write_text(
-                f"panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: {port}\n  timeout: {timeout}\n"
+                "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n"
+                f"  port: {port}\n  timeout: {timeout}\n"
             )
         return p
 

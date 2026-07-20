@@ -35,7 +35,9 @@ def test_cli_listen(monkeypatch, as_json):
         device: str
         system_text: str
 
-    monkeypatch.setattr(cli, "parse_s3_message", lambda msg: Parsed("Zc", "ON", "1", "2", "3", "OK"))
+    monkeypatch.setattr(
+        cli, "parse_s3_message", lambda msg: Parsed("Zc", "ON", "1", "2", "3", "OK")
+    )
 
     async def no_sleep(_):
         return None

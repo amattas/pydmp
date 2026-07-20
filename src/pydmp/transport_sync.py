@@ -5,7 +5,13 @@ from typing import Any
 
 from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
-from .protocol import DMPProtocol, OutputsResponse, StatusResponse, UserCodesResponse, UserProfilesResponse
+from .protocol import (
+    DMPProtocol,
+    OutputsResponse,
+    StatusResponse,
+    UserCodesResponse,
+    UserProfilesResponse,
+)
 from .transport import DMPTransport
 
 

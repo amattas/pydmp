@@ -262,7 +262,9 @@ def _prof(num: str) -> UserProfile:
     ids=["user_codes", "user_profiles"],
 )
 @pytest.mark.asyncio
-async def test_get_user_codes_and_profiles_pagination(monkeypatch, panel_method, make_page, response_cls):
+async def test_get_user_codes_and_profiles_pagination(
+    monkeypatch, panel_method, make_page, response_cls
+):
     # Merge of test_panel_commands.py::test_get_user_codes_pagination and
     # test_panel_send_sequences.py::test_get_user_profiles_pagination:
     # identical two-page pagination loop, parameterized over entity type.

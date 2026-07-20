@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import pytest
 
@@ -66,3 +67,25 @@ async def test_transport_send_without_connect_raises():
     t = DMPTransport("example", 1234, timeout=1.0)
     with pytest.raises(DMPConnectionError):
         await t.send_and_receive(b"PING")
+
+
+@pytest.mark.asyncio
+async def test_send_raw_redacts_remote_key(monkeypatch, caplog):
+    async def fake_open_connection(host, port):
+        return _FakeReader([b""]), _FakeWriter()
+
+    monkeypatch.setattr(asyncio, "open_connection", fake_open_connection)
+
+    t = DMPTransport("example", 1234, timeout=1.0)
+    await t.connect()
+    with caplog.at_level(logging.DEBUG, logger="pydmp.transport"):
+        await t._send_raw(b"@    1!V2S3CRETKEY\r")
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert "S3CRETKEY" not in logged
+    assert "!V2<redacted>" in logged
+    # Non-sensitive frames still log their content.
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG, logger="pydmp.transport"):
+        await t._send_raw(b"@    1!S\r")
+    assert "!S" in " ".join(r.getMessage() for r in caplog.records)
+    await t.disconnect()

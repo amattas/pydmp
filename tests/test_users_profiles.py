@@ -1,4 +1,41 @@
+import pytest
+
+from pydmp.exceptions import DMPInvalidResponseError
 from pydmp.protocol import DMPProtocol, UserCodesResponse, UserProfilesResponse
+from pydmp.user import UserCode
+
+
+@pytest.mark.parametrize(
+    "bad_item",
+    [
+        "ABCD",  # first 4 chars non-numeric -> int() in seed generation fails
+        "0000GG",  # hex-position bytes non-hex -> int(..., 16) fails
+    ],
+)
+def test_decode_user_codes_malformed_raises_invalid_response(bad_item):
+    proto = DMPProtocol("1", "ABCD1234")
+    payload = f"@    1+*P={bad_item}\x1e\r".encode()
+    with pytest.raises(DMPInvalidResponseError):
+        proto.decode_response(payload)
+
+
+def test_usercode_repr_hides_code_and_pin():
+    u = UserCode(
+        number="0001",
+        code="481516",
+        pin="234233",
+        profiles=("001", "002", "003", "004"),
+        temp_date="010122",
+        exp_date="0900",
+        name="USER",
+    )
+    r = repr(u)
+    assert "code=" not in r
+    assert "pin=" not in r
+    assert "481516" not in r
+    assert "234233" not in r
+    # Non-secret fields still present.
+    assert "0001" in r
 
 
 def test_decode_user_codes_single_entry():

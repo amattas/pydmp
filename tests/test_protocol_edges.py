@@ -1,9 +1,24 @@
+import logging
+
+from pydmp.const.commands import DMPCommand
 from pydmp.const.protocol import RESPONSE_DELIMITER
 from pydmp.protocol import DMPProtocol, OutputsResponse, StatusResponse
 
 
 def _frame(body: str) -> bytes:
     return f"{RESPONSE_DELIMITER}@    1{body}\r".encode()
+
+
+def test_encode_command_redacts_remote_key(caplog):
+    p = DMPProtocol("1", "S3CRETKEY")
+    with caplog.at_level(logging.DEBUG, logger="pydmp.protocol"):
+        frame = p.encode_command(DMPCommand.AUTH.value, key="S3CRETKEY")
+    # The wire frame itself must still carry the real key.
+    assert b"!V2S3CRETKEY" in frame
+    # But it must never appear in the logs.
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert "S3CRETKEY" not in logged
+    assert "!V2<redacted>" in logged
 
 
 def test_decode_nak_detail_and_unknown_states():

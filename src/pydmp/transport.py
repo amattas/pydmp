@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from .const.protocol import DEFAULT_PORT, RATE_LIMIT_SECONDS
@@ -11,6 +12,11 @@ from .exceptions import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Redact the remote key carried by auth frames (!V2<key>) before logging.
+# Transport has no protocol knowledge, so match the wire pattern directly:
+# the key runs from after "!V2" up to the frame terminator ("\r").
+_AUTH_REDACT_RE = re.compile(r"(!V2)[^\r]*")
 
 
 class DMPTransport:
@@ -90,12 +96,13 @@ class DMPTransport:
             raise DMPConnectionError("Not connected")
         try:
             try:
-                _LOGGER.debug(">>> %r", data.decode("utf-8", errors="replace"))
+                decoded = data.decode("utf-8", errors="replace")
+                _LOGGER.debug(">>> %r", _AUTH_REDACT_RE.sub(r"\1<redacted>", decoded))
             except Exception:
                 _LOGGER.debug(">>> %r", data)
             self._writer.write(data)
             await self._writer.drain()
-            self._last_command_time = asyncio.get_event_loop().time()
+            self._last_command_time = asyncio.get_running_loop().time()
         except Exception as e:
             _LOGGER.error("Transport send failed: %s", e)
             raise DMPConnectionError(f"Failed to send data: {e}") from e
@@ -130,7 +137,7 @@ class DMPTransport:
             raise DMPConnectionError(f"Failed to receive data: {e}") from e
 
     async def _rate_limit(self) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         elapsed = loop.time() - self._last_command_time
         if elapsed < RATE_LIMIT_SECONDS:
             wait_time = RATE_LIMIT_SECONDS - elapsed

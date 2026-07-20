@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -6,8 +6,8 @@ class UserCode:
     """Decrypted user code record."""
 
     number: str
-    code: str
-    pin: str
+    code: str = field(repr=False)  # secret: excluded from repr
+    pin: str = field(repr=False)  # secret: excluded from repr
     profiles: tuple[str, str, str, str]
     # Historically parsed fields; see start_date/end_date for clarified meaning
     temp_date: str  # legacy 6-digit field; same as end_date (DDMMYY)

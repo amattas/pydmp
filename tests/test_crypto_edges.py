@@ -1,7 +1,7 @@
 from pydmp.crypto import DMPCrypto
 
 
-def test_remote_key_bad_hex_and_zero_seed():
+def test_remote_key_bad_hex():
     # Bad hex characters in remote key should not crash seed generation
     c = DMPCrypto(123, "GHxxzz99")
     # encrypt/decrypt symmetry still holds
@@ -9,6 +9,9 @@ def test_remote_key_bad_hex_and_zero_seed():
     enc = c.encrypt_string(s)
     assert c.decrypt_string(enc) == s
 
+
+def test_zero_seed():
+    c = DMPCrypto(123, "GHxxzz99")
     # Force zero seed path
     c._seed = 0
     out = c._perform_lfsr()

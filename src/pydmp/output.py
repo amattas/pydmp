@@ -1,7 +1,7 @@
 """Output abstraction."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .const.commands import DMPCommand
 from .const.events import DMPRealTimeStatusEvent
@@ -151,7 +151,7 @@ class Output:
         """String representation."""
         return f"<Output {self.number}: {self.name} ({self._state})>"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable representation of the output."""
         return {
             "number": self.number,

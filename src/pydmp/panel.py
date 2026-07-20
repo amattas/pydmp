@@ -10,17 +10,17 @@ from .const.events import DMPEventType
 from .const.protocol import DEFAULT_PORT
 from .exceptions import DMPConnectionError
 from .output import Output
+from .profile import UserProfile
 from .protocol import (
     DMPProtocol,
     OutputsResponse,
     StatusResponse,
-    UserCode,
     UserCodesResponse,
-    UserProfile,
     UserProfilesResponse,
 )
 from .status_parser import parse_s3_message
 from .transport import DMPTransport
+from .user import UserCode
 from .zone import Zone
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,9 +85,12 @@ class DMPPanel:
 
         _LOGGER.info(f"Connecting to panel at {host}:{self.port}")
 
-        # Guard against multiple active connections to the same panel
+        # Guard against multiple active connections to the same panel.
+        # An entry left behind by this same instance (e.g. after an
+        # unexpected socket drop) must not block its own reconnect; only a
+        # registration owned by a different live instance is rejected.
         key = (host, self.port, account)
-        if key in _ACTIVE_CONNECTIONS:
+        if key in _ACTIVE_CONNECTIONS and key != self._active_key:
             raise DMPConnectionError(
                 f"Active connection already exists for {host}:{self.port} account {account}. "
                 "Only one connection is allowed."
@@ -110,28 +113,38 @@ class DMPPanel:
         _LOGGER.info("Panel connected")
 
     async def disconnect(self) -> None:
-        """Disconnect from panel."""
-        if not self.is_connected or not self._connection:
+        """Disconnect from panel.
+
+        Always releases the active-connection registration and clears state,
+        even when the transport has already dropped, so a later ``connect()``
+        can succeed.
+        """
+        # Nothing to release and nothing to tear down.
+        if self._connection is None and self._active_key is None:
             return
 
         _LOGGER.info("Disconnecting from panel")
         # Stop keep-alive loop if running
         await self.stop_keepalive()
-        # Send panel disconnect command if possible
+        # Send panel disconnect command only if the link is still up.
         try:
-            if self._connection and self._protocol:
+            if self.is_connected and self._connection and self._protocol:
                 _LOGGER.debug("Sending panel disconnect command")
                 disc = self._protocol.encode_command(DMPCommand.DISCONNECT.value)
                 await self._connection.send_and_receive(disc)
         except Exception as e:
             _LOGGER.debug("Panel disconnect send failed: %s", e)
 
-        # Cleanup active connection guard
+        # Cleanup active connection guard (must happen even after a drop).
         if self._active_key is not None:
             _ACTIVE_CONNECTIONS.discard(self._active_key)
             self._active_key = None
 
-        await self._connection.disconnect()
+        if self._connection is not None:
+            try:
+                await self._connection.disconnect()
+            except Exception as e:
+                _LOGGER.debug("Transport disconnect failed: %s", e)
         self._connection = None
         self._protocol = None
 
@@ -327,13 +340,6 @@ class DMPPanel:
             if isinstance(resp, OutputsResponse):
                 outputs.update(resp.outputs)
 
-        # Map mode to our Output state strings
-        def mode_to_state(mode: str) -> str:
-            m = mode.upper()
-            if m == "O":
-                return DMPEventType.REAL_TIME_STATUS  # placeholder, replaced below
-            return m
-
         # Update/create Output objects
         for num_str, out in outputs.items():
             try:
@@ -440,15 +446,20 @@ class DMPPanel:
         """Refresh internal user code cache from panel."""
         async with self._user_cache_lock:
             users = await self.get_user_codes()
-            self._user_cache_by_code = {}
-            self._user_cache_by_pin = {}
+            # Build the replacement maps fully, then swap the references
+            # atomically so a concurrent check_code() never observes a
+            # partially-populated (or emptied) cache.
+            by_code: dict[str, UserCode] = {}
+            by_pin: dict[str, UserCode] = {}
             for u in users:
                 code = (u.code or "").strip()
                 pin = (u.pin or "").strip()
                 if code:
-                    self._user_cache_by_code[code] = u
+                    by_code[code] = u
                 if pin:
-                    self._user_cache_by_pin[pin] = u
+                    by_pin[pin] = u
+            self._user_cache_by_code = by_code
+            self._user_cache_by_pin = by_pin
 
     async def check_code(
         self, code: str, *, include_pin: bool = True, refresh_if_missing: bool = True
@@ -582,7 +593,7 @@ class DMPPanel:
         if not area_numbers:
             raise ValueError("area_numbers must not be empty")
         for n in area_numbers:
-            if not 0 <= int(n) <= 99:
+            if not 1 <= int(n) <= 8:
                 raise ValueError(f"Invalid area number: {n}")
 
         areas_concat = "".join(f"{int(n):02d}" for n in area_numbers)
@@ -607,7 +618,7 @@ class DMPPanel:
         if not area_numbers:
             raise ValueError("area_numbers must not be empty")
         for n in area_numbers:
-            if not 0 <= int(n) <= 99:
+            if not 1 <= int(n) <= 8:
                 raise ValueError(f"Invalid area number: {n}")
 
         areas_concat = "".join(f"{int(n):02d}" for n in area_numbers)

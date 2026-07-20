@@ -1,7 +1,7 @@
 """Area abstraction."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from .const.commands import DMPCommand
 from .const.responses import (
@@ -160,7 +160,7 @@ class Area:
         """String representation."""
         return f"<Area {self.number}: {self.name} ({self._state})>"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable representation of the area."""
         return {
             "number": self.number,
@@ -219,7 +219,7 @@ class AreaSync:
 
     def get_state_sync(self) -> str:
         """Get current state from panel (sync)."""
-        return self._panel_sync._run(self._area.get_state())
+        return cast(str, self._panel_sync._run(self._area.get_state()))
 
     def __repr__(self) -> str:
         """String representation."""

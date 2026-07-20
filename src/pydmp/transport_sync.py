@@ -5,7 +5,13 @@ from typing import Any
 
 from .const.commands import DMPCommand
 from .const.protocol import DEFAULT_PORT
-from .protocol import DMPProtocol, StatusResponse
+from .protocol import (
+    DMPProtocol,
+    OutputsResponse,
+    StatusResponse,
+    UserCodesResponse,
+    UserProfilesResponse,
+)
 from .transport import DMPTransport
 
 
@@ -66,7 +72,7 @@ class DMPTransportSync:
         encrypt_user_code: bool = False,
         user_code: str | None = None,
         **kwargs: Any,
-    ) -> str | StatusResponse | None:
+    ) -> str | StatusResponse | UserCodesResponse | UserProfilesResponse | OutputsResponse | None:
         """Send a protocol command and return decoded response."""
         encoded = self._protocol.encode_command(command, **kwargs)
         raw = self._run(self._transport.send_and_receive(encoded))

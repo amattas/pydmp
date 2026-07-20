@@ -58,7 +58,10 @@ path = "src/pydmp/__init__.py"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--cov=pydmp --cov-report=term-missing --cov-report=html"
+addopts = "--cov --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src/pydmp"]
 
 [tool.black]
 line-length = 100

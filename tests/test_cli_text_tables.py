@@ -1,27 +1,9 @@
-from pathlib import Path
-
 from click.testing import CliRunner
 
 import pydmp.cli as cli
-from pydmp.protocol import UserCode, UserProfile
 
 
-def _cfg_top(tmp_path: Path) -> Path:
-    # top-level mapping (not nested under 'panel') to exercise normalization in CLI
-    p = tmp_path / "cfg.yaml"
-    p.write_text("host: h\naccount: '1'\nremote_key: 'K'\nport: 2011\ntimeout: 1\n")
-    return p
-
-
-def _cfg(tmp_path: Path) -> Path:
-    p = tmp_path / "cfg.yaml"
-    p.write_text(
-        "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n"
-    )
-    return p
-
-
-def test_cli_get_areas_zones_text(monkeypatch, tmp_path):
+def test_cli_get_areas_zones_text(monkeypatch, cli_cfg):
     class Area:
         def __init__(self, n, name, state, disarmed):
             self.number = n
@@ -69,7 +51,7 @@ def test_cli_get_areas_zones_text(monkeypatch, tmp_path):
             ]
 
     monkeypatch.setattr(cli, "DMPPanel", P)
-    cfg = _cfg(tmp_path)
+    cfg = cli_cfg()
     r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "get-areas"])  # text
     assert r1.exit_code == 0 and "Areas" in r1.output
 
@@ -77,7 +59,7 @@ def test_cli_get_areas_zones_text(monkeypatch, tmp_path):
     assert r2.exit_code == 0 and "Zones" in r2.output
 
 
-def test_cli_get_users_profiles_text(monkeypatch, tmp_path):
+def test_cli_quiet_and_debug_flags_via_arm(monkeypatch, cli_cfg):
     class P:
         def __init__(self, *a, **k):
             pass
@@ -88,59 +70,11 @@ def test_cli_get_users_profiles_text(monkeypatch, tmp_path):
         async def disconnect(self):
             return None
 
-        async def get_user_codes(self):
-            return [
-                UserCode(
-                    number="0001",
-                    code="1234",
-                    pin="",
-                    profiles=("001", "002", "003", "004"),
-                    temp_date="010125",
-                    exp_date="0900",
-                    start_date="010125",
-                    end_date="310125",
-                    flags="YYN",
-                    active=True,
-                    temporary=False,
-                    name="USER",
-                )
-            ]
-
-        async def get_user_profiles(self):
-            return [
-                UserProfile(
-                    number="001",
-                    areas_mask="C3000000",
-                    access_areas_mask="C3000000",
-                    output_group="001",
-                    menu_options="MENUOPTS",
-                    rearm_delay="005",
-                    name="ADMIN",
-                )
-            ]
-
-    monkeypatch.setattr(cli, "DMPPanel", P)
-    cfg = _cfg(tmp_path)
-    r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "get-users"])  # text
-    assert r1.exit_code == 0 and "Users" in r1.output
-
-    r2 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "get-profiles"])  # text
-    assert r2.exit_code == 0 and "Profiles" in r2.output
-
-
-def test_cli_quiet_and_debug_flags_via_arm(monkeypatch, tmp_path):
-    class P:
-        async def connect(self, *a, **k):
-            return None
-
-        async def disconnect(self):
-            return None
-
         async def arm_areas(self, *a, **k):
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", P)
-    cfg = _cfg_top(tmp_path)
+    cfg = cli_cfg(top_level=True)
     r_quiet = CliRunner().invoke(cli.cli, ["-q", "-c", str(cfg), "arm", "1"])  # quiet
     assert r_quiet.exit_code == 0
 

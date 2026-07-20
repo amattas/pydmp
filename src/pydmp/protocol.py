@@ -1,6 +1,7 @@
 """DMP protocol encoder and decoder."""
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,6 +29,15 @@ from .profile import UserProfile
 from .user import UserCode
 
 _LOGGER = logging.getLogger(__name__)
+
+# Redact the remote key carried by auth frames (!V2<key>) before logging.
+# The key runs from after "!V2" up to the message terminator.
+_AUTH_REDACT_RE = re.compile(r"(!V2)[^\r]*")
+
+
+def _redact_auth(frame: str) -> str:
+    """Redact the remote key in an auth (!V2) frame for safe logging."""
+    return _AUTH_REDACT_RE.sub(r"\1<redacted>", frame)
 
 
 @dataclass
@@ -135,7 +145,7 @@ class DMPProtocol:
                 f"{MESSAGE_PREFIX}{self.account_number}{formatted_command}{MESSAGE_TERMINATOR}"
             )
 
-            _LOGGER.debug(f"Encoded command: {message.strip()}")
+            _LOGGER.debug("Encoded command: %s", _redact_auth(message.strip()))
             return message.encode()
 
         except (KeyError, ValueError) as e:
@@ -380,8 +390,14 @@ class DMPProtocol:
             if item.startswith("----"):
                 has_more = True
                 continue
-            # Decrypt with LFSR
-            plain = self.crypto.decrypt_string(item)
+            # Decrypt with LFSR. Corrupt/tampered payloads can contain
+            # non-numeric/non-hex bytes that make the LFSR int() conversions
+            # raise ValueError; surface these as library decode errors rather
+            # than leaking a raw ValueError to callers.
+            try:
+                plain = self.crypto.decrypt_string(item)
+            except ValueError as e:
+                raise DMPInvalidResponseError(f"Malformed user code data: {e}") from e
             if len(plain) < 44:
                 continue
             num = plain[0:4]

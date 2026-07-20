@@ -9,7 +9,7 @@ from typing import Any
 
 try:
     import click
-    import yaml
+    import yaml  # type: ignore[import-untyped]
     from rich.console import Console
     from rich.table import Table
 except ImportError:
@@ -31,11 +31,13 @@ _LOG = logging.getLogger(__name__)
 class SectionedGroup(click.Group):
     """Click Group that renders commands in named sections for --help."""
 
-    def __init__(self, *args, sections: list[tuple[str, list[str]]] | None = None, **kwargs):
+    def __init__(
+        self, *args: Any, sections: list[tuple[str, list[str]]] | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._sections: list[tuple[str, list[str]]] = sections or []
 
-    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:  # type: ignore[override]
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         if not self.commands:
             return
         # If sections provided, render in groups
@@ -87,7 +89,7 @@ def _fmt_ddmmyy(value: str | None) -> str:
         return ""
 
 
-def load_config(config_path: Path) -> dict:
+def load_config(config_path: Path) -> dict[str, Any]:
     """Load configuration from YAML file.
 
     Args:
@@ -116,7 +118,7 @@ def load_config(config_path: Path) -> dict:
     return cfg
 
 
-def _normalize_config(raw: Any) -> dict | None:
+def _normalize_config(raw: Any) -> dict[str, Any] | None:
     """Normalize YAML into a dict with a 'panel' mapping.
 
     Accepts these shapes:
@@ -164,6 +166,14 @@ def _normalize_config(raw: Any) -> dict | None:
     return None
 
 
+def _make_panel(panel_config: dict[str, Any]) -> DMPPanel:
+    """Construct a DMPPanel using the configured port/timeout (falling back to defaults)."""
+    return DMPPanel(
+        port=int(panel_config.get("port", DEFAULT_PORT)),
+        timeout=float(panel_config.get("timeout", 10.0)),
+    )
+
+
 @click.group(
     cls=SectionedGroup,
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -174,7 +184,7 @@ def _normalize_config(raw: Any) -> dict | None:
             ["get-areas", "get-zones", "get-outputs", "get-users", "get-profiles", "check-code"],
         ),
         ("Zones", ["set-zone-bypass", "set-zone-restore"]),
-        ("Outputs", ["output", "set-output"]),
+        ("Outputs", ["set-output"]),
         ("Realtime", ["listen"]),
     ],
 )
@@ -231,8 +241,8 @@ def arm_cmd(
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -268,6 +278,13 @@ def arm_cmd(
                         }
                     )
                 )
+        except Exception as e:
+            if as_json:
+                click.echo(json.dumps({"ok": False, "error": str(e)}))
+            else:
+                _LOG.error("CLI command failed: %s", e)
+                console.print(f"[red]Error: {e}[/red]")
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -283,11 +300,8 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -307,7 +321,7 @@ def disarm(ctx: click.Context, area: int, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -323,8 +337,8 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -335,11 +349,8 @@ def set_zone_bypass(ctx: click.Context, zone: int, as_json: bool) -> None:
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.BYPASS_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = (
-                    panel._protocol.last_nak_detail
-                    if hasattr(panel, "_protocol") and panel._protocol
-                    else ""
-                )
+                protocol = getattr(panel, "_protocol", None)
+                detail = (protocol.last_nak_detail if protocol else None) or ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -369,8 +380,8 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -381,11 +392,8 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
             # Send direct command without forcing a status fetch
             resp = await panel._send_command(DMPCommand.RESTORE_ZONE.value, zone=f"{zone:03d}")
             if resp == "NAK":
-                detail = (
-                    panel._protocol.last_nak_detail
-                    if hasattr(panel, "_protocol") and panel._protocol
-                    else ""
-                )
+                protocol = getattr(panel, "_protocol", None)
+                detail = (protocol.last_nak_detail if protocol else None) or ""
                 reason = ""
                 if len(detail) == 2 and detail[1] == "U":
                     reason = " (undefined)"
@@ -406,21 +414,18 @@ def set_zone_restore(ctx: click.Context, zone: int, as_json: bool) -> None:
     asyncio.run(run())
 
 
-@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
+@cli.command("set-output", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
 @click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
+def set_output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
     """Control an output."""
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -451,11 +456,17 @@ def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
     asyncio.run(run())
+
+
+# Command object for the deprecated 'output' alias to forward to; the alias
+# body can't reference the function directly because its own 'output'
+# parameter shadows any same-named module attribute.
+_SET_OUTPUT_COMMAND = set_output
 
 
 # removed: arm-areas (use 'arm')
@@ -472,8 +483,8 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -510,7 +521,7 @@ def list_users(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -525,8 +536,8 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -561,7 +572,7 @@ def list_profiles(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -576,8 +587,8 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -603,7 +614,7 @@ def list_outputs(ctx: click.Context, as_json: bool) -> None:
                 click.echo(json.dumps({"ok": False, "error": str(e)}))
             else:
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -618,8 +629,8 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -638,7 +649,7 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -646,7 +657,13 @@ def sensor_reset(ctx: click.Context, as_json: bool) -> None:
 
 
 @cli.command("check-code", context_settings={"help_option_names": ["-h", "--help"]})
-@click.argument("code", type=str)
+@click.option(
+    "--code",
+    type=str,
+    prompt=True,
+    hide_input=True,
+    help="User code or PIN to check (prompted securely if not provided)",
+)
 @click.option(
     "-p",
     "--include-pin/--no-include-pin",
@@ -661,8 +678,8 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        panel = DMPPanel()
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
@@ -687,7 +704,7 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
             else:
                 _LOG.error("CLI command failed: %s", e)
                 console.print(f"[red]Error: {e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -702,10 +719,10 @@ def check_code_cmd(ctx: click.Context, code: str, include_pin: bool, as_json: bo
 def listen(host: str, port: int, duration: int, as_json: bool) -> None:
     """Run realtime S3 status server and print parsed events."""
 
-    async def run():
+    async def run() -> None:
         server = DMPStatusServer(host=host, port=port)
 
-        def on_event(msg):
+        def on_event(msg: Any) -> None:
             evt = parse_s3_message(msg)
             if not as_json:
                 console.print(
@@ -742,15 +759,12 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
-            _LOG.info("CLI: get-zones connect")
+            _LOG.info("CLI: get-areas connect")
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
             )
@@ -771,6 +785,13 @@ def get_areas_cmd(ctx: click.Context, as_json: bool) -> None:
                     str(area.number), area.name, f"[{state_style}]{state_text}[/{state_style}]"
                 )
             console.print(table)
+        except Exception as e:
+            if as_json:
+                click.echo(json.dumps({"ok": False, "error": str(e)}))
+            else:
+                _LOG.error("CLI command failed: %s", e)
+                console.print(f"[red]Error: {e}[/red]")
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
@@ -785,15 +806,12 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
     config = ctx.obj["config"]
     panel_config = config.get("panel", {})
 
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
+    async def run() -> None:
+        panel = _make_panel(panel_config)
         try:
             if not as_json:
                 console.print("[cyan]Connecting to panel[/cyan]")
-            _LOG.info("CLI: get-areas connect")
+            _LOG.info("CLI: get-zones connect")
             await panel.connect(
                 panel_config["host"], panel_config["account"], panel_config["remote_key"]
             )
@@ -824,46 +842,32 @@ def get_zones_cmd(ctx: click.Context, as_json: bool) -> None:
                     fault,
                 )
             console.print(table)
+        except Exception as e:
+            if as_json:
+                click.echo(json.dumps({"ok": False, "error": str(e)}))
+            else:
+                _LOG.error("CLI command failed: %s", e)
+                console.print(f"[red]Error: {e}[/red]")
+            raise SystemExit(1) from e
         finally:
             await panel.disconnect()
 
     asyncio.run(run())
 
 
-@cli.command("set-output", context_settings={"help_option_names": ["-h", "--help"]})
+@cli.command(
+    "output",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    hidden=True,
+    deprecated="Use 'set-output' instead.",
+)
 @click.argument("output", type=int)
 @click.argument("action", type=click.Choice(["on", "off", "pulse", "toggle"]))
+@click.option("--json", "-j", "as_json", is_flag=True, help="Output JSON instead of text")
 @click.pass_context
-def set_output(ctx: click.Context, output: int, action: str) -> None:
-    """Control an output."""
-    config = ctx.obj["config"]
-    panel_config = config.get("panel", {})
-
-    async def run():
-        pc = panel_config
-        panel = DMPPanel(
-            port=int(pc.get("port", DEFAULT_PORT)), timeout=float(pc.get("timeout", 10.0))
-        )
-        try:
-            await panel.connect(
-                panel_config["host"], panel_config["account"], panel_config["remote_key"]
-            )
-            output_obj = await panel.get_output(output)
-            console.print(f"[cyan]Setting output {output} to {action}[/cyan]")
-            _LOG.info("CLI: set-output %s %s", output, action)
-            if action == "on":
-                await output_obj.turn_on()
-            elif action == "off":
-                await output_obj.turn_off()
-            elif action == "pulse":
-                await output_obj.pulse()
-            elif action == "toggle":
-                await output_obj.toggle()
-            console.print(f"[green]Output {output} set to {action}[/green]")
-        finally:
-            await panel.disconnect()
-
-    asyncio.run(run())
+def output(ctx: click.Context, output: int, action: str, as_json: bool) -> None:
+    """Control an output (deprecated alias for 'set-output')."""
+    ctx.forward(_SET_OUTPUT_COMMAND)
 
 
 # removed: 'outputs' alias; use 'get-outputs'

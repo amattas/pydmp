@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from pydmp.transport_sync import DMPTransportSync
 
 
 class _FakeTransport:
-    def __init__(self, host, port, timeout):
+    def __init__(self, host: str, port: int, timeout: float, fail_send: bool = False):  # noqa: D401
         self.host, self.port, self.timeout = host, port, timeout
-        self.closed = False
-        self.connected = True
-        self.calls = []
+        self.connected = False
+        self.sent: list[bytes] = []
+        self.calls: list[bytes] = []
+        self._fail_send = fail_send
 
     async def connect(self):  # noqa: D401
         self.connected = True
@@ -14,19 +17,43 @@ class _FakeTransport:
     async def disconnect(self):  # noqa: D401
         self.connected = False
 
-    async def send_and_receive(self, data: bytes):  # noqa: D401
-        self.calls.append(data)
-        raise RuntimeError("fail")
+    async def send_and_receive(self, data: bytes) -> bytes:  # noqa: D401
+        self.sent.append(bytes(data))
+        self.calls.append(bytes(data))
+        if self._fail_send:
+            raise RuntimeError("fail")
+        return b""
 
     @property
-    def is_connected(self):  # noqa: D401
+    def is_connected(self) -> bool:  # noqa: D401
         return self.connected
+
+
+def test_transport_sync_connect_disconnect(monkeypatch):
+    # patch the class used internally
+    import pydmp.transport_sync as ts
+
+    monkeypatch.setattr(ts, "DMPTransport", _FakeTransport)
+
+    t = DMPTransportSync("h", "1", "KEY", port=2011, timeout=1.0)
+    t.connect()
+    assert t.is_connected
+    # During connect, AUTH should be sent
+    assert isinstance(t._transport, _FakeTransport)  # type: ignore[attr-defined]
+    assert any(b"!V2" in s for s in t._transport.sent)
+
+    t.disconnect()
+    # DISCONNECT should be sent
+    assert any(b"!V0" in s for s in t._transport.sent)
 
 
 def test_sync_disconnect_exception_path_and_context_manager(monkeypatch):
     import pydmp.transport_sync as ts
 
-    monkeypatch.setattr(ts, "DMPTransport", _FakeTransport)
+    def _make_failing(host, port, timeout):
+        return _FakeTransport(host, port, timeout, fail_send=True)
+
+    monkeypatch.setattr(ts, "DMPTransport", _make_failing)
     t = DMPTransportSync("h", "1", "KEY")
 
     # Force exception in send_and_receive during disconnect; should be swallowed

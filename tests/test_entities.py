@@ -54,7 +54,7 @@ class _SyncPanel:
     """Fake sync panel that drives coroutines via the default event loop."""
 
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------

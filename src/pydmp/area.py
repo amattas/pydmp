@@ -1,7 +1,7 @@
 """Area abstraction."""
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from .const.commands import DMPCommand
 from .const.responses import (
@@ -219,7 +219,7 @@ class AreaSync:
 
     def get_state_sync(self) -> str:
         """Get current state from panel (sync)."""
-        return str(self._panel_sync._run(self._area.get_state()))
+        return cast(str, self._panel_sync._run(self._area.get_state()))
 
     def __repr__(self) -> str:
         """String representation."""

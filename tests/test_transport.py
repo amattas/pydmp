@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from pydmp.exceptions import DMPConnectionError
+from pydmp.exceptions import DMPConnectionError, DMPTimeoutError
 from pydmp.transport import DMPTransport
 
 
@@ -89,3 +89,45 @@ async def test_send_raw_redacts_remote_key(monkeypatch, caplog):
         await t._send_raw(b"@    1!S\r")
     assert "!S" in " ".join(r.getMessage() for r in caplog.records)
     await t.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_transport_connect_timeouts(monkeypatch):
+    async def raise_timeout(host, port):
+        raise TimeoutError()
+
+    monkeypatch.setattr(asyncio, "open_connection", raise_timeout)
+    t = DMPTransport("h", 1, timeout=0.01)
+    with pytest.raises(DMPTimeoutError):
+        await t.connect()
+
+
+@pytest.mark.asyncio
+async def test_transport_connect_oserror(monkeypatch):
+    async def raise_oserror(host, port):
+        raise OSError("no route")
+
+    monkeypatch.setattr(asyncio, "open_connection", raise_oserror)
+    t = DMPTransport("h", 1, timeout=0.01)
+    with pytest.raises(DMPConnectionError):
+        await t.connect()
+
+
+class _R:
+    async def read(self, n):  # noqa: D401
+        # Simulate a long read that times out quickly inside this coroutine
+        await asyncio.wait_for(asyncio.sleep(10), timeout=0.01)
+        return b"data"
+
+
+@pytest.mark.asyncio
+async def test_receive_timeout_breaks_loop(monkeypatch):
+    t = DMPTransport("h", 1, timeout=0.01)
+    # Install reader directly; no need to connect
+    t._reader = _R()  # type: ignore[attr-defined]
+    # Speed up rate limiting sleep
+    import pydmp.transport as tr
+
+    monkeypatch.setattr(tr, "RATE_LIMIT_SECONDS", 0)
+    data = await t._receive()
+    assert data == b""

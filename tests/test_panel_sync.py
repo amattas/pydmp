@@ -29,6 +29,41 @@ class _FArea:
         return self._state
 
 
+class _FZone:
+    def __init__(self, n: int):
+        self.number = n
+        self.name = f"Z{n}"
+        self._state = "N"
+
+    async def bypass(self):
+        self._state = "X"
+
+    async def restore(self):
+        self._state = "N"
+
+    async def get_state(self):
+        return self._state
+
+
+class _FOutput:
+    def __init__(self, n: int):
+        self.number = n
+        self.name = f"Out{n}"
+        self._state = ""
+
+    async def turn_on(self):
+        self._state = "ON"
+
+    async def turn_off(self):
+        self._state = "OF"
+
+    async def pulse(self):
+        self._state = "PL"
+
+    async def toggle(self):
+        self._state = "TP"
+
+
 class _FPanel:
     def __init__(self, *a, **k):
         pass
@@ -46,22 +81,13 @@ class _FPanel:
         return _FArea(n)
 
     async def get_zone(self, n: int):
-        class Z:
-            def __init__(self, num):
-                self.number = num
-                self.name = f"Z{num}"
-                self._state = "N"
+        return _FZone(n)
 
-            async def bypass(self):
-                self._state = "X"
+    async def get_output(self, n: int):
+        return _FOutput(n)
 
-            async def restore(self):
-                self._state = "N"
-
-            async def get_state(self):
-                return self._state
-
-        return Z(n)
+    async def get_outputs(self):
+        return [_FOutput(1)]
 
 
 def test_panel_sync_area_wrap(monkeypatch):
@@ -85,4 +111,20 @@ def test_panel_sync_area_wrap(monkeypatch):
     assert z.get_state_sync() in {"X", "N"}
     z.restore_sync()
     assert z.get_state_sync() == "N"
+    sp.disconnect()
+
+
+def test_panel_sync_output_ops(monkeypatch):
+    import pydmp.panel_sync as ps
+
+    monkeypatch.setattr(ps, "DMPPanel", _FPanel)
+    sp = DMPPanelSync()
+    sp.connect("h", "1", "K")
+    outs = sp.get_outputs()
+    assert outs and outs[0].number == 1
+    o = sp.get_output(1)
+    o.turn_on_sync()
+    o.turn_off_sync()
+    o.pulse_sync()
+    o.toggle_sync()
     sp.disconnect()

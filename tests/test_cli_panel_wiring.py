@@ -4,19 +4,11 @@ DMPPanel, and every command that talks to the panel must emit the same {"ok": fa
 """
 
 import json
-from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
 import pydmp.cli as cli
-
-
-def _cfg(tmp_path: Path, port: int = 4242, timeout: float = 7.5) -> Path:
-    p = tmp_path / "cfg.yaml"
-    p.write_text(f"panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: {port}\n  timeout: {timeout}\n")
-    return p
-
 
 # Commands (with a minimal valid argv tail) that PYDMP-009 found constructing DMPPanel() bare.
 _BARE_PANEL_COMMANDS = [
@@ -32,7 +24,7 @@ _BARE_PANEL_COMMANDS = [
 
 
 @pytest.mark.parametrize(("command", "extra_args"), _BARE_PANEL_COMMANDS)
-def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, tmp_path, command, extra_args):
+def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg, command, extra_args):
     recorded = {}
 
     class RecordingPanel:
@@ -71,7 +63,7 @@ def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, tmp_pat
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", RecordingPanel)
-    cfg = _cfg(tmp_path, port=4242, timeout=7.5)
+    cfg = cli_cfg(port=4242, timeout=7.5)
     result = CliRunner().invoke(cli.cli, ["-c", str(cfg), command, *extra_args, "--json"])
 
     assert result.exit_code == 0, result.output
@@ -86,7 +78,7 @@ def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, tmp_pat
         ("get-zones", ["--json"]),
     ],
 )
-def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, tmp_path, command, extra_args):
+def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, command, extra_args):
     class FailingPanel:
         def __init__(self, *a, **k):
             pass
@@ -98,7 +90,7 @@ def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, tmp_path,
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", FailingPanel)
-    cfg = _cfg(tmp_path)
+    cfg = cli_cfg()
     result = CliRunner().invoke(cli.cli, ["-c", str(cfg), command, *extra_args])
 
     assert result.exit_code != 0
@@ -106,7 +98,7 @@ def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, tmp_path,
     assert data == {"ok": False, "error": "boom"}
 
 
-def test_cli_set_output_text_mode_error_is_clean(monkeypatch, tmp_path):
+def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
     """set-output has no --json flag; a failure must still print a clean error, not a traceback."""
 
     class FailingPanel:
@@ -120,7 +112,7 @@ def test_cli_set_output_text_mode_error_is_clean(monkeypatch, tmp_path):
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", FailingPanel)
-    cfg = _cfg(tmp_path)
+    cfg = cli_cfg()
     result = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on"])
 
     assert result.exit_code != 0

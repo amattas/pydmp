@@ -60,7 +60,7 @@ class DMPTransport:
             )
             self._connected = True
             _LOGGER.info("Transport connected")
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             _LOGGER.error("Transport connection timeout to %s:%s", self.host, self.port)
             raise DMPTimeoutError(f"Connection timeout to {self.host}:{self.port}") from e
         except OSError as e:
@@ -128,7 +128,7 @@ class DMPTransport:
                         )
                     except Exception:
                         _LOGGER.debug("<<< chunk %d bytes: %r", len(chunk), chunk)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     break
             _LOGGER.debug("<<< total %d bytes", len(data))
             return data

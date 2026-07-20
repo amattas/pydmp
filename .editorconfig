@@ -1,0 +1,13 @@
+# aviato:managed profile=python-library version=0.6.0 hash=71589501b7a5dd84d122c08a34d94001034ec89843a90e2e790a65087c8a4fcc inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_size = 4

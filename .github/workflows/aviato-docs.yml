@@ -1,0 +1,120 @@
+# aviato:managed profile=python-library version=0.6.0 hash=15a46ca69997e5c88549c59999e0c0c909ada41fa117da971ecd19b53c328584 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+name: Aviato Docs
+
+# Multi-version Zensical docs publish (§13.3), versioned onto a docs branch by mike, opt-in via docs: true.
+#
+# Triggered by workflow_run on the main CI workflow completing on the default
+# branch — NOT by a tag push. The release job tags with GITHUB_TOKEN, which does
+# not re-trigger tag workflows (§11.2 forbids a stored PAT to work around that);
+# workflow_run is not subject to that suppression, so it reliably fires. We then
+# deploy docs only when the completed run SUCCEEDED and its head commit carries a
+# fresh release tag, gated by the release gate + a release-ref security baseline.
+on:
+  workflow_run:
+    workflows: ["Aviato Python Library"]
+    types: [completed]
+    branches: ["main"]
+
+# R4-7: least privilege. The top-level token is the FLOOR for jobs that don't set
+# their own; only the privileged `resolve` checkout runs under it, so it grants just
+# read. Each reusable-workflow call below sets job-level permissions matching exactly
+# what that workflow needs (a caller cannot elevate a called workflow's token, so the
+# grant must be >= its needs and no more).
+permissions:
+  contents: read
+
+jobs:
+  # Resolve the release tag at the completed run's head commit; skip if none.
+  resolve:
+    # review #27: a workflow_run fires from the BASE repo with full privileges even when the
+    # triggering CI ran on a fork PR. Gate the privileged checkout to runs that originated in
+    # THIS repo so fork-PR head code is never checked out here (deploy is also release-tag-gated).
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      release: ${{ steps.tag.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # finding 6: resolve only reads local tags after checkout — never persist
+          # the job token into .git/config.
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+      - id: tag
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # R7-4-DOCSTAGFILTER: the `--list '[0-9]*.[0-9]*.[0-9]*'` is a shell GLOB, broader than the
+          # policy tag pattern (`1foo.2bar.3baz` matches). Post-filter with grep -E so docs deploy
+          # only triggers on a real policy-conformant release tag. The trailing `|| true` is
+          # load-bearing: grep exits 1 when NO tag matches (every ordinary merge), and under
+          # `set -euo pipefail` a failing command substitution fails the assignment and the whole
+          # resolve job — the no-release case must be a clean release=false skip, not a red run.
+          tag="$(git tag --points-at "${HEAD_SHA}" --list '[0-9]*.[0-9]*.[0-9]*' \
+            | grep -E '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$' | head -n1 || true)"
+          if [ -n "${tag}" ]; then
+            echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+            echo "release=true" >> "${GITHUB_OUTPUT}"
+            echo "Resolved release tag ${tag} for docs deploy."
+          else
+            echo "release=false" >> "${GITHUB_OUTPUT}"
+            echo "No release tag at ${HEAD_SHA}; skipping docs deploy."
+          fi
+
+  release-gate:
+    needs: [resolve]
+    if: ${{ needs.resolve.outputs.release == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.0
+    with:
+      default-branch: main
+      require-merged-pr: true
+      release-tag: ${{ needs.resolve.outputs.tag }}
+
+  security:
+    needs: [resolve, release-gate]
+    if: ${{ needs.resolve.outputs.release == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      security-events: write
+    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.0
+    with:
+      ref: refs/tags/${{ needs.resolve.outputs.tag }}
+      sha: ${{ needs.release-gate.outputs.gated-sha }}
+      codeql-languages: "python"
+
+  docs:
+    needs: [resolve, release-gate, security]
+    if: ${{ needs.resolve.outputs.release == 'true' }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    uses: amattas/aviato/.github/workflows/reusable-docs-pages.yml@0.6.0
+    with:
+      working-directory: "."
+      docs-requirements: requirements-docs.txt
+      release-tag: ${{ needs.resolve.outputs.tag }}
+      gated-sha: ${{ needs.release-gate.outputs.gated-sha }}
+      serve-pages: true
+      docs-source-directory: "."
+      docs-emit-command: |
+        # §12.1 Python API reference (docstrings -> markdown) into the docs source tree.
+        # §11.3: pin the pip-installed doc tool to an exact version (no floating latest).
+        python3 -m pip install --quiet -e . "pydoc-markdown==4.8.2"
+        mkdir -p docs/api
+        pydoc-markdown -I . -p "pydmp" > docs/api/reference.md

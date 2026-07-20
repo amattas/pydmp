@@ -160,9 +160,7 @@ def test_cli_zone_bypass_text_success(monkeypatch, cli_cfg):
         ("set-zone-restore", "restore zone", "(-YU)"),
     ],
 )
-def test_cli_zone_bypass_restore_nak_json(
-    monkeypatch, cli_cfg, command, expect_phrase, expect_detail
-):
+def test_cli_zone_bypass_restore_nak_json(monkeypatch, cli_cfg, command, expect_phrase, expect_detail):
     """NAK path is decoded via the real DMPProtocol.decode_response() and the
     '(-XU)'/'(undefined)' detail rendering (cli.py ~319-330/358-369) is exercised genuinely
     (PYDMP-023), not through a stubbed last_nak_detail.

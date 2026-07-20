@@ -162,9 +162,9 @@ class DMPPanel:
         # Request zone status (this returns both areas and zones)
         # First command: ?WB**Y001 (initial query)
         # Subsequent: ?WB (continuation)
-        commands: list[tuple[str, dict[str, Any]]] = [
-            (DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"})
-        ] + [(DMPCommand.GET_ZONE_STATUS_CONT.value, {})] * 10
+        commands: list[tuple[str, dict[str, Any]]] = [(DMPCommand.GET_ZONE_STATUS.value, {"zone": "001"})] + [
+            (DMPCommand.GET_ZONE_STATUS_CONT.value, {})
+        ] * 10
 
         responses: list[StatusResponse] = []
         for cmd, params in commands:
@@ -192,9 +192,7 @@ class DMPPanel:
         for zone_num_str, zone_status in all_zones.items():
             zone_num = int(zone_num_str)
             if zone_num not in self._zones:
-                self._zones[zone_num] = Zone(
-                    self, zone_num, zone_status.name, state=zone_status.state
-                )
+                self._zones[zone_num] = Zone(self, zone_num, zone_status.name, state=zone_status.state)
             else:
                 self._zones[zone_num].update_state(zone_status.state, zone_status.name)
 
@@ -330,9 +328,9 @@ class DMPPanel:
         if not self.is_connected or not self._connection:
             raise DMPConnectionError("Not connected to panel")
 
-        commands: list[tuple[str, dict[str, Any]]] = [
-            (DMPCommand.GET_OUTPUT_STATUS.value, {"output": "001"})
-        ] + [(DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})] * 5
+        commands: list[tuple[str, dict[str, Any]]] = [(DMPCommand.GET_OUTPUT_STATUS.value, {"output": "001"})] + [
+            (DMPCommand.GET_OUTPUT_STATUS_CONT.value, {})
+        ] * 5
 
         outputs: dict[str, Any] = {}
         for cmd, params in commands:
@@ -354,9 +352,7 @@ class DMPPanel:
             # Map mode to the Output state semantics used in Output
             mode = out.mode
             if mode == "O":
-                self._outputs[num]._state = (
-                    DMPEventType.REAL_TIME_STATUS
-                )  # will set properly in next block
+                self._outputs[num]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
             # Use Output.update_state mapping via set_mode semantics
             # Set internal state directly based on mode
             if mode == "O":

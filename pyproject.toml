@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydmp"
-dynamic = ["version"]
+version = "1.0.1"
 description = "Python library for controlling DMP alarm systems"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Anthony Mattas", email = "anthony@mattas.net" }
@@ -18,8 +18,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Home Automation",
     "Topic :: Security",
@@ -28,18 +26,26 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4",
-    "pytest-asyncio>=0.21",
-    "pytest-cov>=4.1",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
     "black==26.5.1",
-    "mypy>=1.5",
-    "ruff>=0.6",
-    "pre-commit>=3.4",
+    "mypy==2.3.0",
+    "ruff==0.15.22",
+    "pre-commit==4.6.0",
+    # The verify's build job runs `python -m build` from the dev install.
+    "build==1.5.0",
+    # CI installs .[dev] only and the test suite imports pydmp.cli — the cli deps must
+    # ride along. Inlined (not a pydmp[cli] self-reference) because the §11.3 pin-form
+    # gate doesn't yet recognize self-referential extras; keep in sync with [cli].
+    "click==8.4.1",
+    "pyyaml==6.0.3",
+    "rich==15.0.0",
 ]
 cli = [
-    "click>=8.1",
-    "pyyaml>=6.0",
-    "rich>=13.0",
+    "click==8.4.1",
+    "pyyaml==6.0.3",
+    "rich==15.0.0",
 ]
 docs = [
     "zensical==0.0.50",
@@ -52,9 +58,6 @@ pydmp = "pydmp.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/pydmp"]
 
-[tool.hatch.version]
-path = "src/pydmp/__init__.py"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
@@ -62,21 +65,3 @@ addopts = "--cov --cov-report=term-missing --cov-report=html"
 
 [tool.coverage.run]
 source = ["src/pydmp"]
-
-[tool.black]
-line-length = 100
-target-version = ["py310"]
-
-[tool.mypy]
-python_version = "3.10"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]

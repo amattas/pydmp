@@ -24,9 +24,7 @@ _BARE_PANEL_COMMANDS = [
 
 
 @pytest.mark.parametrize(("command", "extra_args"), _BARE_PANEL_COMMANDS)
-def test_cli_commands_propagate_configured_port_and_timeout(
-    monkeypatch, cli_cfg, command, extra_args
-):
+def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg, command, extra_args):
     recorded = {}
 
     class RecordingPanel:
@@ -80,9 +78,7 @@ def test_cli_commands_propagate_configured_port_and_timeout(
         ("get-zones", ["--json"]),
     ],
 )
-def test_cli_commands_emit_json_error_contract_on_failure(
-    monkeypatch, cli_cfg, command, extra_args
-):
+def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, command, extra_args):
     class FailingPanel:
         def __init__(self, *a, **k):
             pass

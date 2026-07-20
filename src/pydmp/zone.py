@@ -1,7 +1,7 @@
 """Zone abstraction."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .const.commands import DMPCommand
 from .const.responses import (
@@ -153,7 +153,7 @@ class Zone:
         """String representation."""
         return f"<Zone {self.number}: {self.name} ({self._state})>"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable representation of the zone."""
         return {
             "number": self.number,
@@ -229,7 +229,7 @@ class ZoneSync:
 
     def get_state_sync(self) -> str:
         """Get current state from panel (sync)."""
-        return self._panel_sync._run(self._zone.get_state())
+        return str(self._panel_sync._run(self._zone.get_state()))
 
     def __repr__(self) -> str:
         """String representation."""

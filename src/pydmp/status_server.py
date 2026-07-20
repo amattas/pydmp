@@ -136,7 +136,7 @@ class DMPStatusServer:
             try:
                 res = cb(msg)
                 if asyncio.iscoroutine(res):
-                    await res  # type: ignore[func-returns-value]
+                    await res
             except Exception as e:
                 _LOGGER.warning("Status callback error: %s", e)
 

@@ -1,16 +1,6 @@
-from pathlib import Path
-
 from click.testing import CliRunner
 
 import pydmp.cli as cli
-
-
-def _cfg(tmp_path: Path) -> Path:
-    p = tmp_path / "cfg.yaml"
-    p.write_text(
-        "panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: 2011\n  timeout: 1\n"
-    )
-    return p
 
 
 def test_cli_help_sections():
@@ -19,7 +9,7 @@ def test_cli_help_sections():
     assert "Panel Control" in r.output and "Status & Query" in r.output
 
 
-def test_cli_text_arm_disarm_outputs_sensor(monkeypatch, tmp_path):
+def test_cli_text_arm_disarm_outputs_sensor(monkeypatch, cli_cfg):
     class P:
         def __init__(self, *a, **k):
             pass
@@ -59,7 +49,7 @@ def test_cli_text_arm_disarm_outputs_sensor(monkeypatch, tmp_path):
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", P)
-    cfg = _cfg(tmp_path)
+    cfg = cli_cfg()
     r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "arm", "1,2"])  # text mode
     assert r1.exit_code == 0 and "Arming areas" in r1.output
 
@@ -73,15 +63,14 @@ def test_cli_text_arm_disarm_outputs_sensor(monkeypatch, tmp_path):
     assert r4.exit_code == 0 and "Sensor reset" in r4.output
 
 
-def test_cli_config_errors(monkeypatch, tmp_path):
-    # YAML parse error
+def test_cli_config_yaml_parse_error(tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text("panel: [1, 2")  # malformed YAML to trigger parser error
     out = CliRunner().invoke(cli.cli, ["-c", str(bad), "arm", "1"])
-    assert out.exit_code != 0 and (
-        "Error parsing config" in out.output or "Invalid config" in out.output
-    )
+    assert out.exit_code != 0 and ("Error parsing config" in out.output or "Invalid config" in out.output)
 
+
+def test_cli_config_invalid_shape(tmp_path):
     # Invalid shape triggers invalid config message
     inv = tmp_path / "inv.yaml"
     inv.write_text("[1, 2, 3]")
@@ -89,7 +78,7 @@ def test_cli_config_errors(monkeypatch, tmp_path):
     assert out2.exit_code != 0 and "Invalid config" in out2.output
 
 
-def test_cli_debug_flag_executes(monkeypatch, tmp_path):
+def test_cli_debug_flag_executes(monkeypatch, cli_cfg):
     class P:
         def __init__(self, *a, **k):
             pass
@@ -104,6 +93,6 @@ def test_cli_debug_flag_executes(monkeypatch, tmp_path):
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", P)
-    cfg = _cfg(tmp_path)
+    cfg = cli_cfg()
     r = CliRunner().invoke(cli.cli, ["-d", "-c", str(cfg), "arm", "1"])  # debug flag
     assert r.exit_code == 0

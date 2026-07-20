@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
+import pytest
 
 
 class FakeReader:
@@ -98,3 +102,45 @@ def make_user_code(code: str = "1234", pin: str = "", number: str = "0001", name
         exp_date="0900",
         name=name,
     )
+
+
+@pytest.fixture
+def cli_cfg(tmp_path: Path) -> Callable[..., Path]:
+    """Factory fixture for writing a CLI config YAML file.
+
+    Replaces the ``_cfg(tmp_path)`` / ``_cfg_top(tmp_path)`` helpers duplicated across
+    CLI test files. Call with ``top_level=True`` for the unnested ("not under 'panel'")
+    config shape used to exercise config normalization.
+    """
+
+    def _make(*, top_level: bool = False, port: int = 2011, timeout: float = 1) -> Path:
+        p = tmp_path / "cfg.yaml"
+        if top_level:
+            p.write_text(f"host: h\naccount: '1'\nremote_key: 'K'\nport: {port}\ntimeout: {timeout}\n")
+        else:
+            p.write_text(
+                f"panel:\n  host: h\n  account: '1'\n  remote_key: 'K'\n  port: {port}\n  timeout: {timeout}\n"
+            )
+        return p
+
+    return _make
+
+
+class MinimalPanel:
+    """Minimal no-op fake ``DMPPanel`` for CLI tests.
+
+    Provides no-op ``connect``/``disconnect`` and an ACK-returning ``_send_command``.
+    Subclass and override individual methods to script the behavior a given test needs.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    async def connect(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    async def disconnect(self) -> None:
+        return None
+
+    async def _send_command(self, *args: Any, **kwargs: Any) -> str:
+        return "ACK"

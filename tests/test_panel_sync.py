@@ -1,96 +1,110 @@
+from typing import cast
+
+import pytest
+
+from pydmp.area import Area
+from pydmp.output import Output
 from pydmp.panel_sync import DMPPanelSync
+from pydmp.zone import Zone
 
 
 class _FArea:
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
         self.number = n
         self.name = f"Area {n}"
         self._state = "D"
 
     @property
-    def state(self):
+    def state(self) -> str:
         return self._state
 
     @property
-    def is_armed(self):
+    def is_armed(self) -> bool:
         return False
 
     @property
-    def is_disarmed(self):
+    def is_disarmed(self) -> bool:
         return True
 
-    async def arm(self, bypass_faulted: bool = False, force_arm: bool = False, instant=None):
+    async def arm(
+        self,
+        bypass_faulted: bool = False,
+        force_arm: bool = False,
+        instant: bool | None = None,
+    ) -> None:
+        del bypass_faulted, force_arm, instant
         self._state = "arming"
 
-    async def disarm(self):
+    async def disarm(self) -> None:
         self._state = "disarming"
 
-    async def get_state(self):
+    async def get_state(self) -> str:
         return self._state
 
 
 class _FZone:
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
         self.number = n
         self.name = f"Z{n}"
         self._state = "N"
 
-    async def bypass(self):
+    async def bypass(self) -> None:
         self._state = "X"
 
-    async def restore(self):
+    async def restore(self) -> None:
         self._state = "N"
 
-    async def get_state(self):
+    async def get_state(self) -> str:
         return self._state
 
 
 class _FOutput:
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
         self.number = n
         self.name = f"Out{n}"
         self._state = ""
 
-    async def turn_on(self):
+    async def turn_on(self) -> None:
         self._state = "ON"
 
-    async def turn_off(self):
+    async def turn_off(self) -> None:
         self._state = "OF"
 
-    async def pulse(self):
+    async def pulse(self) -> None:
         self._state = "PL"
 
-    async def toggle(self):
+    async def toggle(self) -> None:
         self._state = "TP"
 
 
 class _FPanel:
-    def __init__(self, *a, **k):
-        pass
+    def __init__(self, port: int = 2011, timeout: float = 10.0) -> None:
+        self.port = port
+        self.timeout = timeout
 
-    async def connect(self, *a, **k):
+    async def connect(self, host: str, account_number: str, remote_key: str) -> None:
+        del host, account_number, remote_key
+
+    async def disconnect(self) -> None:
         return None
 
-    async def disconnect(self):
-        return None
+    async def get_areas(self) -> list[Area]:
+        return [cast(Area, _FArea(1))]
 
-    async def get_areas(self):
-        return [_FArea(1)]
+    async def get_area(self, n: int) -> Area:
+        return cast(Area, _FArea(n))
 
-    async def get_area(self, n: int):
-        return _FArea(n)
+    async def get_zone(self, n: int) -> Zone:
+        return cast(Zone, _FZone(n))
 
-    async def get_zone(self, n: int):
-        return _FZone(n)
+    async def get_output(self, n: int) -> Output:
+        return cast(Output, _FOutput(n))
 
-    async def get_output(self, n: int):
-        return _FOutput(n)
-
-    async def get_outputs(self):
-        return [_FOutput(1)]
+    async def get_outputs(self) -> list[Output]:
+        return [cast(Output, _FOutput(1))]
 
 
-def test_panel_sync_area_wrap(monkeypatch):
+def test_panel_sync_area_wrap(monkeypatch: pytest.MonkeyPatch) -> None:
     import pydmp.panel_sync as ps
 
     monkeypatch.setattr(ps, "DMPPanel", _FPanel)
@@ -114,7 +128,7 @@ def test_panel_sync_area_wrap(monkeypatch):
     sp.disconnect()
 
 
-def test_panel_sync_output_ops(monkeypatch):
+def test_panel_sync_output_ops(monkeypatch: pytest.MonkeyPatch) -> None:
     import pydmp.panel_sync as ps
 
     monkeypatch.setattr(ps, "DMPPanel", _FPanel)

@@ -5,6 +5,7 @@ import pytest
 from pydmp.const.commands import DMPCommand
 from pydmp.exceptions import DMPConnectionError
 from pydmp.panel import DMPPanel
+from tests.fakes import cast_transport
 
 
 def _connected_panel() -> DMPPanel:
@@ -13,7 +14,7 @@ def _connected_panel() -> DMPPanel:
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
     return p
 
 
@@ -34,12 +35,18 @@ def _connected_panel() -> DMPPanel:
     ],
 )
 @pytest.mark.asyncio
-async def test_arm_disarm_area_validation(monkeypatch, method, areas, should_raise):
+async def test_arm_disarm_area_validation(
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    areas: list[int],
+    should_raise: bool,
+) -> None:
     # Area must be 1-8 to match Area's own validation (PYDMP-022); an empty
     # list is rejected before range-checking (see DMPPanel.arm_areas/disarm_areas).
     p = _connected_panel()
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
+        del self, command, kwargs
         return "ACK"
 
     monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
@@ -52,11 +59,12 @@ async def test_arm_disarm_area_validation(monkeypatch, method, areas, should_rai
 
 
 @pytest.mark.asyncio
-async def test_arm_areas_flag_variants(monkeypatch):
+async def test_arm_areas_flag_variants(monkeypatch: pytest.MonkeyPatch) -> None:
     p = _connected_panel()
-    recorded = []
+    recorded: list[tuple[str, dict[str, object]]] = []
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
+        del self
         recorded.append((command, dict(kwargs)))
         return "ACK"
 
@@ -76,14 +84,15 @@ async def test_arm_areas_flag_variants(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_arm_areas_nak_and_concatenation(monkeypatch):
+async def test_arm_areas_nak_and_concatenation(monkeypatch: pytest.MonkeyPatch) -> None:
     # Merge of test_panel_arming_flags.py::test_disarm_nak and
     # test_panel_commands.py::test_arm_areas_builds_and_handles_nak: NAK
     # handling on both arm and disarm, plus the two-digit area concatenation
     # and flag-passthrough assertions.
-    sent = {}
+    sent: dict[str, object] = {}
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
+        del self
         sent["cmd"] = command
         sent.update(kwargs)
         return "NAK"
@@ -99,7 +108,8 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch):
     assert sent["area"] == "0102"
     assert sent["bypass"] == "Y" and sent["force"] == "N" and sent["instant"] == "Y"
 
-    async def nak_send(self, command: str, **kwargs):
+    async def nak_send(self: DMPPanel, command: str, **kwargs: object) -> str:
+        del self, command, kwargs
         return "NAK"
 
     monkeypatch.setattr(DMPPanel, "_send_command", nak_send)
@@ -107,7 +117,8 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch):
         await p.disarm_areas([1, 2])
 
     # Successful disarm path
-    async def ok_send(self, command: str, **kwargs):
+    async def ok_send(self: DMPPanel, command: str, **kwargs: object) -> str:
+        del self, command, kwargs
         return "ACK"
 
     monkeypatch.setattr(DMPPanel, "_send_command", ok_send)
@@ -115,21 +126,24 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_arm_disarm_areas_multi_and_nak_via_connection_routing():
+async def test_arm_disarm_areas_multi_and_nak_via_connection_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # test_panel_update_status.py::test_arm_disarm_areas_multi_and_nak: exercises
     # the same arm-ok/disarm-NAK behavior through send_command routing on the
     # connection object itself (rather than patching _send_command directly).
     from pydmp.protocol import AreaStatus, StatusResponse, ZoneStatus
 
     class FakeConnection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.is_connected = True
             self._toggle = False
             self.host = "h"
             self.port = 0
             self.account = "a"
 
-        async def send_command(self, cmd: str, **kwargs):
+        async def send_command(self, cmd: str, **kwargs: object) -> str | StatusResponse:
+            del kwargs
             if cmd == DMPCommand.ARM.value and not self._toggle:
                 self._toggle = True
                 return "ACK"
@@ -142,12 +156,13 @@ async def test_arm_disarm_areas_multi_and_nak_via_connection_routing():
                 )
             return "ACK"
 
-        async def keep_alive(self):
+        async def keep_alive(self) -> None:
             return None
 
     panel = DMPPanel()
-    panel._connection = FakeConnection()
-    panel._send_command = panel._connection.send_command
+    connection = FakeConnection()
+    panel._connection = cast_transport(connection)
+    monkeypatch.setattr(panel, "_send_command", connection.send_command)
 
     await panel.arm_areas([1, 2], bypass_faulted=True, force_arm=False, instant=True)
 

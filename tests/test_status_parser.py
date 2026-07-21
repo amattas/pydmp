@@ -12,56 +12,56 @@ from pydmp.const import (
     DMPUserCodeEvent,
     DMPZoneEvent,
 )
-from pydmp.status_parser import parse_s3_message
+from pydmp.status_parser import ParsedEvent, parse_s3_message
 from pydmp.status_server import S3Message
 
 
-def _msg(defn: str, type_code: str | None, fields: list[str]):
+def _msg(defn: str, type_code: str | None, fields: list[str]) -> S3Message:
     return S3Message(account="00001", definition=defn, type_code=type_code, fields=fields, raw="")
 
 
-def _check_zone_alarm(evt):
+def _check_zone_alarm(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPZoneEvent)
     assert evt.zone == "001"
     assert evt.zone_name == "Front"
 
 
-def _check_user_code(evt):
+def _check_user_code(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPUserCodeEvent)
 
 
-def _check_schedule(evt):
+def _check_schedule(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPScheduleEvent)
 
 
-def _check_holiday(evt):
+def _check_holiday(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPHolidayEvent)
 
 
-def _check_equipment(evt):
+def _check_equipment(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPEquipmentEvent)
 
 
-def _check_qualifier_fallback(evt):
+def _check_qualifier_fallback(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPQualifierEvent | type(None))
 
 
-def _check_real_time_status(evt):
+def _check_real_time_status(evt: ParsedEvent) -> None:
     assert isinstance(evt.code_enum, DMPRealTimeStatusEvent)
     assert evt.device == "002"
     assert evt.device_name == "OUT2"
 
 
-def _check_system_message(evt):
+def _check_system_message(evt: ParsedEvent) -> None:
     assert evt.system_code == "072"
     assert isinstance(evt.system_text, str | type(None))
 
 
-def _check_no_typecode(evt):
-    assert evt.type_code is None
+EventCheck = Callable[[ParsedEvent], None]
+ParserCase = tuple[str, S3Message, DMPEventType | None, EventCheck | None]
 
 
-PARSE_CASES: list[tuple[str, S3Message, DMPEventType | None, Callable | None]] = [
+PARSE_CASES: list[ParserCase] = [
     (
         "zone-alarm",
         _msg("Za", "BU", ["Za", 't "BU', 'z 001"Front']),
@@ -116,12 +116,6 @@ PARSE_CASES: list[tuple[str, S3Message, DMPEventType | None, Callable | None]] =
         DMPEventType.SYSTEM_MESSAGE,
         _check_system_message,
     ),
-    (
-        "z-body-no-typecode",
-        None,
-        None,
-        _check_no_typecode,
-    ),
 ]
 
 
@@ -130,17 +124,23 @@ PARSE_CASES: list[tuple[str, S3Message, DMPEventType | None, Callable | None]] =
     PARSE_CASES,
     ids=[c[0] for c in PARSE_CASES],
 )
-def test_parse_s3_message(_id, msg, expected_category, extra_checks):
-    if _id == "z-body-no-typecode":
-        from pydmp.status_server import DMPStatusServer
-
-        msg = DMPStatusServer._parse_z_body("00001", "Za\\060\\foo\\bar")
-        assert msg.definition.startswith("Za")
-        extra_checks(msg)
-        return
-
+def test_parse_s3_message(
+    _id: str,
+    msg: S3Message,
+    expected_category: DMPEventType | None,
+    extra_checks: EventCheck | None,
+) -> None:
+    del _id
     evt = parse_s3_message(msg)
     if expected_category is not None:
         assert evt.category == expected_category
     if extra_checks is not None:
         extra_checks(evt)
+
+
+def test_parse_z_body_no_typecode() -> None:
+    from pydmp.status_server import DMPStatusServer
+
+    msg = DMPStatusServer._parse_z_body("00001", "Za\\060\\foo\\bar")
+    assert msg.definition.startswith("Za")
+    assert msg.type_code is None

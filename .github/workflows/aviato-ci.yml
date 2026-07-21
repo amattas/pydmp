@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.1 hash=33b8a4e286a7c1dfe67f2d0f438b24ccec14ecc61e8a16f99cb6da4be0800ce6 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=9c9218e7b79e12a442f2b7aeb30654b645518be94175ef962de888c162589004 inputs=706a2071723c9f4cf6924618cdb09f4ad1a8d800092d4a4d92ce4d20bda0f5c4
 name: Aviato Python Library
 
 on:
@@ -38,7 +38,7 @@ jobs:
       test-command: "python -m pytest --cov --cov-report=term-missing"
       build-command: "python -m build"
       typecheck-command: "python -m mypy --strict ."
-      run-typecheck: false
+      run-typecheck: true
       run-build: true
 
   security:

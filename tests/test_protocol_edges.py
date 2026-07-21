@@ -1,5 +1,7 @@
 import logging
 
+import pytest
+
 from pydmp.const.commands import DMPCommand
 from pydmp.const.protocol import RESPONSE_DELIMITER
 from pydmp.protocol import DMPProtocol, OutputsResponse, StatusResponse
@@ -9,7 +11,7 @@ def _frame(body: str) -> bytes:
     return f"{RESPONSE_DELIMITER}@    1{body}\r".encode()
 
 
-def test_encode_command_redacts_remote_key(caplog):
+def test_encode_command_redacts_remote_key(caplog: pytest.LogCaptureFixture) -> None:
     p = DMPProtocol("1", "S3CRETKEY")
     with caplog.at_level(logging.DEBUG, logger="pydmp.protocol"):
         frame = p.encode_command(DMPCommand.AUTH.value, key="S3CRETKEY")
@@ -21,7 +23,7 @@ def test_encode_command_redacts_remote_key(caplog):
     assert "!V2<redacted>" in logged
 
 
-def test_decode_nak_detail():
+def test_decode_nak_detail() -> None:
     p = DMPProtocol("1", "")
 
     # NAK with detail -XU
@@ -29,7 +31,7 @@ def test_decode_nak_detail():
     assert res == "NAK" and p.last_nak_detail == "XU"
 
 
-def test_decode_unknown_states():
+def test_decode_unknown_states() -> None:
     p = DMPProtocol("1", "")
 
     # Area with unknown state
@@ -43,7 +45,7 @@ def test_decode_unknown_states():
     assert sr2.zones["001"].state == "unknown"
 
 
-def test_empty_status_segments():
+def test_empty_status_segments() -> None:
     p = DMPProtocol("1", "")
     # Empty WB
     sr = p.decode_response(_frame("+!WB-"))
@@ -51,7 +53,7 @@ def test_empty_status_segments():
     assert not sr.areas and not sr.zones
 
 
-def test_output_status_decode():
+def test_output_status_decode() -> None:
     p = DMPProtocol("1", "")
     # Output status single item
     orsp = p.decode_response(_frame("+*WQ001SRelay1\x1e-"))
@@ -59,7 +61,7 @@ def test_output_status_decode():
     assert orsp.outputs["001"].mode == "S" and orsp.outputs["001"].name == "Relay1"
 
 
-def test_user_profiles_short_record_name_fallback():
+def test_user_profiles_short_record_name_fallback() -> None:
     p = DMPProtocol("1", "")
     # Short record (<49 chars) should use name from index 30+
     item = "001" + "C3000000" + "C3000000" + "001" + "MENUOPTS" + "SHORTNAME"

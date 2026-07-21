@@ -1,4 +1,6 @@
+import asyncio
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
@@ -8,20 +10,21 @@ import pydmp.cli as cli
 
 
 @pytest.mark.parametrize("as_json", [False, True])
-def test_cli_listen(monkeypatch, as_json):
+def test_cli_listen(monkeypatch: pytest.MonkeyPatch, as_json: bool) -> None:
     # Fake server that invokes callback once on start
     class Srv:
-        def __init__(self, host, port):
-            self.cb = None
+        def __init__(self, host: str, port: int) -> None:
+            del host, port
+            self.cb: Callable[[object], object] | None = None
 
-        def register_callback(self, cb):
+        def register_callback(self, cb: Callable[[object], object]) -> None:
             self.cb = cb
 
-        async def start(self):
+        async def start(self) -> None:
             if self.cb:
                 self.cb(object())
 
-        async def stop(self):
+        async def stop(self) -> None:
             return None
 
     monkeypatch.setattr(cli, "DMPStatusServer", Srv)
@@ -37,10 +40,10 @@ def test_cli_listen(monkeypatch, as_json):
 
     monkeypatch.setattr(cli, "parse_s3_message", lambda msg: Parsed("Zc", "ON", "1", "2", "3", "OK"))
 
-    async def no_sleep(_):
+    async def no_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr(cli.asyncio, "sleep", no_sleep)
+    monkeypatch.setattr(asyncio, "sleep", no_sleep)
 
     args = ["listen", "--duration", "1"]
     if as_json:

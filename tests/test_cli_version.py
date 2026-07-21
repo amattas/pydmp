@@ -9,17 +9,20 @@ import pydmp.cli as cli
 from pydmp import __version__
 
 
-def test_cli_version_short_flag():
+def test_cli_version_short_flag() -> None:
     r = CliRunner().invoke(cli.cli, ["-v"])  # short version flag
     assert r.exit_code == 0
     assert __version__ in r.output
 
 
-def test_runtime_version_unreadable_pyproject_raises_runtime_error(monkeypatch):
-    def _no_dist(name):
+def test_runtime_version_unreadable_pyproject_raises_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _no_dist(name: str) -> None:
         raise PackageNotFoundError(name)
 
-    def _no_read(self, *args, **kwargs):
+    def _no_read(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        del encoding, errors
         raise FileNotFoundError(self)
 
     monkeypatch.setattr(pydmp, "_dist_version", _no_dist)

@@ -16,4 +16,4 @@ variables:
   default-branch: main
   distribution-name: pydmp
   import-name: pydmp
-  run-typecheck: 'false'
+  run-typecheck: 'true'

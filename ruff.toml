@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.1 hash=f45b8ee3ab4336c87eb0d142f81dd2088b415f3ebafbe8a5ff015dfbf29dfada inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=f45b8ee3ab4336c87eb0d142f81dd2088b415f3ebafbe8a5ff015dfbf29dfada inputs=706a2071723c9f4cf6924618cdb09f4ad1a8d800092d4a4d92ce4d20bda0f5c4
 line-length = 120
 target-version = "py312"
 

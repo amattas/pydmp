@@ -18,14 +18,14 @@ class TestDMPProtocol:
             ("12345", "12345"),
         ],
     )
-    def test_init(self, account, expected):
+    def test_init(self, account: str, expected: str) -> None:
         """Test initialization and account number padding."""
         protocol = DMPProtocol(account, "KEY")
         assert protocol.account_number == expected
         assert len(protocol.account_number) == 5
         assert protocol.remote_key == "KEY"
 
-    def test_encode_missing_parameter(self):
+    def test_encode_missing_parameter(self) -> None:
         """Test encoding with missing parameter."""
         protocol = DMPProtocol("1", "")
         with pytest.raises(DMPProtocolError, match="Failed to encode command"):
@@ -40,7 +40,7 @@ class TestDMPProtocol:
             (b"\x02@    1-!O\r", "NAK"),
         ],
     )
-    def test_decode_ack_nak(self, response, expected):
+    def test_decode_ack_nak(self, response: bytes, expected: str) -> None:
         """Test ACK/NAK response decoding."""
         protocol = DMPProtocol("1", "")
         result = protocol.decode_response(response)
@@ -76,7 +76,11 @@ class TestDMPProtocol:
             ),
         ],
     )
-    def test_decode_status(self, response, expected):
+    def test_decode_status(
+        self,
+        response: bytes,
+        expected: dict[str, dict[str, dict[str, str]]],
+    ) -> None:
         """Test status response decoding for areas and zones."""
         protocol = DMPProtocol("1", "")
         result = protocol.decode_response(response)
@@ -93,13 +97,13 @@ class TestDMPProtocol:
             assert result.zones[num].state == fields["state"]
             assert result.zones[num].name == fields["name"]
 
-    def test_decode_empty_response(self):
+    def test_decode_empty_response(self) -> None:
         """Test empty response."""
         protocol = DMPProtocol("1", "")
         result = protocol.decode_response(b"")
         assert result is None
 
-    def test_decode_auth_response(self):
+    def test_decode_auth_response(self) -> None:
         """Test authentication response (typically empty/None)."""
         protocol = DMPProtocol("1", "")
         response = b"\x02@    1!V2\r"

@@ -1,7 +1,9 @@
+import pytest
+
 from pydmp.crypto import DMPCrypto
 
 
-def test_remote_key_bad_hex():
+def test_remote_key_bad_hex() -> None:
     # Bad hex characters in remote key should not crash seed generation
     c = DMPCrypto(123, "GHxxzz99")
     # encrypt/decrypt symmetry still holds
@@ -10,7 +12,7 @@ def test_remote_key_bad_hex():
     assert c.decrypt_string(enc) == s
 
 
-def test_zero_seed():
+def test_zero_seed() -> None:
     c = DMPCrypto(123, "GHxxzz99")
     # Force zero seed path
     c._seed = 0
@@ -18,7 +20,7 @@ def test_zero_seed():
     assert out == 255
 
 
-def test_h_l_nibble_branches(monkeypatch):
+def test_h_l_nibble_branches(monkeypatch: pytest.MonkeyPatch) -> None:
     c = DMPCrypto(1, "")
     # Patch control string to exercise H and L on two hex nibbles
     monkeypatch.setattr(DMPCrypto, "LFSR_CONTROL_STRING", "HL")

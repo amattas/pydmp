@@ -1,4 +1,6 @@
 import asyncio
+from collections.abc import Coroutine
+from typing import TypeVar, cast
 
 import pytest
 
@@ -12,48 +14,55 @@ from pydmp.exceptions import (
 )
 from pydmp.output import Output, OutputSync
 from pydmp.panel import DMPPanel
+from pydmp.panel_sync import DMPPanelSync
 from pydmp.status_parser import parse_s3_message
 from pydmp.status_server import S3Message
 from pydmp.zone import Zone, ZoneSync
+from tests.fakes import PanelResponse, cast_panel, cast_transport
+
+T = TypeVar("T")
+EntityClass = type[Area] | type[Zone] | type[Output]
+SyncEntityClass = type[AreaSync] | type[ZoneSync] | type[OutputSync]
 
 
 class FakeConnection:
     """Fake panel connection used by the integration-style tests."""
 
-    def __init__(self, response_map=None):
+    def __init__(self, response_map: dict[str, PanelResponse] | None = None) -> None:
         self.is_connected = True
-        self.calls = []
+        self.calls: list[tuple[str, dict[str, object]]] = []
         self.response_map = response_map or {}
         self.host = "h"
         self.port = 0
         self.account = "a"
 
-    async def send_command(self, cmd: str, **kwargs):
+    async def send_command(self, cmd: str, **kwargs: object) -> PanelResponse:
         self.calls.append((cmd, kwargs))
         return self.response_map.get(cmd, "ACK")
 
-    async def keep_alive(self):
+    async def keep_alive(self) -> None:
         self.calls.append(("!H", {}))
 
 
 class _FakePanel:
     """Fake panel exposing the minimal surface used by Area/Zone/Output."""
 
-    def __init__(self, reply="ACK"):
+    def __init__(self, reply: str = "ACK") -> None:
         self.reply = reply
         self.updated = False
 
-    async def _send_command(self, *a, **k):
+    async def _send_command(self, command: str, **kwargs: object) -> str:
+        del command, kwargs
         return self.reply
 
-    async def update_status(self):
+    async def update_status(self) -> None:
         self.updated = True
 
 
 class _SyncPanel:
     """Fake sync panel that drives coroutines via the default event loop."""
 
-    def _run(self, coro):
+    def _run(self, coro: Coroutine[object, object, T]) -> T:
         return asyncio.run(coro)
 
 
@@ -71,8 +80,12 @@ class _SyncPanel:
         (Output, 12, 0),
     ],
 )
-async def test_entity_constructor_validation_and_state_updates(entity_cls, valid_number, invalid_number):
-    p = _FakePanel()
+async def test_entity_constructor_validation_and_state_updates(
+    entity_cls: EntityClass,
+    valid_number: int,
+    invalid_number: int,
+) -> None:
+    p = cast_panel(_FakePanel())
     with pytest.raises(DMPInvalidParameterError):
         entity_cls(p, invalid_number)
 
@@ -82,14 +95,15 @@ async def test_entity_constructor_validation_and_state_updates(entity_cls, valid
 
     if entity_cls is Output:
         # Output has no get_state()/update_status hook; verify its own extra instead.
-        assert e.formatted_number == "012"
+        assert cast(Output, e).formatted_number == "012"
         return
 
     # Area and Zone expose get_state(), which triggers panel.update_status().
-    p2 = _FakePanel()
+    raw_panel = _FakePanel()
+    p2 = cast_panel(raw_panel)
     e2 = entity_cls(p2, valid_number, name="Orig2")
-    await e2.get_state()
-    assert p2.updated is True
+    await cast(Area | Zone, e2).get_state()
+    assert raw_panel.updated is True
 
 
 # ---------------------------------------------------------------------------
@@ -105,10 +119,20 @@ async def test_entity_constructor_validation_and_state_updates(entity_cls, valid
         (Output, OutputSync, "OutputSync"),
     ],
 )
-def test_entity_sync_accessors_and_repr(entity_cls, sync_cls, class_name):
-    p = _FakePanel()
+def test_entity_sync_accessors_and_repr(
+    entity_cls: EntityClass,
+    sync_cls: SyncEntityClass,
+    class_name: str,
+) -> None:
+    p = cast_panel(_FakePanel())
     e = entity_cls(p, 2, name="Two", state="D")
-    s = sync_cls(e, _SyncPanel())
+    sync_panel = cast(DMPPanelSync, _SyncPanel())
+    if sync_cls is AreaSync:
+        s: AreaSync | ZoneSync | OutputSync = AreaSync(cast(Area, e), sync_panel)
+    elif sync_cls is ZoneSync:
+        s = ZoneSync(cast(Zone, e), sync_panel)
+    else:
+        s = OutputSync(cast(Output, e), sync_panel)
     assert s.number == 2 and s.name == "Two" and s.state == "D"
     assert isinstance(repr(s), str) and class_name in repr(s)
 
@@ -119,8 +143,8 @@ def test_entity_sync_accessors_and_repr(entity_cls, sync_cls, class_name):
 
 
 @pytest.mark.asyncio
-async def test_area_arm_disarm_error_paths():
-    p = _FakePanel(reply="NAK")
+async def test_area_arm_disarm_error_paths() -> None:
+    p = cast_panel(_FakePanel(reply="NAK"))
     a = Area(p, 1, name="A1", state="D")
 
     with pytest.raises(DMPAreaError):
@@ -145,8 +169,8 @@ async def test_area_arm_disarm_error_paths():
         ("restore", "NAK", True),
     ],
 )
-async def test_zone_bypass_restore(action, reply, expect_error):
-    z = Zone(_FakePanel(reply=reply), 1, name="Front", state="N")
+async def test_zone_bypass_restore(action: str, reply: str, expect_error: bool) -> None:
+    z = Zone(cast_panel(_FakePanel(reply=reply)), 1, name="Front", state="N")
     method = getattr(z, action)
     if expect_error:
         with pytest.raises(DMPZoneError):
@@ -161,8 +185,8 @@ async def test_zone_bypass_restore(action, reply, expect_error):
 
 
 @pytest.mark.asyncio
-async def test_output_set_modes_and_toggle():
-    p = _FakePanel()
+async def test_output_set_modes_and_toggle() -> None:
+    p = cast_panel(_FakePanel())
     o = Output(p, 1, "R1")
     await o.turn_on()
     assert o.is_on
@@ -172,8 +196,8 @@ async def test_output_set_modes_and_toggle():
 
 
 @pytest.mark.asyncio
-async def test_output_nak_error():
-    p = _FakePanel(reply="NAK")
+async def test_output_nak_error() -> None:
+    p = cast_panel(_FakePanel(reply="NAK"))
     o = Output(p, 1, "R1")
     with pytest.raises(DMPOutputError):
         await o.pulse()
@@ -189,8 +213,8 @@ async def test_output_nak_error():
         ("S", DMPRealTimeStatusEvent.OUTPUT_ON.value),
     ],
 )
-async def test_output_set_mode_mapping(mode, expected_state):
-    o = Output(_FakePanel(), 1, "R1")
+async def test_output_set_mode_mapping(mode: str, expected_state: str) -> None:
+    o = Output(cast_panel(_FakePanel()), 1, "R1")
     await o.set_mode(mode)
     assert o.state == expected_state
 
@@ -201,12 +225,13 @@ async def test_output_set_mode_mapping(mode, expected_state):
 
 
 @pytest.mark.asyncio
-async def test_area_basic_states_and_commands():
+async def test_area_basic_states_and_commands(monkeypatch: pytest.MonkeyPatch) -> None:
     panel = DMPPanel()
-    panel._connection = FakeConnection()
-    panel._send_command = panel._connection.send_command
+    connection = FakeConnection()
+    panel._connection = cast_transport(connection)
+    monkeypatch.setattr(panel, "_send_command", connection.send_command)
     # Fake connected flag
-    assert panel._connection.is_connected
+    assert connection.is_connected
 
     a = Area(panel, 1, name="Main", state="D")
     assert a.is_disarmed
@@ -224,10 +249,11 @@ async def test_area_basic_states_and_commands():
 
 
 @pytest.mark.asyncio
-async def test_zone_bypass_restore_and_helpers():
+async def test_zone_bypass_restore_and_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     panel = DMPPanel()
-    panel._connection = FakeConnection()
-    panel._send_command = panel._connection.send_command
+    connection = FakeConnection()
+    panel._connection = cast_transport(connection)
+    monkeypatch.setattr(panel, "_send_command", connection.send_command)
 
     z = Zone(panel, 5, name="Front", state="N")
     assert z.is_normal
@@ -247,10 +273,11 @@ async def test_zone_bypass_restore_and_helpers():
 
 
 @pytest.mark.asyncio
-async def test_output_modes_and_toggle():
+async def test_output_modes_and_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
     panel = DMPPanel()
-    panel._connection = FakeConnection()
-    panel._send_command = panel._connection.send_command
+    connection = FakeConnection()
+    panel._connection = cast_transport(connection)
+    monkeypatch.setattr(panel, "_send_command", connection.send_command)
 
     o = Output(panel, 2, name="Relay")
     await o.turn_on()
@@ -275,7 +302,7 @@ async def test_output_modes_and_toggle():
 # ---------------------------------------------------------------------------
 
 
-def test_entity_reprs():
+def test_entity_reprs() -> None:
     panel = DMPPanel()
     # Panel repr before connect
     r = repr(panel)
@@ -290,7 +317,7 @@ def test_entity_reprs():
     assert "Output" in repr(o)
 
 
-def test_status_parser_unknown_category():
+def test_status_parser_unknown_category() -> None:
     msg = S3Message(account="00001", definition="Z?", type_code=None, fields=["Z?"], raw="")
     evt = parse_s3_message(msg)
     assert evt.category is None

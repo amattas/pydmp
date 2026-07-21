@@ -1,7 +1,5 @@
 """Connect/disconnect/reconnect-guard tests (PYDMP-001)."""
 
-from typing import Any
-
 import pytest
 
 from pydmp.exceptions import DMPConnectionError
@@ -12,30 +10,33 @@ from tests.fakes import cast_protocol, cast_transport, install_fake_transport
 class _FakeTransport:
     """Minimal stand-in for DMPTransport used by connect()."""
 
-    def __init__(self, host: Any, port: Any, timeout: Any) -> None:
+    def __init__(self, host: str, port: int, timeout: float) -> None:
         self.host = host
         self.port = port
         self._up = True
 
     @property
-    def is_connected(self) -> Any:
+    def is_connected(self) -> bool:
         return self._up
 
     async def connect(self) -> None:
         self._up = True
 
-    async def send_and_receive(self, data: Any) -> Any:
-        return "ACK"
+    async def send_and_receive(self, data: bytes) -> bytes:
+        del data
+        return b""
 
     async def disconnect(self) -> None:
         self._up = False
 
 
 class _FakeProtocol:
-    def __init__(self, account: Any, remote_key: Any) -> None:
+    def __init__(self, account: str, remote_key: str) -> None:
         self.account = account
+        self.remote_key = remote_key
 
-    def encode_command(self, *a: Any, **k: Any) -> Any:
+    def encode_command(self, command: str, **kwargs: object) -> bytes:
+        del command, kwargs
         return b"x"
 
 
@@ -115,7 +116,7 @@ async def test_single_connection_guard(monkeypatch: pytest.MonkeyPatch) -> None:
         p = DMPPanel()
 
         # Prevent update_status side effects during this test
-        async def no_upd() -> Any:
+        async def no_upd() -> None:
             return None
 
         monkeypatch.setattr(DMPPanel, "update_status", lambda self: no_upd())
@@ -148,8 +149,8 @@ async def test_disconnect_cleanup_and_send_fail(monkeypatch: pytest.MonkeyPatch)
             self.is_connected = False
 
     class Proto:
-        def encode_command(self, *a: Any, **k: Any) -> bytes:  # noqa: D401
-            del a, k
+        def encode_command(self, command: str, **kwargs: object) -> bytes:  # noqa: D401
+            del command, kwargs
             return b"DISC"
 
     key = ("h", p.port, "acct")

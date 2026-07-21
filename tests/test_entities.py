@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Coroutine
-from typing import Any, TypeVar, cast
+from typing import TypeVar, cast
 
 import pytest
 
@@ -14,27 +14,29 @@ from pydmp.exceptions import (
 )
 from pydmp.output import Output, OutputSync
 from pydmp.panel import DMPPanel
+from pydmp.panel_sync import DMPPanelSync
 from pydmp.status_parser import parse_s3_message
 from pydmp.status_server import S3Message
 from pydmp.zone import Zone, ZoneSync
-from tests.fakes import cast_panel, cast_transport
+from tests.fakes import PanelResponse, cast_panel, cast_transport
 
 T = TypeVar("T")
 EntityClass = type[Area] | type[Zone] | type[Output]
+SyncEntityClass = type[AreaSync] | type[ZoneSync] | type[OutputSync]
 
 
 class FakeConnection:
     """Fake panel connection used by the integration-style tests."""
 
-    def __init__(self, response_map: dict[str, Any] | None = None) -> None:
+    def __init__(self, response_map: dict[str, PanelResponse] | None = None) -> None:
         self.is_connected = True
-        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.calls: list[tuple[str, dict[str, object]]] = []
         self.response_map = response_map or {}
         self.host = "h"
         self.port = 0
         self.account = "a"
 
-    async def send_command(self, cmd: str, **kwargs: Any) -> Any:
+    async def send_command(self, cmd: str, **kwargs: object) -> PanelResponse:
         self.calls.append((cmd, kwargs))
         return self.response_map.get(cmd, "ACK")
 
@@ -49,8 +51,8 @@ class _FakePanel:
         self.reply = reply
         self.updated = False
 
-    async def _send_command(self, *a: Any, **k: Any) -> str:
-        del a, k
+    async def _send_command(self, command: str, **kwargs: object) -> str:
+        del command, kwargs
         return self.reply
 
     async def update_status(self) -> None:
@@ -60,7 +62,7 @@ class _FakePanel:
 class _SyncPanel:
     """Fake sync panel that drives coroutines via the default event loop."""
 
-    def _run(self, coro: Coroutine[Any, Any, T]) -> T:
+    def _run(self, coro: Coroutine[object, object, T]) -> T:
         return asyncio.run(coro)
 
 
@@ -119,12 +121,18 @@ async def test_entity_constructor_validation_and_state_updates(
 )
 def test_entity_sync_accessors_and_repr(
     entity_cls: EntityClass,
-    sync_cls: Any,
+    sync_cls: SyncEntityClass,
     class_name: str,
 ) -> None:
     p = cast_panel(_FakePanel())
     e = entity_cls(p, 2, name="Two", state="D")
-    s = sync_cls(e, _SyncPanel())
+    sync_panel = cast(DMPPanelSync, _SyncPanel())
+    if sync_cls is AreaSync:
+        s: AreaSync | ZoneSync | OutputSync = AreaSync(cast(Area, e), sync_panel)
+    elif sync_cls is ZoneSync:
+        s = ZoneSync(cast(Zone, e), sync_panel)
+    else:
+        s = OutputSync(cast(Output, e), sync_panel)
     assert s.number == 2 and s.name == "Two" and s.state == "D"
     assert isinstance(repr(s), str) and class_name in repr(s)
 

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -40,13 +40,15 @@ class _FakeWriter:
     async def wait_closed(self) -> None:
         await asyncio.sleep(0)
 
-    def get_extra_info(self, name: str) -> Any:  # for symmetry with real writer
+    def get_extra_info(self, name: str) -> object:  # for symmetry with real writer
+        del name
         return None
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_send_receive(monkeypatch: Any) -> None:
-    async def fake_open_connection(host: Any, port: Any) -> Any:
+async def test_transport_connect_send_receive(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_open_connection(host: str, port: int) -> tuple[_FakeReader, _FakeWriter]:
+        del host, port
         return _FakeReader([b"part1", b"part2", b"\r", b""]), _FakeWriter()
 
     monkeypatch.setattr(asyncio, "open_connection", fake_open_connection)
@@ -71,8 +73,9 @@ async def test_transport_send_without_connect_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_raw_redacts_remote_key(monkeypatch: Any, caplog: Any) -> None:
-    async def fake_open_connection(host: Any, port: Any) -> Any:
+async def test_send_raw_redacts_remote_key(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    async def fake_open_connection(host: str, port: int) -> tuple[_FakeReader, _FakeWriter]:
+        del host, port
         return _FakeReader([b""]), _FakeWriter()
 
     monkeypatch.setattr(asyncio, "open_connection", fake_open_connection)
@@ -93,8 +96,9 @@ async def test_send_raw_redacts_remote_key(monkeypatch: Any, caplog: Any) -> Non
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_timeouts(monkeypatch: Any) -> None:
-    async def raise_timeout(host: Any, port: Any) -> None:
+async def test_transport_connect_timeouts(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def raise_timeout(host: str, port: int) -> None:
+        del host, port
         raise TimeoutError()
 
     monkeypatch.setattr(asyncio, "open_connection", raise_timeout)
@@ -104,8 +108,9 @@ async def test_transport_connect_timeouts(monkeypatch: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_oserror(monkeypatch: Any) -> None:
-    async def raise_oserror(host: Any, port: Any) -> None:
+async def test_transport_connect_oserror(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def raise_oserror(host: str, port: int) -> None:
+        del host, port
         raise OSError("no route")
 
     monkeypatch.setattr(asyncio, "open_connection", raise_oserror)
@@ -123,7 +128,7 @@ class _R:
 
 
 @pytest.mark.asyncio
-async def test_receive_timeout_breaks_loop(monkeypatch: Any) -> None:
+async def test_receive_timeout_breaks_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     t = DMPTransport("h", 1, timeout=0.01)
     # Install reader directly; no need to connect
     t._reader = cast(asyncio.StreamReader, _R())

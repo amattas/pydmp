@@ -1,4 +1,4 @@
-from typing import Any
+from pathlib import Path
 
 import pydmp.cli as cli
 
@@ -10,7 +10,7 @@ def test_fmt_ddmmyy_valid_and_invalid() -> None:
     assert cli._fmt_ddmmyy("bad") == ""
 
 
-def test_normalize_config_shapes(tmp_path: Any) -> None:
+def test_normalize_config_shapes(tmp_path: Path) -> None:
     # panel mapping
     raw = {"panel": {"host": "h", "account": "1", "remote_key": "k", "port": "", "timeout": 5}}
     cfg = cli._normalize_config(raw)

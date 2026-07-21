@@ -1,5 +1,4 @@
 import json
-from typing import Any
 
 import pytest
 from click.testing import CliRunner
@@ -7,23 +6,19 @@ from click.testing import CliRunner
 import pydmp.cli as cli
 from pydmp.profile import UserProfile
 from pydmp.user import UserCode
+from tests.fakes import ConfigFactory, MinimalPanel
 
 
-def test_cli_arm_json(monkeypatch: Any, cli_cfg: Any) -> None:
-    recorded = {}
+def test_cli_arm_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
+    recorded: dict[str, object] = {}
 
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
+    class P(MinimalPanel):
         async def arm_areas(
-            self, areas: Any, bypass_faulted: Any = False, force_arm: Any = False, instant: Any = None
+            self,
+            areas: list[int] | tuple[int, ...],
+            bypass_faulted: bool = False,
+            force_arm: bool = False,
+            instant: bool | None = None,
         ) -> None:
             recorded["areas"] = list(areas)
             recorded["bypass"] = bypass_faulted
@@ -42,30 +37,21 @@ def test_cli_arm_json(monkeypatch: Any, cli_cfg: Any) -> None:
     assert recorded == {"areas": [1, 2], "bypass": True, "force": False, "instant": False}
 
 
-def test_cli_get_outputs_json(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_get_outputs_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     class OutputStub:
-        def __init__(self, n: Any) -> None:
+        def __init__(self, n: int) -> None:
             self.number = n
             self.name = f"Out{n}"
             self._state = "ON"
 
-        def to_dict(self) -> Any:
+        def to_dict(self) -> dict[str, object]:
             return {"number": self.number, "name": self.name, "state": self._state}
 
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
+    class P(MinimalPanel):
+        async def update_output_status(self) -> None:
             return None
 
-        async def disconnect(self) -> Any:
-            return None
-
-        async def update_output_status(self) -> Any:
-            return None
-
-        async def get_outputs(self) -> Any:
+        async def get_outputs(self) -> list[OutputStub]:
             return [OutputStub(1), OutputStub(2)]
 
     monkeypatch.setattr(cli, "DMPPanel", P)
@@ -76,18 +62,10 @@ def test_cli_get_outputs_json(monkeypatch: Any, cli_cfg: Any) -> None:
     assert data["ok"] and len(data["outputs"]) == 2
 
 
-def test_cli_disarm_error_json(monkeypatch: Any, cli_cfg: Any) -> None:
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def disarm_areas(self, areas: Any) -> None:
+def test_cli_disarm_error_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
+    class P(MinimalPanel):
+        async def disarm_areas(self, areas: list[int] | tuple[int, ...]) -> None:
+            del areas
             raise Exception("cannot disarm")
 
     monkeypatch.setattr(cli, "DMPPanel", P)
@@ -98,19 +76,10 @@ def test_cli_disarm_error_json(monkeypatch: Any, cli_cfg: Any) -> None:
     assert "cannot disarm" in r.output
 
 
-def test_cli_disarm_json_success(monkeypatch: Any, cli_cfg: Any) -> None:
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def disarm_areas(self, areas: Any) -> Any:
-            return None
+def test_cli_disarm_json_success(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
+    class P(MinimalPanel):
+        async def disarm_areas(self, areas: list[int] | tuple[int, ...]) -> None:
+            del areas
 
     monkeypatch.setattr(cli, "DMPPanel", P)
     cfg = cli_cfg()
@@ -118,28 +87,19 @@ def test_cli_disarm_json_success(monkeypatch: Any, cli_cfg: Any) -> None:
     assert r.exit_code == 0
 
 
-def test_cli_get_areas_json(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_get_areas_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     class A:
-        def __init__(self, n: Any) -> None:
+        def __init__(self, n: int) -> None:
             self.number = n
 
-        def to_dict(self) -> Any:
+        def to_dict(self) -> dict[str, object]:
             return {"number": self.number, "name": f"Area {self.number}", "state": "D"}
 
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
+    class P(MinimalPanel):
+        async def update_status(self) -> None:
             return None
 
-        async def disconnect(self) -> Any:
-            return None
-
-        async def update_status(self) -> Any:
-            return None
-
-        async def get_areas(self) -> Any:
+        async def get_areas(self) -> list[A]:
             return [A(1), A(2)]
 
     cfg = cli_cfg()
@@ -151,18 +111,9 @@ def test_cli_get_areas_json(monkeypatch: Any, cli_cfg: Any) -> None:
     assert data["ok"] and len(data["areas"]) == 2
 
 
-def _make_users_profiles_panel() -> Any:
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def get_user_codes(self) -> Any:
+def _make_users_profiles_panel() -> type[MinimalPanel]:
+    class P(MinimalPanel):
+        async def get_user_codes(self) -> list[UserCode]:
             return [
                 UserCode(
                     number="0001",
@@ -180,7 +131,7 @@ def _make_users_profiles_panel() -> Any:
                 )
             ]
 
-        async def get_user_profiles(self) -> Any:
+        async def get_user_profiles(self) -> list[UserProfile]:
             return [
                 UserProfile(
                     number="001",
@@ -205,7 +156,13 @@ def _make_users_profiles_panel() -> Any:
 )
 @pytest.mark.parametrize("as_json", [False, True])
 def test_cli_get_users_profiles(
-    monkeypatch: Any, cli_cfg: Any, as_json: Any, command: Any, key: Any, expected_text: Any, expected_value: Any
+    monkeypatch: pytest.MonkeyPatch,
+    cli_cfg: ConfigFactory,
+    as_json: bool,
+    command: str,
+    key: str,
+    expected_text: str,
+    expected_value: str,
 ) -> None:
     monkeypatch.setattr(cli, "DMPPanel", _make_users_profiles_panel())
     cfg = cli_cfg()
@@ -219,18 +176,10 @@ def test_cli_get_users_profiles(
         assert expected_text in res.output
 
 
-def _make_check_code_panel() -> Any:
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def check_code(self, code: str, include_pin: bool = True) -> Any:
+def _make_check_code_panel() -> type[MinimalPanel]:
+    class P(MinimalPanel):
+        async def check_code(self, code: str, include_pin: bool = True) -> UserCode | None:
+            del include_pin
             if code == "1234":
                 return UserCode(
                     number="0001",
@@ -254,7 +203,13 @@ def _make_check_code_panel() -> Any:
     ],
 )
 @pytest.mark.parametrize("as_json", [False, True])
-def test_cli_check_code(monkeypatch: Any, cli_cfg: Any, as_json: Any, code: Any, found: Any) -> None:
+def test_cli_check_code(
+    monkeypatch: pytest.MonkeyPatch,
+    cli_cfg: ConfigFactory,
+    as_json: bool,
+    code: str,
+    found: bool,
+) -> None:
     monkeypatch.setattr(cli, "DMPPanel", _make_check_code_panel())
     cfg = cli_cfg()
     args = ["-c", str(cfg), "check-code", "--code", code] + (["--json"] if as_json else [])
@@ -271,7 +226,7 @@ def test_cli_check_code(monkeypatch: Any, cli_cfg: Any, as_json: Any, code: Any,
         assert ("Match" in res.output) if found else ("No match" in res.output)
 
 
-def test_cli_check_code_prompts_for_code(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_check_code_prompts_for_code(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     """PYDMP-015: code is no longer a positional argv argument; it is prompted securely."""
     monkeypatch.setattr(cli, "DMPPanel", _make_check_code_panel())
     cfg = cli_cfg()
@@ -279,18 +234,9 @@ def test_cli_check_code_prompts_for_code(monkeypatch: Any, cli_cfg: Any) -> None
     assert r.exit_code == 0 and "Match" in r.output
 
 
-def test_cli_sensor_reset_json(monkeypatch: Any, cli_cfg: Any) -> None:
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def sensor_reset(self) -> Any:
+def test_cli_sensor_reset_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
+    class P(MinimalPanel):
+        async def sensor_reset(self) -> None:
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", P)

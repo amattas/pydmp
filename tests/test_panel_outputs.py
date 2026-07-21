@@ -1,7 +1,5 @@
 """Output default-creation and missing area/zone KeyError paths."""
 
-from typing import Any
-
 import pytest
 
 from pydmp.panel import DMPPanel
@@ -33,19 +31,20 @@ async def test_get_outputs_and_missing_area_zone(monkeypatch: pytest.MonkeyPatch
     # (via a live-but-empty connection this time) with the missing-area/zone
     # KeyError paths from test_panel_misc.py.
     class FakeConn:
-        def __init__(self, responses: Any = None) -> None:
+        def __init__(self, responses: list[StatusResponse] | None = None) -> None:
             self.is_connected = True
             self._responses = list(responses or [])
             self.host = "h"
             self.port = 0
             self.account = "a"
 
-        async def send_command(self, cmd: str, **kwargs: Any) -> Any:
+        async def send_command(self, cmd: str, **kwargs: object) -> str | StatusResponse:
+            del cmd, kwargs
             if self._responses:
                 return self._responses.pop(0)
             return "ACK"
 
-        async def keep_alive(self) -> Any:
+        async def keep_alive(self) -> None:
             return None
 
     panel = DMPPanel()

@@ -1,8 +1,6 @@
 """Status/zone/area/output-status update paths, plus command-sequence
 and not-connected/missing-entity edge cases from the panel test cluster."""
 
-from typing import Any
-
 import pytest
 
 from pydmp.const.commands import DMPCommand
@@ -38,7 +36,7 @@ async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch: p
     ]
     state = {"i": 0}
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> StatusResponse | None:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> StatusResponse | None:
         del self, command, kwargs
         i = state["i"]
         state["i"] = min(i + 1, len(frames) - 1)
@@ -85,7 +83,7 @@ async def test_update_output_status_maps_modes(
 
     outs = {"001": OutputStatus(number="001", mode=mode, name="O1")}
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> OutputsResponse:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> OutputsResponse:
         del self, command, kwargs
         return OutputsResponse(outputs=outs)
 
@@ -108,7 +106,7 @@ async def test_update_status_command_sequence(monkeypatch: pytest.MonkeyPatch) -
     p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> None:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> None:
         del self, kwargs
         calls.append(command)
         return None
@@ -131,7 +129,7 @@ async def test_update_output_status_command_sequence(monkeypatch: pytest.MonkeyP
     p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> None:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> None:
         del self, kwargs
         calls.append(command)
         return None
@@ -153,7 +151,7 @@ async def test_sensor_reset_sends_command(monkeypatch: pytest.MonkeyPatch) -> No
     p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> str:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self, kwargs
         calls.append(command)
         return "ACK"

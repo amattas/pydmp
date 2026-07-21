@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.1 hash=0d9dfcc792b0936ef5f9410a37ae509237820b5973861edc6bbbcdeeaff20e64 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=0d9dfcc792b0936ef5f9410a37ae509237820b5973861edc6bbbcdeeaff20e64 inputs=706a2071723c9f4cf6924618cdb09f4ad1a8d800092d4a4d92ce4d20bda0f5c4
 name: Aviato Docs
 
 # Multi-version Zensical docs publish (§13.3), versioned onto a docs branch by mike, opt-in via docs: true.

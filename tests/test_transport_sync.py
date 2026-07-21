@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+import pytest
 
 from pydmp.transport_sync import DMPTransportSync
 
@@ -31,7 +31,7 @@ class _FakeTransport:
         return self.connected
 
 
-def test_transport_sync_connect_disconnect(monkeypatch: Any) -> None:
+def test_transport_sync_connect_disconnect(monkeypatch: pytest.MonkeyPatch) -> None:
     # patch the class used internally
     import pydmp.transport_sync as ts
 
@@ -49,10 +49,10 @@ def test_transport_sync_connect_disconnect(monkeypatch: Any) -> None:
     assert any(b"!V0" in s for s in t._transport.sent)
 
 
-def test_sync_disconnect_exception_path_and_context_manager(monkeypatch: Any) -> None:
+def test_sync_disconnect_exception_path_and_context_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     import pydmp.transport_sync as ts
 
-    def _make_failing(host: Any, port: Any, timeout: Any) -> Any:
+    def _make_failing(host: str, port: int, timeout: float) -> _FakeTransport:
         return _FakeTransport(host, port, timeout, fail_send=True)
 
     monkeypatch.setattr(ts, "DMPTransport", _make_failing)
@@ -64,7 +64,8 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch: Any) ->
 
     # Context manager calls connect/disconnect without raising (use OK transport)
     class _OkTransport:
-        def __init__(self, *a: Any, **k: Any) -> None:
+        def __init__(self, host: str, port: int, timeout: float) -> None:
+            del host, port, timeout
             self.connected = False
 
         async def connect(self) -> None:  # noqa: D401
@@ -84,8 +85,8 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch: Any) ->
     created: list[_OkTransport] = []
     original_init = _OkTransport.__init__
 
-    def tracking_init(self: _OkTransport, *a: Any, **k: Any) -> None:
-        original_init(self, *a, **k)
+    def tracking_init(self: _OkTransport, host: str, port: int, timeout: float) -> None:
+        original_init(self, host, port, timeout)
         created.append(self)
 
     monkeypatch.setattr(_OkTransport, "__init__", tracking_init)
@@ -95,15 +96,15 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch: Any) ->
     assert not created[0].connected
 
 
-def test_send_command_pass_through(monkeypatch: Any) -> None:
+def test_send_command_pass_through(monkeypatch: pytest.MonkeyPatch) -> None:
     import pydmp.transport_sync as ts
 
     class _Proto:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
+        def __init__(self, account_number: str, remote_key: str) -> None:
+            del account_number, remote_key
 
-        def encode_command(self, *a: Any, **k: Any) -> bytes:  # noqa: D401
-            del a, k
+        def encode_command(self, command: str, **kwargs: object) -> bytes:  # noqa: D401
+            del command, kwargs
             return b"CMD"
 
         def decode_response(self, raw: bytes) -> str:  # noqa: D401
@@ -111,8 +112,8 @@ def test_send_command_pass_through(monkeypatch: Any) -> None:
             return "ACK"
 
     class _T:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
+        def __init__(self, host: str, port: int, timeout: float) -> None:
+            del host, port, timeout
 
         async def connect(self) -> None:  # noqa: D401
             return None

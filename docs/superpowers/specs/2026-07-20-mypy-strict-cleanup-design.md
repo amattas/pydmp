@@ -32,7 +32,7 @@ Replace stale or mismatched ignores with correctly typed code. An ignore may rem
 
 ### CI enforcement
 
-Once `mypy --strict .` passes locally, change `.github/workflows/aviato-ci.yml` to set `run-typecheck: true`. Do not add a `tests.*` relaxation because #42 is included in this change and the completed tree will be strict in one pass.
+Once `mypy --strict .` passes locally, change the owning `.github/aviato.yml` declaration to set `run-typecheck: 'true'`, then regenerate the Aviato-managed workflows so `.github/workflows/aviato-ci.yml` carries `run-typecheck: true` with current integrity markers. Do not add a `tests.*` relaxation because #42 is included in this change and the completed tree will be strict in one pass.
 
 No `types-PyYAML` dependency will be added unless a clean environment reproduces an untyped-import error. PyYAML 6.0.3 in the pinned development environment currently satisfies `mypy --strict src`, so adding an unnecessary stub dependency would create avoidable maintenance.
 

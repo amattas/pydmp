@@ -332,7 +332,9 @@ git commit -m "test: type CLI coverage"
 ### Task 6: Repository-Wide Strict Gate
 
 **Files:**
+- Modify: `.github/aviato.yml`
 - Modify: `.github/workflows/aviato-ci.yml`
+- Modify: Aviato integrity headers in `.editorconfig`, `.github/workflows/aviato-docs.yml`, `.github/workflows/aviato-drift.yml`, `mypy.ini`, `requirements-docs.txt`, and `ruff.toml`
 - Modify: `docs/superpowers/plans/2026-07-20-mypy-strict-cleanup.md`
 
 **Interfaces:**
@@ -345,14 +347,16 @@ Run: `.venv/bin/python -m mypy --strict .`
 
 Expected: any remaining diagnostics are limited to files touched in Tasks 1-5; fix each at its source and rerun until the command succeeds.
 
-- [x] **Step 2: Enable CI type checking**
+- [x] **Step 2: Enable CI type checking from the managed source of truth**
 
-Change exactly:
+Change `.github/aviato.yml` exactly:
 
 ```yaml
-      typecheck-command: "python -m mypy --strict ."
-      run-typecheck: true
+  typecheck-command: python -m mypy --strict .
+  run-typecheck: 'true'
 ```
+
+Run the pinned Aviato 0.6.1 `sync` command against the worktree. Confirm the rendered `.github/workflows/aviato-ci.yml` contains `run-typecheck: true` and all managed artifact input hashes are refreshed together.
 
 - [x] **Step 3: Run all local release gates**
 
@@ -385,6 +389,6 @@ Expected: only the final intended CI/plan edits are uncommitted before the final
 - [x] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/aviato-ci.yml docs/superpowers/plans/2026-07-20-mypy-strict-cleanup.md
+git add .github/aviato.yml .github/workflows/aviato-ci.yml .github/workflows/aviato-docs.yml .github/workflows/aviato-drift.yml .editorconfig mypy.ini requirements-docs.txt ruff.toml docs/superpowers/plans/2026-07-20-mypy-strict-cleanup.md docs/superpowers/specs/2026-07-20-mypy-strict-cleanup-design.md
 git commit -m "ci: enforce repository-wide strict typing"
 ```

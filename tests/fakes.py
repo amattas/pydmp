@@ -3,14 +3,25 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, cast
+from collections.abc import Callable
+from pathlib import Path
+from typing import cast
 
 import pytest
 
 from pydmp.panel import DMPPanel
-from pydmp.protocol import DMPProtocol
+from pydmp.protocol import (
+    DMPProtocol,
+    OutputsResponse,
+    StatusResponse,
+    UserCodesResponse,
+    UserProfilesResponse,
+)
 from pydmp.transport import DMPTransport
 from pydmp.user import UserCode
+
+ConfigFactory = Callable[..., Path]
+PanelResponse = str | StatusResponse | OutputsResponse | UserCodesResponse | UserProfilesResponse | None
 
 
 class FakeReader:
@@ -39,7 +50,7 @@ class FakeWriter:
     async def drain(self) -> None:
         await asyncio.sleep(0)
 
-    def get_extra_info(self, name: str) -> Any:
+    def get_extra_info(self, name: str) -> object:
         del name
         return ("127.0.0.1", 0)
 
@@ -71,7 +82,7 @@ class FakePanelConnection:
 
     def __init__(
         self,
-        responses: list[Any] | None = None,
+        responses: list[PanelResponse] | None = None,
         *,
         host: str = "h",
         port: int = 0,
@@ -79,12 +90,12 @@ class FakePanelConnection:
     ) -> None:
         self.is_connected = True
         self._responses = list(responses or [])
-        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.calls: list[tuple[str, dict[str, object]]] = []
         self.host = host
         self.port = port
         self.account = account
 
-    async def send_command(self, cmd: str, **kwargs: Any) -> Any:
+    async def send_command(self, cmd: str, **kwargs: object) -> PanelResponse:
         self.calls.append((cmd, kwargs))
         if self._responses:
             return self._responses.pop(0)
@@ -111,8 +122,8 @@ def cast_panel(fake: object) -> DMPPanel:
 
 def install_fake_transport(
     monkeypatch: pytest.MonkeyPatch,
-    fake_transport_cls: type[Any],
-    fake_protocol_cls: type[Any],
+    fake_transport_cls: type[object],
+    fake_protocol_cls: type[object],
 ) -> None:
     """Patch pydmp.panel transport/protocol classes with test doubles."""
     import pydmp.panel as panel_mod
@@ -142,15 +153,16 @@ def make_user_code(
 class MinimalPanel:
     """Minimal no-op DMPPanel-compatible fake for CLI tests."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        del args, kwargs
+    def __init__(self, port: int = 2011, timeout: float = 10.0) -> None:
+        self.port = port
+        self.timeout = timeout
 
-    async def connect(self, *args: Any, **kwargs: Any) -> None:
-        del args, kwargs
+    async def connect(self, host: str, account_number: str, remote_key: str) -> None:
+        del host, account_number, remote_key
 
     async def disconnect(self) -> None:
         return None
 
-    async def _send_command(self, *args: Any, **kwargs: Any) -> str:
-        del args, kwargs
+    async def _send_command(self, command: str, **kwargs: object) -> PanelResponse:
+        del command, kwargs
         return "ACK"

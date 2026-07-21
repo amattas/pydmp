@@ -1,20 +1,20 @@
 import json
-from typing import Any
 
 import pytest
 from click.testing import CliRunner
 
 import pydmp.cli as cli
 from pydmp.protocol import DMPProtocol
+from tests.fakes import ConfigFactory, MinimalPanel, PanelResponse
 
 
 class _Out:
-    def __init__(self, num: Any) -> None:
+    def __init__(self, num: int) -> None:
         self.number = num
         self.name = f"Output {num}"
         self._state = ""
 
-    def to_dict(self) -> Any:
+    def to_dict(self) -> dict[str, object]:
         return {"number": self.number, "name": self.name, "state": self._state}
 
     async def turn_on(self) -> None:
@@ -30,7 +30,7 @@ class _Out:
         self._state = "TP"
 
 
-class _Panel:
+class _Panel(MinimalPanel):
     """Fake panel that routes bypass/restore NAK responses through the real
     DMPProtocol.decode_response(), so tests exercise the genuine NAK-detail path
     (PYDMP-023) rather than a stubbed `last_nak_detail`.
@@ -39,37 +39,33 @@ class _Panel:
     #: Set True on a subclass/instance to make `_send_command` return a genuine NAK.
     nak = False
 
-    def __init__(self, *a: Any, **k: Any) -> None:
+    def __init__(self, port: int = 2011, timeout: float = 10.0) -> None:
+        super().__init__(port, timeout)
         self._protocol = DMPProtocol("1")
 
-    async def connect(self, *a: Any, **k: Any) -> Any:
-        return None
-
-    async def disconnect(self) -> Any:
-        return None
-
-    async def _send_command(self, cmd: Any, **kwargs: Any) -> Any:
-        letter = "X" if "!X" in cmd else "Y" if "!Y" in cmd else "C"
+    async def _send_command(self, command: str, **kwargs: object) -> PanelResponse:
+        del kwargs
+        letter = "X" if "!X" in command else "Y" if "!Y" in command else "C"
         ack_nak = "-" if self.nak else "+"
         line = f"@    1{ack_nak}{letter}U"
         raw = ("\x02" + line + "\r").encode()
         return self._protocol.decode_response(raw)
 
-    async def update_output_status(self) -> Any:
+    async def update_output_status(self) -> None:
         return None
 
-    async def get_outputs(self) -> Any:
+    async def get_outputs(self) -> list[_Out]:
         o = _Out(1)
         o._state = "ON"
         return [o]
 
-    async def get_output(self, n: int) -> Any:
+    async def get_output(self, n: int) -> _Out:
         return _Out(n)
 
 
-def test_cli_output_text(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_output_text(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     class Out:
-        def __init__(self, n: Any) -> None:
+        def __init__(self, n: int) -> None:
             self.number = n
             self._state = "OF"
 
@@ -85,17 +81,8 @@ def test_cli_output_text(monkeypatch: Any, cli_cfg: Any) -> None:
         async def turn_off(self) -> None:  # noqa: D401
             self._state = "OF"
 
-    class P:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            pass
-
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def get_output(self, n: int) -> Any:
+    class P(MinimalPanel):
+        async def get_output(self, n: int) -> Out:
             return Out(n)
 
     monkeypatch.setattr(cli, "DMPPanel", P)
@@ -104,7 +91,7 @@ def test_cli_output_text(monkeypatch: Any, cli_cfg: Any) -> None:
     assert r.exit_code == 0 and "Setting output 3 to pulse" in r.output
 
 
-def test_cli_output_json(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_output_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     """JSON-mode output command returns a payload describing the applied mode."""
     cfg = cli_cfg()
     monkeypatch.setattr(cli, "DMPPanel", _Panel)
@@ -114,18 +101,18 @@ def test_cli_output_json(monkeypatch: Any, cli_cfg: Any) -> None:
     assert payload["ok"] and payload["output"] == 1 and payload["mode"] == "on"
 
 
-def test_cli_output_error_json(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_output_error_json(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     cfg = cli_cfg()
 
+    class OutputStub(_Out):
+        async def turn_on(self) -> None:
+            from pydmp.exceptions import DMPOutputError
+
+            raise DMPOutputError("fail")
+
     class P(_Panel):
-        async def get_output(self, n: int) -> Any:
-            class OutputStub:
-                async def turn_on(self) -> None:
-                    from pydmp.exceptions import DMPOutputError
-
-                    raise DMPOutputError("fail")
-
-            return OutputStub()
+        async def get_output(self, n: int) -> _Out:
+            return OutputStub(n)
 
     monkeypatch.setattr(cli, "DMPPanel", P)
     r = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-output", "1", "on", "--json"])
@@ -136,7 +123,9 @@ def test_cli_output_error_json(monkeypatch: Any, cli_cfg: Any) -> None:
 
 @pytest.mark.parametrize("as_json", [False, True])
 @pytest.mark.parametrize("command", ["set-zone-bypass", "set-zone-restore"])
-def test_cli_zone_bypass_restore_ack(monkeypatch: Any, cli_cfg: Any, command: Any, as_json: Any) -> None:
+def test_cli_zone_bypass_restore_ack(
+    monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory, command: str, as_json: bool
+) -> None:
     """ACK path (no NAK) succeeds for both bypass and restore, text and JSON."""
     cfg = cli_cfg()
     monkeypatch.setattr(cli, "DMPPanel", _Panel)  # nak=False by default
@@ -147,7 +136,7 @@ def test_cli_zone_bypass_restore_ack(monkeypatch: Any, cli_cfg: Any, command: An
         assert json.loads(res.output)["ok"]
 
 
-def test_cli_zone_bypass_text_success(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_zone_bypass_text_success(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     cfg = cli_cfg()
     monkeypatch.setattr(cli, "DMPPanel", _Panel)
     r1 = CliRunner().invoke(cli.cli, ["-c", str(cfg), "set-zone-bypass", "5"])  # text
@@ -162,7 +151,11 @@ def test_cli_zone_bypass_text_success(monkeypatch: Any, cli_cfg: Any) -> None:
     ],
 )
 def test_cli_zone_bypass_restore_nak_json(
-    monkeypatch: Any, cli_cfg: Any, command: Any, expect_phrase: Any, expect_detail: Any
+    monkeypatch: pytest.MonkeyPatch,
+    cli_cfg: ConfigFactory,
+    command: str,
+    expect_phrase: str,
+    expect_detail: str,
 ) -> None:
     """NAK path is decoded via the real DMPProtocol.decode_response() and the
     '(-XU)'/'(undefined)' detail rendering (cli.py ~319-330/358-369) is exercised genuinely
@@ -183,21 +176,17 @@ def test_cli_zone_bypass_restore_nak_json(
     assert "(undefined)" in data["error"]
 
 
-def test_cli_zone_restore_text_nak_detail(monkeypatch: Any, cli_cfg: Any) -> None:
+def test_cli_zone_restore_text_nak_detail(monkeypatch: pytest.MonkeyPatch, cli_cfg: ConfigFactory) -> None:
     """Restore failure with a stubbed NAK detail exercises the text-mode error path."""
     cfg = cli_cfg()
 
-    class P2:
-        def __init__(self, *a: Any, **k: Any) -> None:
-            self._protocol = type("Prot", (), {"last_nak_detail": "XU"})()
+    class P2(_Panel):
+        def __init__(self, port: int = 2011, timeout: float = 10.0) -> None:
+            super().__init__(port, timeout)
+            self._protocol.last_nak_detail = "XU"
 
-        async def connect(self, *a: Any, **k: Any) -> Any:
-            return None
-
-        async def disconnect(self) -> Any:
-            return None
-
-        async def _send_command(self, *a: Any, **k: Any) -> Any:
+        async def _send_command(self, command: str, **kwargs: object) -> str:
+            del command, kwargs
             return "NAK"
 
     monkeypatch.setattr(cli, "DMPPanel", P2)

@@ -1,6 +1,5 @@
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-from typing import Any
 
 import pytest
 from click.testing import CliRunner
@@ -16,11 +15,14 @@ def test_cli_version_short_flag() -> None:
     assert __version__ in r.output
 
 
-def test_runtime_version_unreadable_pyproject_raises_runtime_error(monkeypatch: Any) -> None:
-    def _no_dist(name: Any) -> None:
+def test_runtime_version_unreadable_pyproject_raises_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _no_dist(name: str) -> None:
         raise PackageNotFoundError(name)
 
-    def _no_read(self: Path, *args: Any, **kwargs: Any) -> None:
+    def _no_read(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        del encoding, errors
         raise FileNotFoundError(self)
 
     monkeypatch.setattr(pydmp, "_dist_version", _no_dist)

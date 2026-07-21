@@ -1,7 +1,5 @@
 """Arm/disarm logic: area validation, flag mapping, NAK handling, concatenation."""
 
-from typing import Any
-
 import pytest
 
 from pydmp.const.commands import DMPCommand
@@ -47,7 +45,7 @@ async def test_arm_disarm_area_validation(
     # list is rejected before range-checking (see DMPPanel.arm_areas/disarm_areas).
     p = _connected_panel()
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self, command, kwargs
         return "ACK"
 
@@ -63,9 +61,9 @@ async def test_arm_disarm_area_validation(
 @pytest.mark.asyncio
 async def test_arm_areas_flag_variants(monkeypatch: pytest.MonkeyPatch) -> None:
     p = _connected_panel()
-    recorded: list[tuple[str, dict[str, Any]]] = []
+    recorded: list[tuple[str, dict[str, object]]] = []
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self
         recorded.append((command, dict(kwargs)))
         return "ACK"
@@ -91,9 +89,9 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch: pytest.MonkeyPatch) 
     # test_panel_commands.py::test_arm_areas_builds_and_handles_nak: NAK
     # handling on both arm and disarm, plus the two-digit area concatenation
     # and flag-passthrough assertions.
-    sent: dict[str, Any] = {}
+    sent: dict[str, object] = {}
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self
         sent["cmd"] = command
         sent.update(kwargs)
@@ -110,7 +108,7 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch: pytest.MonkeyPatch) 
     assert sent["area"] == "0102"
     assert sent["bypass"] == "Y" and sent["force"] == "N" and sent["instant"] == "Y"
 
-    async def nak_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def nak_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self, command, kwargs
         return "NAK"
 
@@ -119,7 +117,7 @@ async def test_arm_areas_nak_and_concatenation(monkeypatch: pytest.MonkeyPatch) 
         await p.disarm_areas([1, 2])
 
     # Successful disarm path
-    async def ok_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def ok_send(self: DMPPanel, command: str, **kwargs: object) -> str:
         del self, command, kwargs
         return "ACK"
 
@@ -144,7 +142,8 @@ async def test_arm_disarm_areas_multi_and_nak_via_connection_routing(
             self.port = 0
             self.account = "a"
 
-        async def send_command(self, cmd: str, **kwargs: Any) -> Any:
+        async def send_command(self, cmd: str, **kwargs: object) -> str | StatusResponse:
+            del kwargs
             if cmd == DMPCommand.ARM.value and not self._toggle:
                 self._toggle = True
                 return "ACK"
@@ -157,7 +156,7 @@ async def test_arm_disarm_areas_multi_and_nak_via_connection_routing(
                 )
             return "ACK"
 
-        async def keep_alive(self) -> Any:
+        async def keep_alive(self) -> None:
             return None
 
     panel = DMPPanel()

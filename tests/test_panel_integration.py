@@ -2,7 +2,8 @@
 attach/detach, check_code caching paths, and paginated fetch loops."""
 
 import asyncio
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import cast
 
 import pytest
 
@@ -14,12 +15,14 @@ from pydmp.protocol import (
     UserCodesResponse,
     UserProfilesResponse,
 )
+from pydmp.status_server import S3Message
 from pydmp.user import UserCode as ProtoUserCode
 from tests.fakes import cast_protocol, cast_transport, make_user_code
 
 
 class _DummyProtocol:
-    def encode_command(self, cmd: str, **kwargs: Any) -> bytes:  # noqa: D401
+    def encode_command(self, cmd: str, **kwargs: object) -> bytes:  # noqa: D401
+        del kwargs
         return b"KA" if cmd == DMPCommand.KEEP_ALIVE.value else b"X"
 
     def decode_response(self, data: bytes) -> None:  # noqa: D401
@@ -88,12 +91,12 @@ async def test_attach_detach_status_server(monkeypatch: pytest.MonkeyPatch) -> N
 
     class Srv:
         def __init__(self) -> None:
-            self._cbs: list[Any] = []
+            self._cbs: list[Callable[[S3Message], Awaitable[None] | None]] = []
 
-        def register_callback(self, cb: Any) -> None:
+        def register_callback(self, cb: Callable[[S3Message], Awaitable[None] | None]) -> None:
             self._cbs.append(cb)
 
-        def remove_callback(self, cb: Any) -> None:
+        def remove_callback(self, cb: Callable[[S3Message], Awaitable[None] | None]) -> None:
             if cb in self._cbs:
                 self._cbs.remove(cb)
 
@@ -107,7 +110,7 @@ async def test_attach_detach_status_server(monkeypatch: pytest.MonkeyPatch) -> N
     p.attach_status_server(s)  # idempotent
     # Trigger callback
     for cb in list(p._status_callbacks.values()):
-        await cb(object())
+        await cb(S3Message("1", "Zc", None, [], ""))
     assert refreshed["count"] == 1
 
     # Detach unknown does nothing
@@ -139,19 +142,21 @@ async def test_attach_detach_status_server_single_callback_registration(
 
     class _Srv:
         def __init__(self) -> None:
-            self.cb: Any | None = None
+            self.cb: Callable[[S3Message], Awaitable[None] | None] | None = None
 
-        def register_callback(self, cb: Any) -> None:
+        def register_callback(self, cb: Callable[[S3Message], Awaitable[None] | None]) -> None:
             self.cb = cb
 
-        def remove_callback(self, cb: Any) -> None:  # noqa: D401
+        def remove_callback(self, cb: Callable[[S3Message], Awaitable[None] | None]) -> None:  # noqa: D401
             if self.cb == cb:
                 self.cb = None
 
     s = _Srv()
     p.attach_status_server(s)
     assert s.cb is not None
-    await s.cb(object())
+    result = s.cb(S3Message("1", "Zc", None, [], ""))
+    if result is not None:
+        await result
     assert refreshed["ok"] is True
     p.detach_status_server(s)
     assert s.cb is None
@@ -211,7 +216,7 @@ async def test_check_code_cached_short_circuit_during_concurrent_refresh(
 
     gate = asyncio.Event()
 
-    async def slow_get_user_codes() -> Any:
+    async def slow_get_user_codes() -> list[ProtoUserCode]:
         # Mid-refresh the live cache must still expose the old entry
         # (no clear-then-repopulate window).
         assert p._user_cache_by_code.get("1234") is old
@@ -269,8 +274,8 @@ def _prof(num: str) -> UserProfile:
 async def test_get_user_codes_and_profiles_pagination(
     monkeypatch: pytest.MonkeyPatch,
     panel_method: str,
-    make_page: Any,
-    response_cls: Any,
+    make_page: Callable[[str], list[ProtoUserCode] | list[UserProfile]],
+    response_cls: type[UserCodesResponse] | type[UserProfilesResponse],
 ) -> None:
     # Merge of test_panel_commands.py::test_get_user_codes_pagination and
     # test_panel_send_sequences.py::test_get_user_profiles_pagination:
@@ -282,14 +287,21 @@ async def test_get_user_codes_and_profiles_pagination(
 
     p._connection = cast_transport(_Conn())
 
-    kwarg_name = "users" if response_cls is UserCodesResponse else "profiles"
-    pages = [
-        response_cls(**{kwarg_name: make_page("001"), "has_more": True, "last_number": "001"}),
-        response_cls(**{kwarg_name: make_page("002"), "has_more": False, "last_number": "002"}),
-    ]
+    if response_cls is UserCodesResponse:
+        user_page = cast(Callable[[str], list[ProtoUserCode]], make_page)
+        pages: list[UserCodesResponse | UserProfilesResponse] = [
+            UserCodesResponse(users=user_page("001"), has_more=True, last_number="001"),
+            UserCodesResponse(users=user_page("002"), has_more=False, last_number="002"),
+        ]
+    else:
+        profile_page = cast(Callable[[str], list[UserProfile]], make_page)
+        pages = [
+            UserProfilesResponse(profiles=profile_page("001"), has_more=True, last_number="001"),
+            UserProfilesResponse(profiles=profile_page("002"), has_more=False, last_number="002"),
+        ]
     state = {"i": 0}
 
-    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+    async def fake_send(self: DMPPanel, command: str, **kwargs: object) -> UserCodesResponse | UserProfilesResponse:
         del self, command, kwargs
         i = state["i"]
         state["i"] = min(i + 1, len(pages) - 1)

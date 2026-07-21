@@ -1,6 +1,12 @@
 profile: python-library
 version: 0.6.1
 docs: true
+overrides:
+  settings:
+    default_branch:
+      # Solo-maintainer liveness exception: remove this override before or in the
+      # same settings change that makes another independent reviewer eligible.
+      required_reviews: 0
 profile-identity: aviato-profile/python-library/v1
 variables:
   serve-pages: true

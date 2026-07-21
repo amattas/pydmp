@@ -12,14 +12,14 @@ from pydmp.user import UserCode
         "0000GG",  # hex-position bytes non-hex -> int(..., 16) fails
     ],
 )
-def test_decode_user_codes_malformed_raises_invalid_response(bad_item):
+def test_decode_user_codes_malformed_raises_invalid_response(bad_item: str) -> None:
     proto = DMPProtocol("1", "ABCD1234")
     payload = f"@    1+*P={bad_item}\x1e\r".encode()
     with pytest.raises(DMPInvalidResponseError):
         proto.decode_response(payload)
 
 
-def test_usercode_repr_hides_code_and_pin():
+def test_usercode_repr_hides_code_and_pin() -> None:
     u = UserCode(
         number="0001",
         code="481516",
@@ -38,7 +38,7 @@ def test_usercode_repr_hides_code_and_pin():
     assert "0001" in r
 
 
-def test_decode_user_codes_single_entry():
+def test_decode_user_codes_single_entry() -> None:
     # Build a plaintext user record and encrypt it, then wrap as *P=
     proto = DMPProtocol("1", "ABCD1234")
 
@@ -63,7 +63,7 @@ def test_decode_user_codes_single_entry():
     assert u.temporary is None
 
 
-def test_decode_user_codes_with_flags_and_dates():
+def test_decode_user_codes_with_flags_and_dates() -> None:
     proto = DMPProtocol("1", "ABCD1234")
     # Build record with flags (Y/N/Y), start_date and name in tail
     num = "0002"
@@ -90,7 +90,7 @@ def test_decode_user_codes_with_flags_and_dates():
     assert u.temporary is True
 
 
-def test_decode_user_profiles_single_entry():
+def test_decode_user_profiles_single_entry() -> None:
     proto = DMPProtocol("1", "")
     # Minimal profile: number 001, masks, output group, menu, rearm, name
     prof = "001" + "C3000000" + "C3000000" + "001" + "MENUOPTS" + (" " * 16) + "005" + "ADMIN"

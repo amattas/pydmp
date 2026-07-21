@@ -65,7 +65,7 @@ def _prot() -> DMPProtocol:
         (DMPCommand.OUTPUT.value, {"output": "001", "mode": "S"}, "@    1!Q001S\r"),
     ],
 )
-def test_command_payloads_and_lengths(cmd: str, kwargs: dict, expected: str) -> None:
+def test_command_payloads_and_lengths(cmd: str, kwargs: dict[str, str], expected: str) -> None:
     protocol = _prot()
     encoded = protocol.encode_command(cmd, **kwargs)
     assert encoded.decode("utf-8") == expected

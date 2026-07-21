@@ -38,7 +38,7 @@ jobs:
       test-command: "python -m pytest --cov --cov-report=term-missing"
       build-command: "python -m build"
       typecheck-command: "python -m mypy --strict ."
-      run-typecheck: false
+      run-typecheck: true
       run-build: true
 
   security:

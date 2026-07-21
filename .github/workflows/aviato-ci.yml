@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.0 hash=48ce50636014a93da4f035b8ff71c192b2a6c3b7e828227a0ac485bced15633c inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=33b8a4e286a7c1dfe67f2d0f438b24ccec14ecc61e8a16f99cb6da4be0800ce6 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
 name: Aviato Python Library
 
 on:
@@ -30,7 +30,7 @@ permissions:
 jobs:
   ci:
     if: ${{ github.ref_type != 'tag' && github.event_name != 'schedule' }}
-    uses: amattas/aviato/.github/workflows/reusable-python-ci.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-python-ci.yml@0.6.1
     with:
       python-version: "3.12"
       install-command: "python -m pip install -e .[dev]"
@@ -44,15 +44,15 @@ jobs:
   security:
     # Runs on PRs AND on the release tag, so source scans gate the verify pipeline
     # and are re-run on the release ref before any deploy (§2.13/§5.14).
-    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.1
     with:
       codeql-languages: "python"
 
   common-lint:
     if: ${{ github.ref_type != 'tag' }}
-    uses: amattas/aviato/.github/workflows/reusable-common-lint.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-common-lint.yml@0.6.1
     with:
-      aviato-ref: 0.6.0
+      aviato-ref: 0.6.1
       local-install: false
 
   status-bridge:
@@ -98,9 +98,9 @@ jobs:
   release:
     if: ${{ github.ref_type != 'tag' && github.event_name == 'push' }}
     needs: [ci, security, common-lint]
-    uses: amattas/aviato/.github/workflows/reusable-release.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-release.yml@0.6.1
     with:
-      aviato-ref: 0.6.0
+      aviato-ref: 0.6.1
       local-install: false
 
   # Gate before deploy. Two entry points: IN-RUN (release just tagged on this push;
@@ -108,7 +108,7 @@ jobs:
   release-gate:
     needs: [release]
     if: ${{ always() && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
-    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.1
     with:
       default-branch: main
       require-merged-pr: true
@@ -117,7 +117,7 @@ jobs:
   pypi:
     needs: [release, release-gate, security]
     if: ${{ always() && needs.release-gate.result == 'success' && needs.security.result == 'success' && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
-    uses: amattas/aviato/.github/workflows/reusable-pypi-publish.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-pypi-publish.yml@0.6.1
     with:
       python-version: "3.12"
       working-directory: "."
@@ -241,13 +241,13 @@ jobs:
 
       - name: Publish distributions
         if: ${{ vars.PYPI_REPOSITORY_URL == '' }}
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
         with:
           packages-dir: dist
 
       - name: Publish distributions to alternate repository
         if: ${{ vars.PYPI_REPOSITORY_URL != '' }}
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
         with:
           packages-dir: dist
           repository-url: ${{ vars.PYPI_REPOSITORY_URL }}

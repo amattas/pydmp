@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.0 hash=30ff7b35e666156d0557c7278cfe47940c0a68fcf14f370ae531e43e31bb4b90 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=789cf4e150cca46a5923470427b2b677da34f732d740c7f91719e664576e4666 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
 name: Aviato Drift Detection
 
 # Consumer-side scheduled automation (§5.5/§5.6). Detects file/settings drift and
@@ -18,9 +18,9 @@ permissions:
 
 jobs:
   drift:
-    uses: amattas/aviato/.github/workflows/reusable-consumer-automation.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-consumer-automation.yml@0.6.1
     with:
-      aviato-ref: 0.6.0
+      aviato-ref: 0.6.1
       local-install: false
     secrets:
       # Optional: define AVIATO_SETTINGS_TOKEN (admin-capable) to enable settings-drift

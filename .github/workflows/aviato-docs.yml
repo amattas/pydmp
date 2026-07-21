@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=0.6.0 hash=15a46ca69997e5c88549c59999e0c0c909ada41fa117da971ecd19b53c328584 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+# aviato:managed profile=python-library version=0.6.1 hash=0d9dfcc792b0936ef5f9410a37ae509237820b5973861edc6bbbcdeeaff20e64 inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
 name: Aviato Docs
 
 # Multi-version Zensical docs publish (§13.3), versioned onto a docs branch by mike, opt-in via docs: true.
@@ -77,7 +77,7 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
-    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.1
     with:
       default-branch: main
       require-merged-pr: true
@@ -91,7 +91,7 @@ jobs:
       contents: read
       pull-requests: read
       security-events: write
-    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.1
     with:
       ref: refs/tags/${{ needs.resolve.outputs.tag }}
       sha: ${{ needs.release-gate.outputs.gated-sha }}
@@ -104,7 +104,7 @@ jobs:
       contents: write
       pages: write
       id-token: write
-    uses: amattas/aviato/.github/workflows/reusable-docs-pages.yml@0.6.0
+    uses: amattas/aviato/.github/workflows/reusable-docs-pages.yml@0.6.1
     with:
       working-directory: "."
       docs-requirements: requirements-docs.txt

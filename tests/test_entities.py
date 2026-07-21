@@ -183,7 +183,7 @@ async def test_output_nak_error():
 @pytest.mark.parametrize(
     "mode,expected_state",
     [
-        ("M", DMPRealTimeStatusEvent.OUTPUT_ON.value),
+        ("M", DMPRealTimeStatusEvent.OUTPUT_MOMENTARY.value),
         ("O", DMPRealTimeStatusEvent.OUTPUT_OFF.value),
         ("P", DMPRealTimeStatusEvent.OUTPUT_PULSE.value),
         ("S", DMPRealTimeStatusEvent.OUTPUT_ON.value),

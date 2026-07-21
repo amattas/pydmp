@@ -352,10 +352,6 @@ class DMPPanel:
             # Map mode to the Output state semantics used in Output
             mode = out.mode
             if mode == "O":
-                self._outputs[num]._state = DMPEventType.REAL_TIME_STATUS  # will set properly in next block
-            # Use Output.update_state mapping via set_mode semantics
-            # Set internal state directly based on mode
-            if mode == "O":
                 self._outputs[num]._state = "OF"
             elif mode == "P":
                 self._outputs[num]._state = "PL"

@@ -54,7 +54,14 @@ def _runtime_version() -> str:
         from pathlib import Path
 
         pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
-        version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+        try:
+            version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+        except (OSError, tomllib.TOMLDecodeError, KeyError) as exc:
+            raise RuntimeError(
+                f"Cannot determine pydmp version: package metadata is unavailable and "
+                f"{pyproject} could not be read. Install the package (pip install pydmp "
+                f"or pip install -e .) or run from a complete source checkout."
+            ) from exc
         if not isinstance(version, str):
             raise RuntimeError(f"{pyproject} does not define a string project.version") from None
         return version

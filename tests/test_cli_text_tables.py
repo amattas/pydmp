@@ -1,22 +1,26 @@
+from typing import Any
+
 from click.testing import CliRunner
 
 import pydmp.cli as cli
 
 
-def test_cli_get_areas_zones_text(monkeypatch, cli_cfg):
+def test_cli_get_areas_zones_text(monkeypatch: Any, cli_cfg: Any) -> None:
     class Area:
-        def __init__(self, n, name, state, disarmed):
+        def __init__(self, n: Any, name: Any, state: Any, disarmed: Any) -> None:
             self.number = n
             self.name = name
             self._state = state
             self.is_disarmed = disarmed
 
         @property
-        def state(self):
+        def state(self) -> Any:
             return self._state
 
     class Zone:
-        def __init__(self, n, name, state, normal=False, bypass=False, fault=False):
+        def __init__(
+            self, n: Any, name: Any, state: Any, normal: Any = False, bypass: Any = False, fault: Any = False
+        ) -> None:
             self.number = n
             self.name = name
             self._state = state
@@ -25,26 +29,26 @@ def test_cli_get_areas_zones_text(monkeypatch, cli_cfg):
             self.has_fault = fault
 
         @property
-        def state(self):  # noqa: D401
+        def state(self) -> Any:  # noqa: D401
             return self._state
 
     class P:
-        def __init__(self, *a, **k):
+        def __init__(self, *a: Any, **k: Any) -> None:
             pass
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> Any:
             return None
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
-        async def update_status(self):
+        async def update_status(self) -> Any:
             return None
 
-        async def get_areas(self):
+        async def get_areas(self) -> Any:
             return [Area(1, "A1", "D", True), Area(2, "A2", "A", False)]
 
-        async def get_zones(self):
+        async def get_zones(self) -> Any:
             return [
                 Zone(1, "Z1", "N", normal=True),
                 Zone(2, "Z2", "O", normal=False, fault=True),
@@ -59,18 +63,18 @@ def test_cli_get_areas_zones_text(monkeypatch, cli_cfg):
     assert r2.exit_code == 0 and "Zones" in r2.output
 
 
-def test_cli_quiet_and_debug_flags_via_arm(monkeypatch, cli_cfg):
+def test_cli_quiet_and_debug_flags_via_arm(monkeypatch: Any, cli_cfg: Any) -> None:
     class P:
-        def __init__(self, *a, **k):
+        def __init__(self, *a: Any, **k: Any) -> None:
             pass
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> Any:
             return None
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
-        async def arm_areas(self, *a, **k):
+        async def arm_areas(self, *a: Any, **k: Any) -> Any:
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", P)

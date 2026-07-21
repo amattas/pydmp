@@ -4,6 +4,7 @@ DMPPanel, and every command that talks to the panel must emit the same {"ok": fa
 """
 
 import json
+from typing import Any
 
 import pytest
 from click.testing import CliRunner
@@ -24,42 +25,44 @@ _BARE_PANEL_COMMANDS = [
 
 
 @pytest.mark.parametrize(("command", "extra_args"), _BARE_PANEL_COMMANDS)
-def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg, command, extra_args):
+def test_cli_commands_propagate_configured_port_and_timeout(
+    monkeypatch: Any, cli_cfg: Any, command: Any, extra_args: Any
+) -> None:
     recorded = {}
 
     class RecordingPanel:
-        def __init__(self, *a, port=None, timeout=None, **k):
+        def __init__(self, *a: Any, port: Any = None, timeout: Any = None, **k: Any) -> None:
             recorded["port"] = port
             recorded["timeout"] = timeout
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> Any:
             return None
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
-        async def arm_areas(self, *a, **k):
+        async def arm_areas(self, *a: Any, **k: Any) -> Any:
             return None
 
-        async def _send_command(self, *a, **k):
+        async def _send_command(self, *a: Any, **k: Any) -> Any:
             return "ACK"
 
-        async def get_user_codes(self):
+        async def get_user_codes(self) -> Any:
             return []
 
-        async def get_user_profiles(self):
+        async def get_user_profiles(self) -> Any:
             return []
 
-        async def update_output_status(self):
+        async def update_output_status(self) -> Any:
             return None
 
-        async def get_outputs(self):
+        async def get_outputs(self) -> Any:
             return []
 
-        async def sensor_reset(self):
+        async def sensor_reset(self) -> Any:
             return None
 
-        async def check_code(self, code, include_pin=True):
+        async def check_code(self, code: Any, include_pin: Any = True) -> Any:
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", RecordingPanel)
@@ -78,15 +81,17 @@ def test_cli_commands_propagate_configured_port_and_timeout(monkeypatch, cli_cfg
         ("get-zones", ["--json"]),
     ],
 )
-def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, command, extra_args):
+def test_cli_commands_emit_json_error_contract_on_failure(
+    monkeypatch: Any, cli_cfg: Any, command: Any, extra_args: Any
+) -> None:
     class FailingPanel:
-        def __init__(self, *a, **k):
+        def __init__(self, *a: Any, **k: Any) -> None:
             pass
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> None:
             raise RuntimeError("boom")
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", FailingPanel)
@@ -98,17 +103,17 @@ def test_cli_commands_emit_json_error_contract_on_failure(monkeypatch, cli_cfg, 
     assert data == {"ok": False, "error": "boom"}
 
 
-def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
+def test_cli_set_output_text_mode_error_is_clean(monkeypatch: Any, cli_cfg: Any) -> None:
     """set-output (deprecated alias) failures still print a clean error, not a traceback."""
 
     class FailingPanel:
-        def __init__(self, *a, **k):
+        def __init__(self, *a: Any, **k: Any) -> None:
             pass
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> None:
             raise RuntimeError("boom")
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
     monkeypatch.setattr(cli, "DMPPanel", FailingPanel)
@@ -121,7 +126,7 @@ def test_cli_set_output_text_mode_error_is_clean(monkeypatch, cli_cfg):
     assert "Traceback" not in result.output
 
 
-def test_cli_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
+def test_cli_output_is_hidden_deprecated_alias(monkeypatch: Any, cli_cfg: Any) -> None:
     """'output' is hidden from help, forwards to 'set-output' (incl. --json), warns on stderr."""
     import re
 
@@ -132,20 +137,20 @@ def test_cli_output_is_hidden_deprecated_alias(monkeypatch, cli_cfg):
     calls = {}
 
     class Out:
-        async def turn_on(self):
+        async def turn_on(self) -> None:
             calls["on"] = True
 
     class Panel:
-        def __init__(self, *a, **k):
+        def __init__(self, *a: Any, **k: Any) -> None:
             pass
 
-        async def connect(self, *a, **k):
+        async def connect(self, *a: Any, **k: Any) -> Any:
             return None
 
-        async def disconnect(self):
+        async def disconnect(self) -> Any:
             return None
 
-        async def get_output(self, n):
+        async def get_output(self, n: Any) -> Any:
             calls["output"] = n
             return Out()
 

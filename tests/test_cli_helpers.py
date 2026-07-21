@@ -1,14 +1,16 @@
+from typing import Any
+
 import pydmp.cli as cli
 
 
-def test_fmt_ddmmyy_valid_and_invalid():
+def test_fmt_ddmmyy_valid_and_invalid() -> None:
     assert cli._fmt_ddmmyy("010125") == "01 Jan 2025"
     assert cli._fmt_ddmmyy("000000") == ""
-    assert cli._fmt_ddmmyy(None) == ""  # type: ignore[arg-type]
+    assert cli._fmt_ddmmyy(None) == ""
     assert cli._fmt_ddmmyy("bad") == ""
 
 
-def test_normalize_config_shapes(tmp_path):
+def test_normalize_config_shapes(tmp_path: Any) -> None:
     # panel mapping
     raw = {"panel": {"host": "h", "account": "1", "remote_key": "k", "port": "", "timeout": 5}}
     cfg = cli._normalize_config(raw)

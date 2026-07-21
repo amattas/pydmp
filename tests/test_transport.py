@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any, cast
 
 import pytest
 
@@ -8,7 +9,7 @@ from pydmp.transport import DMPTransport
 
 
 class _FakeReader(asyncio.StreamReader):
-    def __init__(self, chunks: list[bytes]):
+    def __init__(self, chunks: list[bytes]) -> None:
         super().__init__()
         self._chunks = list(chunks)
 
@@ -20,7 +21,7 @@ class _FakeReader(asyncio.StreamReader):
 
 
 class _FakeWriter:
-    def __init__(self):
+    def __init__(self) -> None:
         self.buffer = bytearray()
         self._closed = False
 
@@ -39,13 +40,13 @@ class _FakeWriter:
     async def wait_closed(self) -> None:
         await asyncio.sleep(0)
 
-    def get_extra_info(self, name: str):  # for symmetry with real writer
+    def get_extra_info(self, name: str) -> Any:  # for symmetry with real writer
         return None
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_send_receive(monkeypatch):
-    async def fake_open_connection(host, port):
+async def test_transport_connect_send_receive(monkeypatch: Any) -> None:
+    async def fake_open_connection(host: Any, port: Any) -> Any:
         return _FakeReader([b"part1", b"part2", b"\r", b""]), _FakeWriter()
 
     monkeypatch.setattr(asyncio, "open_connection", fake_open_connection)
@@ -63,15 +64,15 @@ async def test_transport_connect_send_receive(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_transport_send_without_connect_raises():
+async def test_transport_send_without_connect_raises() -> None:
     t = DMPTransport("example", 1234, timeout=1.0)
     with pytest.raises(DMPConnectionError):
         await t.send_and_receive(b"PING")
 
 
 @pytest.mark.asyncio
-async def test_send_raw_redacts_remote_key(monkeypatch, caplog):
-    async def fake_open_connection(host, port):
+async def test_send_raw_redacts_remote_key(monkeypatch: Any, caplog: Any) -> None:
+    async def fake_open_connection(host: Any, port: Any) -> Any:
         return _FakeReader([b""]), _FakeWriter()
 
     monkeypatch.setattr(asyncio, "open_connection", fake_open_connection)
@@ -92,8 +93,8 @@ async def test_send_raw_redacts_remote_key(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_timeouts(monkeypatch):
-    async def raise_timeout(host, port):
+async def test_transport_connect_timeouts(monkeypatch: Any) -> None:
+    async def raise_timeout(host: Any, port: Any) -> None:
         raise TimeoutError()
 
     monkeypatch.setattr(asyncio, "open_connection", raise_timeout)
@@ -103,8 +104,8 @@ async def test_transport_connect_timeouts(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_transport_connect_oserror(monkeypatch):
-    async def raise_oserror(host, port):
+async def test_transport_connect_oserror(monkeypatch: Any) -> None:
+    async def raise_oserror(host: Any, port: Any) -> None:
         raise OSError("no route")
 
     monkeypatch.setattr(asyncio, "open_connection", raise_oserror)
@@ -114,17 +115,18 @@ async def test_transport_connect_oserror(monkeypatch):
 
 
 class _R:
-    async def read(self, n):  # noqa: D401
+    async def read(self, n: int) -> bytes:  # noqa: D401
+        del n
         # Simulate a long read that times out quickly inside this coroutine
         await asyncio.wait_for(asyncio.sleep(10), timeout=0.01)
         return b"data"
 
 
 @pytest.mark.asyncio
-async def test_receive_timeout_breaks_loop(monkeypatch):
+async def test_receive_timeout_breaks_loop(monkeypatch: Any) -> None:
     t = DMPTransport("h", 1, timeout=0.01)
     # Install reader directly; no need to connect
-    t._reader = _R()  # type: ignore[attr-defined]
+    t._reader = cast(asyncio.StreamReader, _R())
     # Speed up rate limiting sleep
     import pydmp.transport as tr
 

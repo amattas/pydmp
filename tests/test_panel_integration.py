@@ -2,33 +2,33 @@
 attach/detach, check_code caching paths, and paginated fetch loops."""
 
 import asyncio
+from typing import Any
 
 import pytest
 
 from pydmp.const.commands import DMPCommand
 from pydmp.const.events import DMPEventType
 from pydmp.panel import DMPPanel
-from pydmp.protocol import (
-    UserCode as ProtoUserCode,
-)
+from pydmp.profile import UserProfile
 from pydmp.protocol import (
     UserCodesResponse,
-    UserProfile,
     UserProfilesResponse,
 )
-from tests.conftest import make_user_code
+from pydmp.user import UserCode as ProtoUserCode
+from tests.fakes import cast_protocol, cast_transport, make_user_code
 
 
 class _DummyProtocol:
-    def encode_command(self, cmd: str, **kwargs) -> bytes:  # noqa: D401
+    def encode_command(self, cmd: str, **kwargs: Any) -> bytes:  # noqa: D401
         return b"KA" if cmd == DMPCommand.KEEP_ALIVE.value else b"X"
 
-    def decode_response(self, data: bytes):  # noqa: D401
+    def decode_response(self, data: bytes) -> None:  # noqa: D401
+        del data
         return None
 
 
 class _DummyTransport:
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_connected = True
         self.sent: list[bytes] = []
 
@@ -38,12 +38,12 @@ class _DummyTransport:
 
 
 @pytest.mark.asyncio
-async def test_keepalive_start_stop():
+async def test_keepalive_start_stop() -> None:
     # Merge of test_panel_misc.py::test_keepalive_start_stop (task lifecycle)
     # and test_panel_keepalive.py::test_keepalive_start_stop (bytes sent).
     p = DMPPanel()
-    p._protocol = _DummyProtocol()  # type: ignore[attr-defined]
-    p._connection = _DummyTransport()  # type: ignore[attr-defined]
+    p._protocol = cast_protocol(_DummyProtocol())
+    p._connection = cast_transport(_DummyTransport())
 
     await p.start_keepalive(interval=0.01)
     assert p._keepalive_task is not None
@@ -58,10 +58,10 @@ async def test_keepalive_start_stop():
 
 
 @pytest.mark.asyncio
-async def test_keepalive_idempotent():
+async def test_keepalive_idempotent() -> None:
     p = DMPPanel()
-    p._protocol = _DummyProtocol()  # type: ignore[attr-defined]
-    p._connection = _DummyTransport()  # type: ignore[attr-defined]
+    p._protocol = cast_protocol(_DummyProtocol())
+    p._connection = cast_transport(_DummyTransport())
 
     # starting twice should not raise and should keep sending
     await p.start_keepalive(interval=0.01)
@@ -73,7 +73,7 @@ async def test_keepalive_idempotent():
 
 
 @pytest.mark.asyncio
-async def test_attach_detach_status_server(monkeypatch):
+async def test_attach_detach_status_server(monkeypatch: pytest.MonkeyPatch) -> None:
     # Merge of test_panel_more.py::test_attach_status_server_idempotence_and_detach_unknown
     # and test_panel_status_server_integration.py::test_attach_detach_status_server:
     # idempotent attach, unknown detach no-op, callback fires and triggers
@@ -81,19 +81,19 @@ async def test_attach_detach_status_server(monkeypatch):
     p = DMPPanel()
     refreshed = {"count": 0}
 
-    async def refresh():  # noqa: D401
+    async def refresh() -> None:  # noqa: D401
         refreshed["count"] += 1
 
     monkeypatch.setattr(p, "_refresh_user_cache", refresh)
 
     class Srv:
-        def __init__(self):
-            self._cbs = []
+        def __init__(self) -> None:
+            self._cbs: list[Any] = []
 
-        def register_callback(self, cb):
+        def register_callback(self, cb: Any) -> None:
             self._cbs.append(cb)
 
-        def remove_callback(self, cb):
+        def remove_callback(self, cb: Any) -> None:
             if cb in self._cbs:
                 self._cbs.remove(cb)
 
@@ -118,14 +118,16 @@ async def test_attach_detach_status_server(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_attach_detach_status_server_single_callback_registration(monkeypatch):
+async def test_attach_detach_status_server_single_callback_registration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # test_panel_status_server_integration.py::test_attach_detach_status_server:
     # a simpler status-server double that stores a single callback slot rather
     # than a collection, covering the register/remove_callback contract shape.
     p = DMPPanel()
     refreshed = {"ok": False}
 
-    async def fake_refresh():
+    async def fake_refresh() -> None:
         refreshed["ok"] = True
 
     monkeypatch.setattr(p, "_refresh_user_cache", fake_refresh)
@@ -136,13 +138,13 @@ async def test_attach_detach_status_server_single_callback_registration(monkeypa
     monkeypatch.setattr("pydmp.panel.parse_s3_message", lambda msg: _Evt())
 
     class _Srv:
-        def __init__(self):
-            self.cb = None
+        def __init__(self) -> None:
+            self.cb: Any | None = None
 
-        def register_callback(self, cb):
+        def register_callback(self, cb: Any) -> None:
             self.cb = cb
 
-        def remove_callback(self, cb):  # noqa: D401
+        def remove_callback(self, cb: Any) -> None:  # noqa: D401
             if self.cb == cb:
                 self.cb = None
 
@@ -156,13 +158,13 @@ async def test_attach_detach_status_server_single_callback_registration(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_check_code_refresh(monkeypatch):
+async def test_check_code_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
     # test_panel_commands.py::test_check_code_refresh: successful refresh.
     p = DMPPanel()
     p._user_cache_by_code = {}
     p._user_cache_by_pin = {}
 
-    async def fake_refresh():
+    async def fake_refresh() -> None:
         u = make_user_code(code="1234", pin="1111")
         p._user_cache_by_code = {"1234": u}
         p._user_cache_by_pin = {"1111": u}
@@ -174,7 +176,7 @@ async def test_check_code_refresh(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_check_code_negative_paths(monkeypatch):
+async def test_check_code_negative_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     # test_panel_more.py::test_check_code_negative_paths: no-refresh miss, and
     # a refresh that raises still resolves to None.
     p = DMPPanel()
@@ -186,7 +188,7 @@ async def test_check_code_negative_paths(monkeypatch):
     assert got is None
 
     # Case 2: refresh raises exception then None
-    async def bad_refresh():  # noqa: D401
+    async def bad_refresh() -> None:  # noqa: D401
         raise RuntimeError("boom")
 
     monkeypatch.setattr(p, "_refresh_user_cache", bad_refresh)
@@ -195,7 +197,9 @@ async def test_check_code_negative_paths(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_check_code_cached_short_circuit_during_concurrent_refresh(monkeypatch):
+async def test_check_code_cached_short_circuit_during_concurrent_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # test_panel_more.py::test_refresh_user_cache_no_empty_window (PYDMP-006):
     # a concurrent refresh must never expose an emptied cache to check_code;
     # a cached reader short-circuits to the old entry until the atomic swap.
@@ -207,7 +211,7 @@ async def test_check_code_cached_short_circuit_during_concurrent_refresh(monkeyp
 
     gate = asyncio.Event()
 
-    async def slow_get_user_codes():
+    async def slow_get_user_codes() -> Any:
         # Mid-refresh the live cache must still expose the old entry
         # (no clear-then-repopulate window).
         assert p._user_cache_by_code.get("1234") is old
@@ -262,7 +266,12 @@ def _prof(num: str) -> UserProfile:
     ids=["user_codes", "user_profiles"],
 )
 @pytest.mark.asyncio
-async def test_get_user_codes_and_profiles_pagination(monkeypatch, panel_method, make_page, response_cls):
+async def test_get_user_codes_and_profiles_pagination(
+    monkeypatch: pytest.MonkeyPatch,
+    panel_method: str,
+    make_page: Any,
+    response_cls: Any,
+) -> None:
     # Merge of test_panel_commands.py::test_get_user_codes_pagination and
     # test_panel_send_sequences.py::test_get_user_profiles_pagination:
     # identical two-page pagination loop, parameterized over entity type.
@@ -271,7 +280,7 @@ async def test_get_user_codes_and_profiles_pagination(monkeypatch, panel_method,
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
 
     kwarg_name = "users" if response_cls is UserCodesResponse else "profiles"
     pages = [
@@ -280,7 +289,8 @@ async def test_get_user_codes_and_profiles_pagination(monkeypatch, panel_method,
     ]
     state = {"i": 0}
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> Any:
+        del self, command, kwargs
         i = state["i"]
         state["i"] = min(i + 1, len(pages) - 1)
         return pages[i]

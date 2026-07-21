@@ -1,5 +1,7 @@
-"""Status/zone/area/output-status update paths, plus leftover command-sequence
+"""Status/zone/area/output-status update paths, plus command-sequence
 and not-connected/missing-entity edge cases from the panel test cluster."""
+
+from typing import Any
 
 import pytest
 
@@ -14,9 +16,11 @@ from pydmp.protocol import (
     ZoneStatus,
 )
 
+from .fakes import cast_transport
+
 
 @pytest.mark.asyncio
-async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch):
+async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch: pytest.MonkeyPatch) -> None:
     # Merge of test_panel_update_status.py::test_update_status_merges_areas_and_zones
     # and test_panel_status_outputs.py::test_update_status_merges: exercises the
     # same merge path across multiple frames, including a trailing None frame.
@@ -25,7 +29,7 @@ async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch):
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
 
     frames = [
         StatusResponse(areas={"1": AreaStatus("1", "D", "Main")}, zones={}),
@@ -34,7 +38,8 @@ async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch):
     ]
     state = {"i": 0}
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> StatusResponse | None:
+        del self, command, kwargs
         i = state["i"]
         state["i"] = min(i + 1, len(frames) - 1)
         return frames[i]
@@ -64,7 +69,11 @@ async def test_update_status_merges_areas_and_zones_across_frames(monkeypatch):
     ],
 )
 @pytest.mark.asyncio
-async def test_update_output_status_maps_modes(monkeypatch, mode, expected_state):
+async def test_update_output_status_maps_modes(
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    expected_state: str | None,
+) -> None:
     # Merge of test_panel_more.py::test_get_output_invalid_number_and_mode_mapping_t_p
     # and test_panel_status_outputs.py::test_update_output_status_maps_modes.
     p = DMPPanel()
@@ -72,11 +81,12 @@ async def test_update_output_status_maps_modes(monkeypatch, mode, expected_state
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
 
     outs = {"001": OutputStatus(number="001", mode=mode, name="O1")}
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> OutputsResponse:
+        del self, command, kwargs
         return OutputsResponse(outputs=outs)
 
     monkeypatch.setattr(DMPPanel, "_send_command", fake_send)
@@ -89,16 +99,17 @@ async def test_update_output_status_maps_modes(monkeypatch, mode, expected_state
 
 
 @pytest.mark.asyncio
-async def test_update_status_command_sequence(monkeypatch):
+async def test_update_status_command_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
     p = DMPPanel()
 
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> None:
+        del self, kwargs
         calls.append(command)
         return None
 
@@ -111,16 +122,17 @@ async def test_update_status_command_sequence(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_update_output_status_command_sequence(monkeypatch):
+async def test_update_output_status_command_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
     p = DMPPanel()
 
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> None:
+        del self, kwargs
         calls.append(command)
         return None
 
@@ -132,16 +144,17 @@ async def test_update_output_status_command_sequence(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sensor_reset_sends_command(monkeypatch):
+async def test_sensor_reset_sends_command(monkeypatch: pytest.MonkeyPatch) -> None:
     p = DMPPanel()
 
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
     calls: list[str] = []
 
-    async def fake_send(self, command: str, **kwargs):
+    async def fake_send(self: DMPPanel, command: str, **kwargs: Any) -> str:
+        del self, kwargs
         calls.append(command)
         return "ACK"
 
@@ -151,24 +164,24 @@ async def test_sensor_reset_sends_command(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_start_keepalive_not_connected():
+async def test_start_keepalive_not_connected() -> None:
     p = DMPPanel()
     with pytest.raises(DMPConnectionError):
         await p.start_keepalive(0.1)
 
 
 @pytest.mark.asyncio
-async def test_sensor_reset_not_connected():
+async def test_sensor_reset_not_connected() -> None:
     p = DMPPanel()
     with pytest.raises(DMPConnectionError):
         await p.sensor_reset()
 
 
 @pytest.mark.asyncio
-async def test_get_area_missing_raises(monkeypatch):
+async def test_get_area_missing_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     p = DMPPanel()
 
-    async def no_update():
+    async def no_update() -> None:
         return None
 
     monkeypatch.setattr(p, "update_status", no_update)
@@ -176,6 +189,6 @@ async def test_get_area_missing_raises(monkeypatch):
     class _Conn:
         is_connected = True
 
-    p._connection = _Conn()  # type: ignore[attr-defined]
+    p._connection = cast_transport(_Conn())
     with pytest.raises(KeyError):
         await p.get_area(99)

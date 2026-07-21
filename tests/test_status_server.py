@@ -1,12 +1,12 @@
 import pytest
 
-from pydmp.status_server import DMPStatusServer
+from pydmp.status_server import DMPStatusServer, S3Message
 
-from .conftest import FakeReader, FakeWriter, frame_with_header
+from .fakes import FakeReader, FakeWriter, as_stream_reader, as_stream_writer, frame_with_header
 
 
 @pytest.mark.asyncio
-async def test_start_stop_idempotence():
+async def test_start_stop_idempotence() -> None:
     srv = DMPStatusServer(host="127.0.0.1", port=0)
     await srv.start()
     # Second start is no-op
@@ -17,9 +17,9 @@ async def test_start_stop_idempotence():
 
 
 @pytest.mark.asyncio
-async def test_handle_client_multiple_lines():
+async def test_handle_client_multiple_lines() -> None:
     srv = DMPStatusServer()
-    got = []
+    got: list[S3Message] = []
     srv.register_callback(lambda m: got.append(m))
 
     account = b"    1"
@@ -28,7 +28,7 @@ async def test_handle_client_multiple_lines():
     reader = FakeReader([line1 + line2, b""])  # both in one chunk
     writer = FakeWriter()
 
-    await srv._handle_client(reader, writer)
+    await srv._handle_client(as_stream_reader(reader), as_stream_writer(writer))
 
     # Expect two callbacks and two ACK frames
     assert len(got) == 2
@@ -36,10 +36,10 @@ async def test_handle_client_multiple_lines():
 
 
 @pytest.mark.asyncio
-async def test_real_panel_frame_with_header_bytes():
+async def test_real_panel_frame_with_header_bytes() -> None:
     """Frames from real panels have 6 header bytes between STX and account."""
     srv = DMPStatusServer()
-    got = []
+    got: list[S3Message] = []
     srv.register_callback(lambda m: got.append(m))
 
     acct = b"00001"
@@ -47,7 +47,7 @@ async def test_real_panel_frame_with_header_bytes():
     frame = frame_with_header(acct, z_body)
     reader = FakeReader([frame, b""])
     writer = FakeWriter()
-    await srv._handle_client(reader, writer)
+    await srv._handle_client(as_stream_reader(reader), as_stream_writer(writer))
 
     # ACK should contain the correct account
     assert b"\x0200001\x06\r" in writer.buffer
@@ -59,7 +59,7 @@ async def test_real_panel_frame_with_header_bytes():
 
 
 @pytest.mark.asyncio
-async def test_process_line_sends_ack_and_dispatches():
+async def test_process_line_sends_ack_and_dispatches() -> None:
     server = DMPStatusServer()
 
     # Build a simple Zq (arming status) line with OP (disarmed)
@@ -68,14 +68,14 @@ async def test_process_line_sends_ack_and_dispatches():
     z_body = 'Zq\\060\\t "OP\\a 01"AREA ONE\\'
     line = frame_with_header(account, z_body.encode("utf-8"))[:-1]  # strip trailing CR
 
-    received = {}
+    received: dict[str, S3Message] = {}
 
-    def cb(msg):
+    def cb(msg: S3Message) -> None:
         received["msg"] = msg
 
     server.register_callback(cb)
     writer = FakeWriter()
-    await server._process_line(line, writer)
+    await server._process_line(line, as_stream_writer(writer))
 
     # ACK should be: STX + 5 account chars + 0x06 + CR
     assert writer.buffer.startswith(b"\x02" + account + b"\x06\r")
@@ -91,19 +91,21 @@ async def test_process_line_sends_ack_and_dispatches():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_handles_coroutines_and_exceptions(caplog):
+async def test_dispatch_handles_coroutines_and_exceptions(caplog: pytest.LogCaptureFixture) -> None:
     srv = DMPStatusServer()
     got = {"ok": False}
 
-    async def good_cb(msg):  # noqa: D401
+    async def good_cb(msg: S3Message) -> None:  # noqa: D401
+        del msg
         got["ok"] = True
 
-    async def bad_cb(msg):  # noqa: D401
+    async def bad_cb(msg: S3Message) -> None:  # noqa: D401
+        del msg
         raise RuntimeError("boom")
 
     srv.register_callback(good_cb)
     srv.register_callback(bad_cb)
-    await srv._dispatch(object())
+    await srv._dispatch(S3Message("", "", None, [], ""))
     assert got["ok"] is True
 
 
@@ -129,7 +131,7 @@ async def test_dispatch_handles_coroutines_and_exceptions(caplog):
         pytest.param(b"\x02short", None, id="too-short"),
     ],
 )
-def test_extract_account(line, expected):
+def test_extract_account(line: bytes, expected: bytes | None) -> None:
     assert DMPStatusServer._extract_account(line) == expected
 
 
@@ -167,14 +169,19 @@ def test_extract_account(line, expected):
         ),
     ],
 )
-async def test_ack_behavior(reader_chunks, expected_ack_count, expect_callback, exact_ack):
+async def test_ack_behavior(
+    reader_chunks: list[bytes],
+    expected_ack_count: int,
+    expect_callback: bool | None,
+    exact_ack: bytes | None,
+) -> None:
     srv = DMPStatusServer()
-    got = []
+    got: list[S3Message] = []
     srv.register_callback(lambda m: got.append(m))
 
     reader = FakeReader(reader_chunks)
     writer = FakeWriter()
-    await srv._handle_client(reader, writer)
+    await srv._handle_client(as_stream_reader(reader), as_stream_writer(writer))
 
     assert writer.buffer.count(b"\x06\r") == expected_ack_count
     if exact_ack is not None:

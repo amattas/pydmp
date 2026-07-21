@@ -6,12 +6,12 @@ Includes:
   (mirrors the mapping used by hass-dmp's StatusResponse).
 """
 
-from enum import Enum
+from enum import StrEnum
 
 # Human-readable status strings live in const.strings (AREA_STATUS, ZONE_STATUS)
 
 
-class DMPResponse(str, Enum):
+class DMPResponse(StrEnum):
     """DMP panel response message prefixes."""
 
     # Status responses

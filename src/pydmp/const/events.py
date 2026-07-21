@@ -11,10 +11,10 @@ provided below. The legacy DMPEvent enum remains for common codes but is
 not exhaustive. Prefer category enums for precise handling.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class DMPEventType(str, Enum):
+class DMPEventType(StrEnum):
     """Event Definition categories (Zx)."""
 
     ZONE_ALARM = "Za"
@@ -42,7 +42,7 @@ class DMPEventType(str, Enum):
     RESERVED = "Zz"
 
 
-class DMPEvent(str, Enum):
+class DMPEvent(StrEnum):
     """Common event type codes (legacy/unscoped).
 
     Prefer the category-specific enums below for full coverage and to avoid
@@ -110,7 +110,7 @@ class DMPEvent(str, Enum):
 # Category‑specific event type codes (tXX)
 
 
-class DMPZoneEvent(str, Enum):
+class DMPZoneEvent(StrEnum):
     BLANK = "BL"
     FIRE = "FI"
     BURGLARY = "BU"
@@ -123,7 +123,7 @@ class DMPZoneEvent(str, Enum):
     VIDEO_ALARM = "VA"
 
 
-class DMPScheduleEvent(str, Enum):
+class DMPScheduleEvent(StrEnum):
     PERMANENT = "PE"
     TEMPORARY = "TE"
     PRIMARY = "PR"
@@ -134,26 +134,26 @@ class DMPScheduleEvent(str, Enum):
     SHIFT_FOUR = "S4"
 
 
-class DMPHolidayEvent(str, Enum):
+class DMPHolidayEvent(StrEnum):
     HOLIDAY_A = "HA"
     HOLIDAY_B = "HB"
     HOLIDAY_C = "HC"
 
 
-class DMPUserCodeEvent(str, Enum):
+class DMPUserCodeEvent(StrEnum):
     ADDED = "AD"
     CHANGED = "CH"
     DELETED = "DE"
     INACTIVE = "IN"
 
 
-class DMPArmingEvent(str, Enum):
+class DMPArmingEvent(StrEnum):
     DISARMED = "OP"
     ARMED = "CL"
     LATE_TO_ARM = "LA"
 
 
-class DMPAccessEvent(str, Enum):
+class DMPAccessEvent(StrEnum):
     ACCESS_GRANTED = "DA"
     DENIED_ARMED = "AA"
     DENIED_INVALID_AREA = "IA"
@@ -165,7 +165,7 @@ class DMPAccessEvent(str, Enum):
     DENIED_INACTIVE_USER = "IN"
 
 
-class DMPRealTimeStatusEvent(str, Enum):
+class DMPRealTimeStatusEvent(StrEnum):
     DOOR_OPEN = "DO"
     DOOR_CLOSED = "DC"
     DOOR_HELD_OPEN = "HO"
@@ -177,7 +177,7 @@ class DMPRealTimeStatusEvent(str, Enum):
     OUTPUT_MOMENTARY = "MO"
 
 
-class DMPEquipmentEvent(str, Enum):
+class DMPEquipmentEvent(StrEnum):
     REPAIR = "RP"
     REPLACE = "RL"
     ADD = "AD"
@@ -195,12 +195,12 @@ class DMPEquipmentEvent(str, Enum):
     CONTACT_ID = "CD"
 
 
-class DMPServiceUserEvent(str, Enum):
+class DMPServiceUserEvent(StrEnum):
     START = "ST"
     STOP = "SP"
 
 
-class DMPQualifierEvent(str, Enum):
+class DMPQualifierEvent(StrEnum):
     SERVICE = "DT"
     ALL_AREAS_ARMED = "AC"
     LOCAL_ALARM_OR_RESTORE = "LC"

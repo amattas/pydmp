@@ -78,9 +78,18 @@ def test_sync_disconnect_exception_path_and_context_manager(monkeypatch):
         def is_connected(self):  # noqa: D401
             return self.connected
 
+    created: list[_OkTransport] = []
+    original_init = _OkTransport.__init__
+
+    def tracking_init(self, *a, **k):
+        original_init(self, *a, **k)
+        created.append(self)
+
+    monkeypatch.setattr(_OkTransport, "__init__", tracking_init)
     monkeypatch.setattr(ts, "DMPTransport", _OkTransport)
-    with DMPTransportSync("h", "1", "KEY") as s:
-        assert s.is_connected or True
+    with DMPTransportSync("h", "1", "KEY"):
+        assert created and created[0].connected
+    assert not created[0].connected
 
 
 def test_send_command_pass_through(monkeypatch):

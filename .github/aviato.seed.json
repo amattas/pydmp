@@ -1,0 +1,13 @@
+{
+  ".github/CODEOWNERS": "26ee9967a3f925a90884109369889269e9367b2dfc35aeca594e277554d29101",
+  ".github/ISSUE_TEMPLATE/bug_report.md": "5925163aaecb9bbcc8c1957de7296f73e225f9bf2d34e67c0012b4b9f4721f50",
+  ".github/ISSUE_TEMPLATE/feature_request.md": "e3466a777cbe4b41f810183fc9cb538d4895842e6de7a54da13a6986801acd6f",
+  ".github/pull_request_template.md": "6cc2f5b1567a5091a6cc0aa010ca07f0fe2098d7fb80291b6ced4518fbe5ab5e",
+  "CONTRIBUTING.md": "98db92793f47138168f387a48faf288869e190c1a6c96ef3ca199bc4d23a0515",
+  "LICENSE": "942a73bf018c24925a99f1830cb2387c65daf679b5d0532b67648d9467dc141e",
+  "docs/index.md": "cc5512f87d03361e1c73057f69c57214f39588382a1b74a41aac69de35cda956",
+  "pyproject.toml": "631a223cefea168d20ef466b7ae8029752db0e88fa9f1a04caf1389b1b21bd8a",
+  "src/pydmp/__init__.py": "ccd0cd9e375eee034894893bbf4d24fa7946a48d6cfad78bb9d3b7a7ba4305d6",
+  "tests/test_package.py": "f081aa4440cf4994a93a2b6b8fc3ad5f37780cdcc93d9312ce8328e16941339e",
+  "zensical.toml": "ba0ff7f922fd4517d9ce96ccd576200bf55dad6eaec2b2281b01b4bf7038ea32"
+}

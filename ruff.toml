@@ -1,0 +1,11 @@
+# aviato:managed profile=python-library version=0.6.1 hash=f45b8ee3ab4336c87eb0d142f81dd2088b415f3ebafbe8a5ff015dfbf29dfada inputs=8950f298b61aedbc776df3afcc1c6e8ff6ed212fa7bc425e2f46a08c099df193
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "S"]
+
+# assert IS the pytest mechanism; without this exemption the deliberate S (bandit)
+# family drowns adopted test suites in S101 (first live adoption: 293 findings).
+[lint.per-file-ignores]
+"tests/**" = ["S101"]

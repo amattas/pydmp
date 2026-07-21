@@ -71,9 +71,7 @@ class _SyncPanel:
         (Output, 12, 0),
     ],
 )
-async def test_entity_constructor_validation_and_state_updates(
-    entity_cls, valid_number, invalid_number
-):
+async def test_entity_constructor_validation_and_state_updates(entity_cls, valid_number, invalid_number):
     p = _FakePanel()
     with pytest.raises(DMPInvalidParameterError):
         entity_cls(p, invalid_number)
@@ -185,7 +183,7 @@ async def test_output_nak_error():
 @pytest.mark.parametrize(
     "mode,expected_state",
     [
-        ("M", DMPRealTimeStatusEvent.OUTPUT_ON.value),
+        ("M", DMPRealTimeStatusEvent.OUTPUT_MOMENTARY.value),
         ("O", DMPRealTimeStatusEvent.OUTPUT_OFF.value),
         ("P", DMPRealTimeStatusEvent.OUTPUT_PULSE.value),
         ("S", DMPRealTimeStatusEvent.OUTPUT_ON.value),

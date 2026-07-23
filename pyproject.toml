@@ -32,7 +32,7 @@ dev = [
     "black==26.5.1",
     "mypy==2.3.0",
     "ruff==0.15.22",
-    "pre-commit==4.6.0",
+    "pre-commit==4.6.1",
     # The verify's build job runs `python -m build` from the dev install.
     "build==1.5.0",
     # CI installs .[dev] only and the test suite imports pydmp.cli — the cli deps must

@@ -1,4 +1,6 @@
-# aviato:managed profile=python-library version=0.6.1 hash=f6ad939f4c425f7e1810e384e15e9eaad217b5bf2d82a502ece034a1a7a3f2f7 inputs=706a2071723c9f4cf6924618cdb09f4ad1a8d800092d4a4d92ce4d20bda0f5c4
+# aviato:managed profile=python-library version=2.0.1
+# aviato:hash=f6ad939f4c425f7e1810e384e15e9eaad217b5bf2d82a502ece034a1a7a3f2f7
+# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 # Aviato-managed docs toolchain (§13.3). Exact pins only (§11.3); update docs-toolchain.yaml.
 zensical==0.0.50
 mike @ git+https://github.com/squidfunk/mike.git@2d4ad799442f4592db8ad53b179bfb33db8c69ac

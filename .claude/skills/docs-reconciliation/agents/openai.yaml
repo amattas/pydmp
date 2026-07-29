@@ -1,0 +1,5 @@
+# aviato:managed profile=python-library version=2.0.0 hash=53558bb710685e075550b7a5c2601edc20c2fb9d7c882851a7f662c789324a47 inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
+interface:
+  display_name: "Docs Reconciliation"
+  short_description: "Reconcile docs, backlogs, and old plans"
+  default_prompt: "Use $docs-reconciliation to promote durable content and prune obsolete documentation safely."

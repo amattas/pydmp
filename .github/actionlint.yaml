@@ -1,0 +1,22 @@
+# aviato:managed profile=python-library version=2.0.0 hash=6961c9b13a14202b00facd83974617459466815eb526f9e0c763412dc61ccf5b inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
+# actionlint configuration.
+#
+# `paths:` maps a workflow path glob to the finding messages actionlint must ignore in
+# THAT file only. Every other workflow in this repository — including every one you
+# author — is still linted with the complete rule set.
+#
+# Why the Aviato callers need an entry: they are FLATTENED at sync time. The reusable
+# job graph is inlined and each reusable input is substituted for its literal caller
+# value, so a gate that reads `inputs.run-typecheck` upstream lands in the generated
+# file as an expression over literals — `true`, or `'' != ''`. actionlint's `if-cond`
+# rule reports every one of those as a constant expression, and the CI workflow Aviato
+# ships runs a blocking `actionlint` over `.github/workflows` — i.e. over itself.
+# There is no emit-side fix (a plain `if: false` is flagged identically), so `if-cond`
+# is silenced for the two generated files and left fully live everywhere else.
+paths:
+  .github/workflows/aviato-ci.yml:
+    ignore:
+      - 'constant expression .+ in condition'
+  .github/workflows/aviato-docs.yml:
+    ignore:
+      - 'constant expression .+ in condition'

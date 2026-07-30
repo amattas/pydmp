@@ -1,63 +1,654 @@
-# aviato:managed profile=python-library version=0.6.1 hash=9c9218e7b79e12a442f2b7aeb30654b645518be94175ef962de888c162589004 inputs=706a2071723c9f4cf6924618cdb09f4ad1a8d800092d4a4d92ce4d20bda0f5c4
+# aviato:managed profile=python-library version=2.1.1
+# aviato:hash=5274ee04f2af805f3f45c8ee2fd17e63847d215af5a915d94f6053d291b95981
+# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: Aviato Python Library
-
 on:
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
   push:
-    branches: ["main"]
+    branches:
+      - main
     tags:
-      - "*.*.*"
+      - '*.*.*'
   schedule:
-    - cron: "23 5 * * 1"
-  # §5.9: lets the release propose phase dispatch this workflow at the
-  # release/<next> branch (workflow_dispatch is exempt from GITHUB_TOKEN event
-  # suppression), so the release PR reports the same required status checks as
-  # any human branch.
-  workflow_dispatch:
-
-# Granted to the UNION of every called reusable workflow's permissions: a caller
-# cannot elevate the token for a called workflow, so it must grant >= their needs
-# (release propose-dispatch: actions:write). PyPI OIDC and attestation writes are
-# granted only to the consumer-local publisher job below.
+    - cron: 23 5 * * 1
+  workflow_dispatch: null
 permissions:
   contents: write
   pull-requests: write
   security-events: write
   actions: write
   statuses: write
-
 jobs:
+  pick-runner:
+    name: Pick runner
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
+    outputs:
+      runner: ${{ steps.check.outputs.runner }}
+    steps:
+      - name: Probe self-hosted runner availability
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_STATUS_PAT }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+          # Default to the GitHub-hosted runner and only ever narrow to self-hosted below, so every
+          # failure mode (fork PR, missing PAT, API error, no runner online) lands on hosted.
+          runner='["ubuntu-latest"]'
+          # Fork safety: a pull_request from a fork runs untrusted code, which must never reach a
+          # self-hosted runner. Only pushes and same-repo PRs qualify. HEAD_REPO is attacker-influenced,
+          # so it arrives through env and is only ever compared — never interpolated into this script.
+          if [ "${GITHUB_EVENT_NAME}" != "pull_request" ] || [ "${HEAD_REPO}" = "${GITHUB_REPOSITORY}" ]; then
+            if [ -n "${GH_TOKEN:-}" ]; then
+              online=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners" \
+                --jq '[.runners[] | select(.status == "online")] | length' || echo 0)
+              if [ "${online:-0}" -gt 0 ]; then
+                runner='["self-hosted"]'
+              fi
+            fi
+          fi
+          echo "runner=${runner}" >> "$GITHUB_OUTPUT"
   ci:
-    if: ${{ github.ref_type != 'tag' && github.event_name != 'schedule' }}
-    uses: amattas/aviato/.github/workflows/reusable-python-ci.yml@0.6.1
-    with:
-      python-version: "3.12"
-      install-command: "python -m pip install -e .[dev]"
-      lint-command: "python -m ruff check ."
-      test-command: "python -m pytest --cov --cov-report=term-missing"
-      build-command: "python -m build"
-      typecheck-command: "python -m mypy --strict ."
-      run-typecheck: true
-      run-build: true
+    name: Python CI
+    if: ${{ !cancelled() && (github.ref_type != 'tag' && github.event_name != 'schedule') }}
+    needs:
+      - pick-runner
+    runs-on: ${{ fromJSON(needs.pick-runner.outputs.runner || '["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install
+        if: ${{ true && 'python -m pip install -e .[dev]' != '' }}
+        shell: bash
+        env:
+          INSTALL_COMMAND: python -m pip install -e .[dev]
+        run: eval "$INSTALL_COMMAND"
+      - name: Lint
+        if: ${{ true && 'python -m ruff check .' != '' }}
+        shell: bash
+        env:
+          LINT_COMMAND: python -m ruff check .
+        run: eval "$LINT_COMMAND"
+      - name: Format check
+        if: ${{ true && 'python -m ruff format --check .' != '' }}
+        shell: bash
+        env:
+          FORMAT_COMMAND: python -m ruff format --check .
+        run: eval "$FORMAT_COMMAND"
+      - name: Type check
+        if: ${{ true && 'python -m mypy --strict .' != '' }}
+        shell: bash
+        env:
+          TYPECHECK_COMMAND: python -m mypy --strict .
+        run: eval "$TYPECHECK_COMMAND"
+      - name: Test
+        if: ${{ true && 'python -m pytest --cov --cov-report=term-missing' != '' }}
+        shell: bash
+        env:
+          TEST_COMMAND: python -m pytest --cov --cov-report=term-missing
+        run: eval "$TEST_COMMAND"
+      - name: Build
+        if: ${{ true && 'python -m build' != '' }}
+        shell: bash
+        env:
+          BUILD_COMMAND: python -m build
+        run: eval "$BUILD_COMMAND"
+  security--resolve-target:
+    name: Resolve analyzed target
+    runs-on: ubuntu-latest
+    permissions: &id001
+      contents: read
+      pull-requests: read
+      security-events: write
+      actions: read
+    outputs:
+      canonical-ref: ${{ steps.canonicalize.outputs.canonical-ref }}
+      analyzed-sha: ${{ steps.resolve.outputs.analyzed-sha }}
+    steps:
+      - name: Canonicalize requested ref
+        id: canonicalize
+        shell: bash
+        env:
+          REQUESTED_REF: ''
+          EVENT_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          canonical_ref="${REQUESTED_REF:-${EVENT_REF}}"
+          if [[ -n "${REQUESTED_REF}" && "${REQUESTED_REF}" != refs/* ]]; then
+            canonical_ref="refs/tags/${REQUESTED_REF}"
+          fi
+          echo "canonical-ref=${canonical_ref}" >> "${GITHUB_OUTPUT}"
+      - name: Fetch requested ref and tags
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ steps.canonicalize.outputs.canonical-ref }}
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Resolve canonical ref and commit
+        id: resolve
+        shell: bash
+        env:
+          REQUESTED_SHA: ''
+          EVENT_SHA: ${{ github.sha }}
+          CUSTOM_REF: ''
+          CANONICAL_REF: ${{ steps.canonicalize.outputs.canonical-ref }}
+        run: |
+          set -euo pipefail
+          # actions/checkout resolved CANONICAL_REF and fetched tags. Peeling
+          # HEAD^{commit} makes annotated and lightweight tags converge on the commit scanners use.
+          analyzed_sha="$(git rev-parse 'HEAD^{commit}')"
+          expected_sha="${REQUESTED_SHA}"
+          if [[ -z "${CUSTOM_REF}" && -z "${expected_sha}" ]]; then
+            expected_sha="${EVENT_SHA}"
+          fi
+          if [[ -n "${expected_sha}" && "${analyzed_sha}" != "${expected_sha}" ]]; then
+            echo "::error::Requested ref ${CANONICAL_REF} resolved to ${analyzed_sha}, expected ${expected_sha}."
+            exit 1
+          fi
+          echo "analyzed-sha=${analyzed_sha}" >> "${GITHUB_OUTPUT}"
+  security--privilege-probe:
+    name: Probe findings-upload privilege
+    needs:
+      - security--resolve-target
+    runs-on: ubuntu-latest
+    permissions: *id001
+    steps:
+      - name: Jitter (scheduled runs only)
+        if: ${{ github.event_name == 'schedule' }}
+        shell: bash
+        run: sleep $((RANDOM % 120))
+      - name: Verify security-events scope
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if gh api "repos/${REPO}/code-scanning/analyses?per_page=1" >/dev/null 2>err.txt; then
+            echo "security-events scope present."
+          elif grep -qiE '403|resource not accessible|forbidden|must have' err.txt; then
+            echo "::error::Missing security-events privilege required for SARIF upload (§8.16)."
+            cat err.txt
+            exit 1
+          elif grep -qiE 'HTTP 404' err.txt && grep -qiE 'no analysis|code scanning|not enabled|not set up' err.txt; then
+            # Genuine first-run absence (code scanning has produced no analyses yet) is
+            # the ONE tolerated failure shape — the scope itself is fine.
+            echo "No analyses yet / code scanning not initialized; scope check passes."
+          else
+            # finding 8: an UNRECOGNIZED failure (5xx, rate limit, novel wording) must not
+            # read as "scope appears present" — fail closed here rather than letting the
+            # real failure surface later at SARIF upload (§5.14).
+            echo "::error::Could not determine security-events scope (unexpected API failure); failing closed (§5.14)."
+            cat err.txt
+            exit 1
+          fi
+  security--codeql:
+    name: CodeQL
+    if: ${{ true && 'python' != '' }}
+    needs:
+      - security--privilege-probe
+      - security--resolve-target
+    runs-on: ubuntu-latest
+    permissions: *id001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          ref: ${{ needs.security--resolve-target.outputs.canonical-ref }}
+          sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+          wait-for-processing: true
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Gate CodeQL high/critical alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANALYZED_REF: ${{ needs.security--resolve-target.outputs.canonical-ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="$(python3 - <<'PY'
+          import os
+          from urllib.parse import quote
 
+          repo = os.environ["GITHUB_REPOSITORY"]
+          ref = quote(os.environ["ANALYZED_REF"], safe="")
+          print(f"repos/{repo}/code-scanning/alerts?state=open&ref={ref}&tool_name=CodeQL&per_page=100")
+          PY
+          )"
+          response="$(mktemp)"
+          trap 'rm -f "${response}"' EXIT
+          if ! gh api --paginate --slurp "${endpoint}" > "${response}"; then
+            echo "::error::CodeQL alert query failed; refusing to treat an ambiguous result as clean."
+            exit 1
+          fi
+          python3 - "${response}" <<'PY'
+          import json
+          import sys
+
+          try:
+              pages = json.load(open(sys.argv[1], encoding="utf-8"))
+          except (OSError, json.JSONDecodeError) as exc:
+              print(f"::error::CodeQL alert response was unreadable: {exc}")
+              raise SystemExit(1) from exc
+          if not pages or not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+              print("::error::CodeQL alert response did not contain an unambiguous paginated result.")
+              raise SystemExit(1)
+
+          blocking = []
+          for page in pages:
+              for alert in page:
+                  if not isinstance(alert, dict) or not isinstance(alert.get("rule"), dict):
+                      print("::error::CodeQL alert response contained an invalid alert shape.")
+                      raise SystemExit(1)
+                  rule = alert["rule"]
+                  if "security_severity_level" not in rule:
+                      print("::error::CodeQL alert response omitted security_severity_level.")
+                      raise SystemExit(1)
+                  severity = rule.get("security_severity_level")
+                  if severity not in (None, "low", "medium", "high", "critical"):
+                      print("::error::CodeQL alert response contained an unknown security severity.")
+                      raise SystemExit(1)
+                  number = alert.get("number")
+                  rule_id = rule.get("id")
+                  url = alert.get("html_url")
+                  if (
+                      not isinstance(number, int)
+                      or isinstance(number, bool)
+                      or not isinstance(rule_id, str)
+                      or not rule_id
+                      or "\n" in rule_id
+                      or "\r" in rule_id
+                      or not isinstance(url, str)
+                      or not url.startswith(("https://", "http://"))
+                      or "\n" in url
+                      or "\r" in url
+                  ):
+                      print("::error::CodeQL alert response contained unsafe or missing display fields.")
+                      raise SystemExit(1)
+                  if severity in ("high", "critical"):
+                      blocking.append((number, rule_id, severity, url))
+
+          for number, rule_id, severity, url in blocking:
+              print(f"::error::CodeQL alert #{number}: rule={rule_id} severity={severity} url={url}")
+          if blocking:
+              print(f"::error::{len(blocking)} open high/critical CodeQL alert(s) block this ref.")
+              raise SystemExit(1)
+          print("No open high/critical CodeQL alerts for the analyzed ref and CodeQL tool.")
+          PY
+  security--dependency-review:
+    name: Dependency Review
+    if: ${{ true && github.event_name == 'pull_request' }}
+    needs:
+      - security--privilege-probe
+      - security--resolve-target
+    runs-on: ubuntu-latest
+    permissions: *id001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+      - name: Dependency review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+  security--dependency-scan:
+    name: Dependency vulnerability scan
+    needs:
+      - security--privilege-probe
+      - security--resolve-target
+    runs-on: ubuntu-latest
+    permissions: *id001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+      - name: Report dependency findings (all severities, no gate)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+          ignore-unfixed: true
+          scanners: vuln
+          format: sarif
+          output: trivy-deps.sarif
+      - name: Upload dependency findings
+        if: ${{ always() }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-deps.sarif
+          category: aviato-dependency-scan
+          ref: ${{ needs.security--resolve-target.outputs.canonical-ref }}
+          sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+      - name: Gate on high/critical dependencies (§2.13)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          scanners: vuln
+          format: table
+  security--secret-scan:
+    name: Secret scan
+    needs:
+      - security--privilege-probe
+      - security--resolve-target
+    runs-on: ubuntu-latest
+    permissions: *id001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+      - name: Scan for secrets
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scan-ref: .
+          exit-code: '1'
+          scanners: secret
+          format: sarif
+          output: trivy-secrets.sarif
+      - name: Upload secret findings
+        if: ${{ always() }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: aviato-secret-scan
+          ref: ${{ needs.security--resolve-target.outputs.canonical-ref }}
+          sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+  security--heartbeat:
+    name: Security baseline heartbeat
+    if: ${{ always() }}
+    needs:
+      - security--resolve-target
+      - security--codeql
+      - security--dependency-review
+      - security--dependency-scan
+      - security--secret-scan
+    runs-on: ubuntu-latest
+    permissions: *id001
+    env:
+      CODEQL_RESULT: ${{ needs.security--codeql.result }}
+      DEPSCAN_RESULT: ${{ needs.security--dependency-scan.result }}
+      SECRET_RESULT: ${{ needs.security--secret-scan.result }}
+      DEPREVIEW_RESULT: ${{ needs.security--dependency-review.result }}
+      RUN_CODEQL: true
+      CODEQL_LANGUAGES: python
+      ANALYZED_REF: ${{ needs.security--resolve-target.outputs.canonical-ref }}
+      ANALYZED_SHA: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
+    steps:
+      - name: Emit heartbeat
+        shell: bash
+        run: |
+          mkdir -p heartbeat
+          printf '{"tool":"aviato-security-baseline","analyzed_ref":"%s","analyzed_sha":"%s","sast":"%s","dependency":"%s","secret":"%s","review":"%s","completed":true}\n' \
+            "${ANALYZED_REF}" "${ANALYZED_SHA}" "${CODEQL_RESULT}" "${DEPSCAN_RESULT}" "${SECRET_RESULT}" "${DEPREVIEW_RESULT}" \
+            > heartbeat/aviato-security-heartbeat.json
+          cat heartbeat/aviato-security-heartbeat.json
+      - name: Gate on required scans
+        shell: bash
+        run: |
+          # The gating scans must have SUCCEEDED (skipped/failed/cancelled = broken, §5.14).
+          for name in DEPSCAN SECRET; do
+            eval "result=\${${name}_RESULT}"
+            if [ "${result}" != "success" ]; then
+              echo "::error::${name} scan did not run successfully (result=${result}); broken (§5.14)."
+              exit 1
+            fi
+          done
+          # SAST must not silently no-op: if CodeQL is enabled (run-codeql=true) it MUST
+          # have succeeded. A skipped CodeQL (e.g. run-codeql=true but codeql-languages
+          # left empty) is broken, not clean — absence reads as broken (§5.14/§8.16).
+          if [ "${RUN_CODEQL}" = "true" ]; then
+            if [ -z "${CODEQL_LANGUAGES}" ]; then
+              echo "::error::run-codeql is true but codeql-languages is empty; SAST cannot run. Set codeql-languages (§5.14/§8.16)."
+              exit 1
+            fi
+            if [ "${CODEQL_RESULT}" != "success" ]; then
+              echo "::error::CodeQL SAST was enabled but did not succeed (result=${CODEQL_RESULT}); broken (§5.14/§8.16)."
+              exit 1
+            fi
+          else
+            # §2.13/§5.14: SAST is an ALWAYS-ON baseline — no profile may turn it off. A caller
+            # passing run-codeql=false would skip SAST and (previously) pass the gate silently.
+            # That is the §8.16 fail-open the baseline forbids: reject it.
+            echo "::error::SAST is disabled (run-codeql=${RUN_CODEQL}); the §2.13 security baseline is always-on and cannot be turned off (§5.14/§8.16)."
+            exit 1
+          fi
+      - name: Upload heartbeat
+        uses: actions/upload-artifact@v7
+        with:
+          name: aviato-security-heartbeat-${{ needs.security--resolve-target.outputs.analyzed-sha }}
+          path: heartbeat/aviato-security-heartbeat.json
+          retention-days: 30
   security:
-    # Runs on PRs AND on the release tag, so source scans gate the verify pipeline
-    # and are re-run on the release ref before any deploy (§2.13/§5.14).
-    uses: amattas/aviato/.github/workflows/reusable-security-baseline.yml@0.6.1
-    with:
-      codeql-languages: "python"
-
+    name: security (aggregate)
+    if: ${{ always() }}
+    needs:
+      - security--resolve-target
+      - security--privilege-probe
+      - security--codeql
+      - security--dependency-review
+      - security--dependency-scan
+      - security--secret-scan
+      - security--heartbeat
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      RESULT_0: ${{ needs.security--resolve-target.result }}
+      RESULT_1: ${{ needs.security--privilege-probe.result }}
+      RESULT_2: ${{ needs.security--codeql.result }}
+      RESULT_3: ${{ needs.security--dependency-review.result }}
+      RESULT_4: ${{ needs.security--dependency-scan.result }}
+      RESULT_5: ${{ needs.security--secret-scan.result }}
+      RESULT_6: ${{ needs.security--heartbeat.result }}
+    steps:
+      - name: Aggregate security
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Aggregate the inlined security job graph: fail if any hoisted job
+          # failed or was cancelled (a skipped job — e.g. a PR-only path on a tag run — is fine),
+          # so downstream `needs.security.result` matches the reusable-call semantics.
+          for r in "${RESULT_0}" "${RESULT_1}" "${RESULT_2}" "${RESULT_3}" "${RESULT_4}" "${RESULT_5}" "${RESULT_6}"; do
+            case "${r}" in
+              failure|cancelled) echo "::error::inlined security job did not succeed (${r})."; exit 1 ;;
+            esac
+          done
+          echo "security: all inlined jobs succeeded or were skipped."
   common-lint:
-    if: ${{ github.ref_type != 'tag' }}
-    uses: amattas/aviato/.github/workflows/reusable-common-lint.yml@0.6.1
-    with:
-      aviato-ref: 0.6.1
-      local-install: false
-
+    name: Common lint
+    if: ${{ !cancelled() && (github.ref_type != 'tag') }}
+    needs:
+      - pick-runner
+    runs-on: ${{ fromJSON(needs.pick-runner.outputs.runner || '["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install lint toolchain (hash-pinned, §11.3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # §11.3, applied to the gate itself: the job that enforces exact pinning installs its
+          # OWN enforcing tools (yamllint, zizmor) from a fully hashed transitive closure, into
+          # the interpreter declared above — never from an ambient `python` resolving floating
+          # transitives from PyPI at gate time. Regenerate per the lockfile's header.
+          python3 -m pip install --quiet --require-hashes -r .github/aviato/lint-tools.lock
+      - name: yamllint (blocking)
+        shell: bash
+        run: |
+          # Honor the repo's own yamllint config when present; otherwise fall back to a
+          # baseline that accepts the Aviato-generated caller workflows (long `if:`
+          # expressions, GitHub's truthy `on:` key) without disabling syntax checks.
+          if [ -f .yamllint ] || [ -f .yamllint.yaml ] || [ -f .yamllint.yml ]; then
+            yamllint -s .
+          else
+            yamllint -s -d '{extends: default, rules: {braces: disable, comments: disable, comments-indentation: disable, document-start: disable, truthy: disable, empty-lines: {max: 2, max-end: 1}, line-length: {max: 240}}}' .
+          fi
+      - name: actionlint (blocking)
+        shell: bash
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          if [ ! -d .github/workflows ]; then
+            echo "No workflows to lint."; exit 0
+          fi
+          # §11.3: pin the shell-fetched tool by checksum, not by mutable version alone.
+          tarball="${RUNNER_TEMP:-/tmp}/actionlint.tar.gz"
+          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o "${tarball}"
+          echo "${ACTIONLINT_SHA256}  ${tarball}" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f "${tarball}" actionlint
+          actionlint
+      - name: Supply-chain pins — zizmor (blocking, §11.3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d .github/workflows ]; then echo "No workflows to check."; exit 0; fi
+          # Decision 2: self-contained supply-chain gate — zizmor installed from the hash-pinned
+          # lockfile above (no aviato install) with the bundled Aviato config embedded. Gated
+          # audits: unpinned-uses, unpinned-images, template-injection.
+          cfg="${RUNNER_TEMP:-/tmp}/aviato-zizmor.yml"
+          cat > "${cfg}" <<'AVIATO_ZIZMOR_CONFIG'
+          # §11.3 single source of truth for action/image pinning, shipped in the wheel and passed to
+          # zizmor via `--config` by `aviato lint-actions` (so every consumer gets the Library policy
+          # without authoring their own config). Most-specific pattern wins.
+          #
+          # GATED audits (aviato/plugins/zizmor_scan.py:_GATED_AUDITS): `unpinned-uses`,
+          # `unpinned-images`, and — operator decision 2026-06 (finding 18) — `template-injection`.
+          # zizmor still runs its other audits; those findings are intentionally ignored here
+          # until explicitly adopted (a deliberate scope, not an oversight).
+          rules:
+            unpinned-uses:
+              config:
+                policies:
+                  actions/*: ref-pin          # first-party GitHub — branch/tag allowed
+                  github/*: ref-pin
+                  # Phase 3 (belt-and-braces): the former `{library.repository}/*: ref-pin` self-ref exemption
+                  # is REMOVED. Consumer callers are now fully flattened — the Library's reusable workflows are
+                  # inlined, so no rendered workflow carries a cross-repo `<owner>/aviato/.github/workflows/…`
+                  # `uses:` any longer. Defaulting that owner to hash-pin turns zizmor into an ENFORCEMENT
+                  # mechanism for "no library reusable `uses:` refs": a resurrected cross-repo reusable ref
+                  # (which can never be a 40-hex SHA) hard-fails the gate rather than passing under ref-pin.
+                  "*": hash-pin                # everything else: 40-hex SHA required
+          AVIATO_ZIZMOR_CONFIG
+          # The report goes to a FILE, not a pipe: `python3 - <<HEREDOC` already takes the
+          # program on stdin, so piping the findings in as well is the redirect shellcheck
+          # rejects as SC2259 — and the heredoc wins, leaving the reader with an empty
+          # stdin. Passing the path as argv keeps both channels distinct (issue #24).
+          findings="${RUNNER_TEMP:-/tmp}/aviato-zizmor.json"
+          zizmor --config "${cfg}" --format json --no-exit-codes --offline --persona=auditor --no-ignores .github/workflows > "${findings}"
+          python3 - "${findings}" <<'PYZIZMOR'
+          import json, sys
+          gated = {"unpinned-uses", "unpinned-images", "template-injection"}
+          with open(sys.argv[1], encoding="utf-8") as report:
+              data = json.load(report)
+          if not isinstance(data, list):
+              print("::error::unexpected zizmor JSON shape; failing closed"); sys.exit(1)
+          hits = sorted({f.get("ident") for f in data if isinstance(f, dict) and f.get("ident") in gated})
+          if hits:
+              print("::error::zizmor supply-chain findings (§11.3): " + ", ".join(hits)); sys.exit(1)
+          print("zizmor supply-chain pins OK.")
+          PYZIZMOR
+      - name: Supply-chain pins — fetch-execute + tool pins (bounded, §11.3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d .github/workflows ]; then echo "No workflows to check."; exit 0; fi
+          # Decision 2 (bounded): the managed fetch-execute + pip exact-pin heuristic. It lives
+          # under .github/aviato/ (never .github/workflows/) so it never scans itself; COVERAGE
+          # DELTA vs `aviato lint-actions` is documented in the script header.
+          python3 .github/aviato/supply-lint.py .github/workflows
+      - name: hadolint (blocking, where a Dockerfile exists)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t dockerfiles < <(find . -name 'Dockerfile' -not -path './node_modules/*')
+          if [ "${#dockerfiles[@]}" -eq 0 ]; then
+            echo "No Dockerfile."; exit 0
+          fi
+          # §11.3: pin the tool image by digest, not a mutable tag.
+          for dockerfile in "${dockerfiles[@]}"; do
+            echo "Linting ${dockerfile}"
+            docker run --rm -i hadolint/hadolint@sha256:30a8fd2e785ab6176eed53f74769e04f125afb2f74a6c52aef7d463583b6d45e hadolint - < "${dockerfile}"
+          done
+      - name: shellcheck (blocking, where shell scripts exist)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(find . -name '*.sh' -not -path './node_modules/*')
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "No shell scripts."; exit 0
+          fi
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck "${scripts[@]}"
+      - name: helm lint (blocking, where a Chart.yaml exists)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t charts < <(find . -name 'Chart.yaml' -not -path './node_modules/*')
+          if [ "${#charts[@]}" -eq 0 ]; then
+            echo "No Helm charts."; exit 0
+          fi
+          for chart in "${charts[@]}"; do
+            helm lint "$(dirname "${chart}")"
+          done
   status-bridge:
     if: ${{ always() && github.event_name == 'workflow_dispatch' }}
-    needs: [ci, security, common-lint]
+    needs:
+      - ci
+      - security
+      - common-lint
     runs-on: ubuntu-latest
     permissions:
       statuses: write
@@ -66,7 +657,7 @@ jobs:
     steps:
       - name: Publish Python CI status
         env:
-          STATUS_CONTEXT: "ci / Python CI"
+          STATUS_CONTEXT: ci / Python CI
           STATUS_STATE: ${{ needs.ci.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail
@@ -76,7 +667,7 @@ jobs:
             -f context="${STATUS_CONTEXT}"
       - name: Publish security baseline status
         env:
-          STATUS_CONTEXT: "security / Security baseline heartbeat"
+          STATUS_CONTEXT: security / Security baseline heartbeat
           STATUS_STATE: ${{ needs.security.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail
@@ -86,7 +677,7 @@ jobs:
             -f context="${STATUS_CONTEXT}"
       - name: Publish common lint status
         env:
-          STATUS_CONTEXT: "common-lint / Common lint"
+          STATUS_CONTEXT: common-lint / Common lint
           STATUS_STATE: ${{ needs.common-lint.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail
@@ -94,43 +685,816 @@ jobs:
             "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="${STATUS_STATE}" \
             -f context="${STATUS_CONTEXT}"
-
-  release:
+  release--derive:
+    name: Derive next version
     if: ${{ github.ref_type != 'tag' && github.event_name == 'push' }}
-    needs: [ci, security, common-lint]
-    uses: amattas/aviato/.github/workflows/reusable-release.yml@0.6.1
-    with:
-      aviato-ref: 0.6.1
-      local-install: false
-
-  # Gate before deploy. Two entry points: IN-RUN (release just tagged on this push;
-  # release-tag = its output) or a manual tag push (classic tag-ref context).
+    needs:
+      - ci
+      - security
+      - common-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency: &id002
+      group: aviato-release-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      last: ${{ steps.derive.outputs.last }}
+      next: ${{ steps.derive.outputs.next }}
+      release: ${{ steps.derive.outputs.release }}
+      phase: ${{ steps.phase.outputs.phase }}
+    env:
+      VERSION_SOURCE_LOCATIONS_JSON: '["pyproject.toml"]'
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify managed release helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_helpers=(
+            ".github/aviato/next-version.py"
+            ".github/aviato/bump-version.py"
+            ".github/aviato/is-highest.py"
+          )
+          for helper in "${required_helpers[@]}"; do
+            if [ ! -f "${helper}" ]; then
+              echo "::error::missing managed release helper ${helper}."
+              exit 1
+            fi
+          done
+          version_source_locations="$(
+            python -c "$(
+              printf '%s\n' \
+                'import json' \
+                'from pathlib import PurePosixPath' \
+                'import sys' \
+                '' \
+                'try:' \
+                '    data = json.loads(sys.argv[1])' \
+                'except json.JSONDecodeError as exc:' \
+                '    raise SystemExit(f"version-source-locations-json is not valid JSON: {exc}") from exc' \
+                'if not isinstance(data, list) or not data:' \
+                '    raise SystemExit("version-source-locations-json must be a non-empty JSON array of repo-relative path strings")' \
+                'normalized: list[str] = []' \
+                'for item in data:' \
+                '    if not isinstance(item, str):' \
+                '        raise SystemExit("version-source-locations-json entries must be strings")' \
+                '    candidate = item.strip()' \
+                '    if not candidate or any(ch in candidate for ch in "\x00\r\n"):' \
+                '        raise SystemExit("version-source-locations-json entries must be non-empty single-line strings")' \
+                '    if "\\" in candidate:' \
+                '        raise SystemExit("version-source-locations-json entries must use / separators")' \
+                '    if candidate.startswith(("/", "\\")) or (len(candidate) >= 2 and candidate[1] == ":"):' \
+                '        raise SystemExit(f"version-source-locations-json entry {candidate!r} must be repo-relative, not absolute")' \
+                '    path = PurePosixPath(candidate)' \
+                '    if any(part in (".", "..") for part in path.parts):' \
+                '        raise SystemExit(f"version-source-locations-json entry {candidate!r} must stay within the repository root")' \
+                '    normalized.append("/".join(path.parts))' \
+                'print("\n".join(normalized))'
+            )" "${VERSION_SOURCE_LOCATIONS_JSON}"
+          )"
+          {
+            echo 'VERSION_SOURCE_LOCATIONS<<EOF'
+            printf '%s\n' "${version_source_locations}"
+            echo EOF
+          } >> "${GITHUB_ENV}"
+      - name: Derive next version
+        id: derive
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Latest EXACT final version tag only (X.Y.Z) — never the floating major (N)
+          # and never a pre-release (X.Y.Z-alphaN/-betaN), which are not release points.
+          # (next-version tolerates a pre-release base, but the bump baseline is the
+          # last FINAL release.)
+          last="$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' --exclude '*-*' 2>/dev/null || echo 0.0.0)"
+          range="${last}..HEAD"
+          if ! git rev-parse "${last}" >/dev/null 2>&1; then range="HEAD"; fi
+          # Commit messages are piped (never interpolated into a command) to the managed helper.
+          next="$(git log "${range}" --format=%B%x00 | python .github/aviato/next-version.py --current "${last}")"
+          echo "last=${last}" >> "${GITHUB_OUTPUT}"
+          echo "next=${next}" >> "${GITHUB_OUTPUT}"
+          if [ "${next}" = "${last}" ]; then
+            echo "release=false" >> "${GITHUB_OUTPUT}"
+            echo "No releasable change in commit history; nothing to propose or tag."
+          else
+            echo "release=true" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Choose phase (propose vs tag)
+        id: phase
+        if: ${{ steps.derive.outputs.release == 'true' }}
+        shell: bash
+        env:
+          NEXT: ${{ steps.derive.outputs.next }}
+        run: |
+          set -euo pipefail
+          # TAG phase iff the merged HEAD carries the release bump for NEXT. Robust to the merge
+          # strategy: a squash merge puts "chore(release): <NEXT>" on HEAD; a merge commit puts it
+          # on the second parent (HEAD^2). R6-4-SQUASH: GitHub's DEFAULT squash-merge title format
+          # appends " (#N)" (the PR number) to the PR title, so the merged subject is
+          # `chore(release): NEXT (#42)` — a bare end-anchor would MISS it, silently fall through to
+          # the propose phase, and the workflow would refuse to tag any release on a repo using the
+          # default merge mode. Accept an optional `(#N)` suffix.
+          is_release_commit() {
+            git log -1 --format=%s "$1" 2>/dev/null | grep -Eq "^chore\(release\): ${NEXT}( \(#[0-9]+\))?\$"
+          }
+          if is_release_commit HEAD || is_release_commit "HEAD^2"; then
+            echo "phase=tag" >> "${GITHUB_OUTPUT}"
+          else
+            echo "phase=propose" >> "${GITHUB_OUTPUT}"
+          fi
+  release--release:
+    name: Cut release
+    if: ${{ (github.ref_type != 'tag' && github.event_name == 'push') && (needs.release--derive.outputs.release == 'true') }}
+    needs:
+      - release--derive
+      - ci
+      - security
+      - common-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    concurrency: *id002
+    outputs:
+      released: ${{ steps.tag.outputs.released }}
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION_SOURCE_LOCATIONS_JSON: '["pyproject.toml"]'
+      BUILD_NUMBER: ${{ '' || github.run_number }}
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify managed release helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_helpers=(
+            ".github/aviato/next-version.py"
+            ".github/aviato/bump-version.py"
+            ".github/aviato/is-highest.py"
+          )
+          for helper in "${required_helpers[@]}"; do
+            if [ ! -f "${helper}" ]; then
+              echo "::error::missing managed release helper ${helper}."
+              exit 1
+            fi
+          done
+          version_source_locations="$(
+            python -c "$(
+              printf '%s\n' \
+                'import json' \
+                'from pathlib import PurePosixPath' \
+                'import sys' \
+                '' \
+                'try:' \
+                '    data = json.loads(sys.argv[1])' \
+                'except json.JSONDecodeError as exc:' \
+                '    raise SystemExit(f"version-source-locations-json is not valid JSON: {exc}") from exc' \
+                'if not isinstance(data, list) or not data:' \
+                '    raise SystemExit("version-source-locations-json must be a non-empty JSON array of repo-relative path strings")' \
+                'normalized: list[str] = []' \
+                'for item in data:' \
+                '    if not isinstance(item, str):' \
+                '        raise SystemExit("version-source-locations-json entries must be strings")' \
+                '    candidate = item.strip()' \
+                '    if not candidate or any(ch in candidate for ch in "\x00\r\n"):' \
+                '        raise SystemExit("version-source-locations-json entries must be non-empty single-line strings")' \
+                '    if "\\" in candidate:' \
+                '        raise SystemExit("version-source-locations-json entries must use / separators")' \
+                '    if candidate.startswith(("/", "\\")) or (len(candidate) >= 2 and candidate[1] == ":"):' \
+                '        raise SystemExit(f"version-source-locations-json entry {candidate!r} must be repo-relative, not absolute")' \
+                '    path = PurePosixPath(candidate)' \
+                '    if any(part in (".", "..") for part in path.parts):' \
+                '        raise SystemExit(f"version-source-locations-json entry {candidate!r} must stay within the repository root")' \
+                '    normalized.append("/".join(path.parts))' \
+                'print("\n".join(normalized))'
+            )" "${VERSION_SOURCE_LOCATIONS_JSON}"
+          )"
+          {
+            echo 'VERSION_SOURCE_LOCATIONS<<EOF'
+            printf '%s\n' "${version_source_locations}"
+            echo EOF
+          } >> "${GITHUB_ENV}"
+      - name: Propose release PR
+        if: ${{ needs.release--derive.outputs.phase == 'propose' }}
+        shell: bash
+        env:
+          NEXT: ${{ needs.release--derive.outputs.next }}
+          LAST: ${{ needs.release--derive.outputs.last }}
+        run: |
+          set -euo pipefail
+          branch="release/${NEXT}"
+          git config user.name aviato-bot
+          git config user.email aviato-bot@users.noreply.github.com
+          git checkout -B "${branch}"
+          # §5.9: the version-source bump MUST succeed before proposing — no release PR
+          # without a bump. The strictly-increasing build number is the run number.
+          mapfile -t version_locations <<< "${VERSION_SOURCE_LOCATIONS}"
+          python .github/aviato/bump-version.py "${NEXT}" "${version_locations[@]}" --build-number "${BUILD_NUMBER}"
+          range="${LAST}..HEAD"
+          if ! git rev-parse "${LAST}" >/dev/null 2>&1; then range="HEAD"; fi
+          git log "${range}" --pretty=format:'- %s' > /tmp/changelog.md || true
+          # §5.9 bootstrap: a version-source ALREADY at NEXT (seeded before the first
+          # release existed — a fresh onboard, or the Library's own first cut) makes the
+          # bump a no-op; the release PR then carries an empty marker commit instead of
+          # dying on `git commit` with nothing staged. Safe: the TAG phase keys on the
+          # commit SUBJECT and independently re-proves the manifest equals NEXT.
+          if git diff --quiet; then
+            git commit --allow-empty -m "chore(release): ${NEXT}"
+          else
+            git commit -am "chore(release): ${NEXT}"
+          fi
+          git push -f origin "${branch}"
+          body="$(printf 'Automated release PR (§5.9). Merging this bumps the version-source to %s; the merge to the default branch then tags %s and runs deploy in the same run.\n\n## Changes\n' "${NEXT}" "${NEXT}"; cat /tmp/changelog.md)"
+          if existing="$(gh pr list --head "${branch}" --base "${GITHUB_REF_NAME}" --state open --json number --jq '.[0].number' 2>/dev/null)" && [ -n "${existing}" ]; then
+            gh pr edit "${existing}" --title "chore(release): ${NEXT}" --body "${body}"
+            echo "Updated release PR #${existing} for ${NEXT}."
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "${branch}" --title "chore(release): ${NEXT}" --body "${body}"
+            echo "Opened release PR for ${NEXT}."
+          fi
+          # §5.9 release-PR checks: every event from this job's GITHUB_TOKEN push is
+          # suppressed EXCEPT workflow_dispatch/repository_dispatch, so the release
+          # branch never triggers CI on its own and required status checks could never
+          # report on the release PR — under a required_status_checks ruleset (which
+          # has no admin override unless bypass actors are configured) that would make
+          # release PRs permanently unmergeable. Dispatch this run's own caller at the
+          # release branch so the PR carries the same check contexts a human branch
+          # would. WARN (not fail) on dispatch errors: a caller not yet re-synced to
+          # declare workflow_dispatch keeps its previous behavior — visibly pending
+          # checks on the PR, never a silent wrong state.
+          workflow_path="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq '.path')"
+          if ! gh workflow run "${workflow_path##*/}" --ref "${branch}"; then
+            echo "::warning::Could not dispatch ${workflow_path##*/} at ${branch}; release-PR checks will be missing until Aviato refreshes the managed workflow."
+          fi
+      - name: Tag release, advance floating major, publish
+        id: tag
+        if: ${{ needs.release--derive.outputs.phase == 'tag' }}
+        shell: bash
+        env:
+          NEXT: ${{ needs.release--derive.outputs.next }}
+          LAST: ${{ needs.release--derive.outputs.last }}
+        run: |
+          set -euo pipefail
+          git config user.name aviato-bot
+          git config user.email aviato-bot@users.noreply.github.com
+          # §5.9/§719: PROVE the merged commit actually wrote the version-source bump for
+          # NEXT before tagging. A commit whose subject claims `chore(release): NEXT` but
+          # never bumped the manifest must not be tagged/deployed. Re-running the bump is
+          # idempotent (§2.5): a no-op leaves the tree clean; any change means the manifest
+          # was NOT at NEXT, so fail closed. (Build number is per-run and omitted from the
+          # semantic-version proof.)
+          mapfile -t version_locations <<< "${VERSION_SOURCE_LOCATIONS}"
+          python .github/aviato/bump-version.py "${NEXT}" "${version_locations[@]}" >/dev/null
+          if ! git diff --quiet; then
+            git checkout -- . 2>/dev/null || true
+            echo "::error::Release commit subject claims ${NEXT} but the version-source was not bumped to ${NEXT}; refusing to tag." >&2
+            exit 1
+          fi
+          # Idempotent re-run (§5.9): a transient failure AFTER the tag/release was created must be
+          # retriable, so create the immutable version tag + release only if absent (never -f the
+          # release tag — it's an immutable published ref). The floating major IS force-moved (it's
+          # the mutable pointer). `gh release create` likewise skipped if the release already exists.
+          if ! git rev-parse -q --verify "refs/tags/${NEXT}" >/dev/null; then
+            git tag "${NEXT}"
+            git push origin "${NEXT}"
+          fi
+          # §5.9: advance the floating major (e.g. 1) to this release — a mutable
+          # published pointer consumers pin with @N (§6.1/§11.3).
+          major="$(printf '%s' "${NEXT}" | sed -E 's/^([0-9]+).*/\1/')"
+          # review (floating-major monotonicity): only advance @N if NEXT is the HIGHEST release
+          # in that major line — an out-of-order or re-run release of an OLDER patch must never
+          # regress the mutable pointer (mirrors the GHCR/Pages `is_highest` latest-alias guard).
+          # NEXT was just tagged above, so it is included in the candidate set.
+          mapfile -t major_tags < <(git tag --list "${major}.*.*")
+          if python .github/aviato/is-highest.py "${NEXT}" "${major_tags[@]}"; then
+            git tag -f "${major}"
+            git push -f origin "${major}"
+          else
+            echo "Not advancing floating major ${major}: ${NEXT} is not the highest ${major}.x.y release."
+          fi
+          range="${LAST}..HEAD"
+          if ! git rev-parse "${LAST}" >/dev/null 2>&1; then range="HEAD"; fi
+          git log "${range}" --pretty=format:'- %s' > /tmp/changelog.md || true
+          if ! gh release view "${NEXT}" >/dev/null 2>&1; then
+            gh release create "${NEXT}" --title "${NEXT}" --notes-file /tmp/changelog.md
+          fi
+          # Signal the caller to run deploy as in-run downstream jobs for this tag. R2-1-REL-TAG:
+          # emit `tag` HERE (the tag phase) — not from `derive.next` — so the job's `tag` output is
+          # set ONLY when a release was actually cut, matching its documented contract (empty on a
+          # propose/no-release run, so a caller can't read a phantom tag).
+          echo "released=true" >> "${GITHUB_OUTPUT}"
+          echo "tag=${NEXT}" >> "${GITHUB_OUTPUT}"
+          echo "Tagged and published ${NEXT}; deploy runs in-run from caller."
+  release:
+    name: release (aggregate)
+    if: ${{ always() && (github.ref_type != 'tag' && github.event_name == 'push') }}
+    needs:
+      - release--derive
+      - release--release
+      - ci
+      - security
+      - common-lint
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      released: ${{ needs.release--release.outputs.released }}
+      tag: ${{ needs.release--release.outputs.tag }}
+    env:
+      RESULT_0: ${{ needs.release--derive.result }}
+      RESULT_1: ${{ needs.release--release.result }}
+    steps:
+      - name: Aggregate release
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Aggregate the inlined release job graph: fail if any hoisted job
+          # failed or was cancelled (a skipped job — e.g. a PR-only path on a tag run — is fine),
+          # so downstream `needs.release.result` matches the reusable-call semantics.
+          for r in "${RESULT_0}" "${RESULT_1}"; do
+            case "${r}" in
+              failure|cancelled) echo "::error::inlined release job did not succeed (${r})."; exit 1 ;;
+            esac
+          done
+          echo "release: all inlined jobs succeeded or were skipped."
   release-gate:
-    needs: [release]
+    name: Validate release tag
     if: ${{ always() && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
-    uses: amattas/aviato/.github/workflows/reusable-release-gate.yml@0.6.1
-    with:
-      default-branch: main
-      require-merged-pr: true
-      release-tag: ${{ needs.release.outputs.tag }}
+    needs:
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      gated-sha: ${{ steps.resolve-gated-sha.outputs.gated-sha }}
+    steps:
+      - name: Checkout consumer repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Validate release tag
+        shell: bash
+        env:
+          TAG_PATTERN: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$
+          TAG_FORMAT_DESCRIPTION: N.N.N, N.N.N-alphaN, or N.N.N-betaN
+          RELEASE_TAG_INPUT: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Two contexts: IN-RUN (release-tag input set, branch ref) or classic tag ref.
+          if [ -n "${RELEASE_TAG_INPUT}" ]; then
+            tag="${RELEASE_TAG_INPUT}"
+          else
+            if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+              echo "::error::Release workflows must run from a tag ref (or pass release-tag). Got ${GITHUB_REF_TYPE}:${GITHUB_REF_NAME}."
+              exit 1
+            fi
+            tag="${GITHUB_REF_NAME}"
+          fi
 
-  pypi:
-    needs: [release, release-gate, security]
+          if [[ ! "${tag}" =~ ${TAG_PATTERN} ]]; then
+            echo "::error::Tag must match ${TAG_FORMAT_DESCRIPTION}. Got: ${tag}"
+            exit 1
+          fi
+          echo "RESOLVED_TAG=${tag}" >> "${GITHUB_ENV}"
+      - name: Resolve gated commit
+        id: resolve-gated-sha
+        shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${RELEASE_TAG_INPUT}" ]; then
+            # workflow_run and in-run callers execute in a branch/event context. The
+            # release tag, not that event SHA, is the immutable release identity.
+            gated_sha="$(git rev-parse "refs/tags/${RESOLVED_TAG}^{commit}")"
+          else
+            # A classic tag-triggered workflow already carries the release commit.
+            gated_sha="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          fi
+          echo "gated-sha=${gated_sha}" >> "${GITHUB_OUTPUT}"
+      - name: Verify tag points at default branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: main
+          GATED_SHA: ${{ steps.resolve-gated-sha.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          # Checkout deliberately does not persist the token. Scope authentication
+          # to this one trusted fetch through process-local git config variables.
+          if [ -n "${GH_TOKEN:-}" ]; then
+            basic_auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 | tr -d '\n')"
+            GIT_CONFIG_COUNT=1 \
+              GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+              GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic_auth}" \
+              git fetch origin "${DEFAULT_BRANCH}" --tags
+          else
+            # Supports the executable workflow fixture's local-file remote.
+            git fetch origin "${DEFAULT_BRANCH}" --tags
+          fi
+          # The resolved tag commit must be REACHABLE FROM the default branch. The event
+          # SHA may be a later descendant when this gate runs from workflow_run.
+          # R6-4-DOCSGATE: the previous strict equality (gated_sha == branch_tip) caused docs deploy
+          # (which runs on workflow_run minutes after the main CI) to fail valid releases whenever
+          # ANY unrelated push landed on the default branch in that window. The §5.9 invariant is
+          # "the gated commit IS on the default branch's history" — is-ancestor is the correct check
+          # (handles tip-equality AND the post-CI-push case). Reject only when off the branch.
+          gated_commit="$(git rev-parse "${GATED_SHA}^{commit}")"
+          branch_sha="$(git rev-parse "origin/${DEFAULT_BRANCH}")"
+
+          if ! git merge-base --is-ancestor "${gated_commit}" "${branch_sha}"; then
+            echo "::error::${RESOLVED_TAG} (${gated_commit}) is not reachable from origin/${DEFAULT_BRANCH} (${branch_sha})."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/${RESOLVED_TAG}" >/dev/null; then
+            tag_sha="$(git rev-parse "refs/tags/${RESOLVED_TAG}^{commit}")"
+            if [ "${tag_sha}" != "${gated_commit}" ]; then
+              echo "::error::Tag ${RESOLVED_TAG} (${tag_sha}) does not point at the gated commit ${gated_commit}."
+              exit 1
+            fi
+          fi
+      - name: Require merged pull request
+        if: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: main
+          GATED_SHA: ${{ steps.resolve-gated-sha.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          # $owner/$repo/$sha below are GraphQL variables (bound via -f), NOT shell vars,
+          # so they intentionally do not expand in the single-quoted query (SC2016).
+          # shellcheck disable=SC2016
+          response="$(gh api graphql \
+            -f owner="${owner}" \
+            -f repo="${repo}" \
+            -f sha="${GATED_SHA}" \
+            -f query='
+              query($owner: String!, $repo: String!, $sha: GitObjectID!) {
+                repository(owner: $owner, name: $repo) {
+                  object(oid: $sha) {
+                    ... on Commit {
+                      associatedPullRequests(first: 20) {
+                        nodes {
+                          number
+                          merged
+                          baseRefName
+                          headRefName
+                          mergeCommit {
+                            oid
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }')"
+
+          pr_json="$(jq -c --arg sha "${GATED_SHA}" --arg base "${DEFAULT_BRANCH}" '
+            .data.repository.object.associatedPullRequests.nodes[]
+            | select(.merged == true and .baseRefName == $base and ((.mergeCommit.oid // $sha) == $sha))
+          ' <<<"${response}" | head -n1)"
+
+          if [ -z "${pr_json}" ]; then
+            echo "::error::${RESOLVED_TAG} must point at the ${DEFAULT_BRANCH} tip associated with a merged PR."
+            exit 1
+          fi
+
+          echo "Release tag is based on PR #$(jq -r '.number' <<<"${pr_json}") from $(jq -r '.headRefName' <<<"${pr_json}")."
+      - name: Require successful workflow
+        if: ${{ '' != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_WORKFLOW: ''
+          DEFAULT_BRANCH: main
+          GATED_SHA: ${{ steps.resolve-gated-sha.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${REQUIRED_WORKFLOW}/runs?head_sha=${GATED_SHA}&event=push&per_page=20")"
+            matching_runs="$(jq --arg branch "${DEFAULT_BRANCH}" '[.workflow_runs[] | select(.head_branch == $branch)]' <<<"${response}")"
+            run_count="$(jq 'length' <<<"${matching_runs}")"
+
+            if [ "${run_count}" = "0" ]; then
+              echo "Waiting for ${REQUIRED_WORKFLOW} on ${DEFAULT_BRANCH} for ${GATED_SHA}..."
+              sleep 15
+              continue
+            fi
+
+            successful_run="$(jq -r '
+              map(select(.status == "completed" and .conclusion == "success"))
+              | sort_by(.run_attempt, .created_at)
+              | last
+            ' <<<"${matching_runs}")"
+
+            if [ "${successful_run}" != "null" ]; then
+              run_id="$(jq -r '.id' <<<"${successful_run}")"
+              echo "${REQUIRED_WORKFLOW} run ${run_id} succeeded for ${GATED_SHA}."
+              exit 0
+            fi
+
+            active_runs="$(jq -r '[.[] | select(.status != "completed") | "\(.id):\(.status)"] | join(", ")' <<<"${matching_runs}")"
+            if [ -n "${active_runs}" ]; then
+              echo "Waiting on ${REQUIRED_WORKFLOW}: ${active_runs}"
+              sleep 30
+              continue
+            fi
+
+            failed_runs="$(jq -r '[.[] | "\(.id):\(.conclusion // "unknown")"] | join(", ")' <<<"${matching_runs}")"
+            echo "::error::${REQUIRED_WORKFLOW} did not succeed on ${DEFAULT_BRANCH} for ${GATED_SHA}. Runs: ${failed_runs}"
+            exit 1
+          done
+
+          echo "::error::Timed out waiting for ${REQUIRED_WORKFLOW} on ${DEFAULT_BRANCH}."
+          exit 1
+  pypi--require-consumer-publisher:
+    name: Require consumer-local PyPI publisher
     if: ${{ always() && needs.release-gate.result == 'success' && needs.security.result == 'success' && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
-    uses: amattas/aviato/.github/workflows/reusable-pypi-publish.yml@0.6.1
-    with:
-      python-version: "3.12"
-      working-directory: "."
-      packages-dir: "dist"
-      release-tag: ${{ needs.release.outputs.tag }}
-      gated-sha: ${{ needs.release-gate.outputs.gated-sha }}
-      consumer-publisher-present: true
+    needs:
+      - release
+      - release-gate
+      - security
+    runs-on: ubuntu-latest
+    permissions: {}
+    concurrency: &id003
+      group: aviato-pypi-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Reject stale caller without trusted publisher
+        if: ${{ true != true }}
+        run: |
+          echo "::error::This workflow predates the required consumer-local PyPI trusted publisher. Request an Aviato managed-file refresh."
+          exit 1
+  pypi--build:
+    name: Build Python package
+    if: ${{ always() && needs.release-gate.result == 'success' && needs.security.result == 'success' && (github.ref_type == 'tag' || needs.release.outputs.released == 'true') }}
+    needs:
+      - pypi--require-consumer-publisher
+      - release
+      - release-gate
+      - security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency: *id003
+    outputs:
+      resolved-tag: ${{ steps.tag.outputs.resolved-tag }}
+      artifact-name: aviato-pypi-dist
+      distribution-name: ${{ steps.metadata.outputs.distribution-name }}
+      package-version: ${{ steps.metadata.outputs.package-version }}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout consumer repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release-gate.outputs.gated-sha }}
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Validate release tag
+        id: tag
+        shell: bash
+        env:
+          TAG_PATTERN: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$
+          TAG_FORMAT_DESCRIPTION: N.N.N, N.N.N-alphaN, or N.N.N-betaN
+          RELEASE_TAG_INPUT: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${RELEASE_TAG_INPUT}" ]; then
+            tag="${RELEASE_TAG_INPUT}"
+          else
+            if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+              echo "::error::Release workflows must run from a tag ref (or pass release-tag). Got ${GITHUB_REF_TYPE}:${GITHUB_REF_NAME}."
+              exit 1
+            fi
+            tag="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "${tag}" =~ ${TAG_PATTERN} ]]; then
+            echo "::error::Tag must match ${TAG_FORMAT_DESCRIPTION}. Got: ${tag}"
+            exit 1
+          fi
+          # resolved-tag crosses the job boundary to the publish job's "confirm resolvable" step.
+          echo "resolved-tag=${tag}" >> "${GITHUB_OUTPUT}"
+      - name: Verify tag still points at the gated commit (C12-W2)
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.resolved-tag }}
+          GATED_SHA: ${{ needs.release-gate.outputs.gated-sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}" 2>/dev/null || true)"
+          if [ -z "${actual}" ] || [ "${actual}" != "${GATED_SHA}" ]; then
+            echo "::error::Tag ${RELEASE_TAG} no longer points at the gated commit ${GATED_SHA} (now: ${actual:-missing}) — the tag moved between gate and build; refusing (C12-W2)."
+            exit 1
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install build tools
+        if: ${{ 'python -m pip install build==1.5.0' != '' }}
+        shell: bash
+        env:
+          INSTALL_COMMAND: python -m pip install build==1.5.0
+        run: eval "$INSTALL_COMMAND"
+      - name: Build distributions
+        shell: bash
+        env:
+          BUILD_COMMAND: python -m build
+        run: eval "$BUILD_COMMAND"
+      - name: Verify archive name and version contract
+        id: metadata
+        shell: bash
+        env:
+          PACKAGES_DIR: dist
+          RELEASE_TAG: ${{ steps.tag.outputs.resolved-tag }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import email.parser
+          import os
+          import pathlib
+          import re
+          import tarfile
+          import zipfile
 
-  # PyPI Trusted Publishing authenticates the registered consumer workflow identity,
-  # so this job must stay local rather than move into the reusable workflow.
+          dist = pathlib.Path(os.environ["PACKAGES_DIR"])
+          archives = sorted(path for path in dist.iterdir() if path.is_file())
+          if not archives:
+              raise SystemExit("no distribution archives were built")
+
+          def core_metadata(path: pathlib.Path) -> bytes:
+              if path.suffix == ".whl" or path.suffix == ".zip":
+                  with zipfile.ZipFile(path) as archive:
+                      candidates = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA") or (name.endswith("/PKG-INFO") and name.count("/") == 1)]
+                      if len(candidates) != 1:
+                          raise SystemExit(f"{path.name}: expected exactly one core metadata file")
+                      return archive.read(candidates[0])
+              if path.name.endswith((".tar.gz", ".tar.bz2", ".tar.xz")):
+                  with tarfile.open(path, "r:*") as archive:
+                      candidates = [member for member in archive.getmembers() if member.isfile() and member.name.endswith("/PKG-INFO") and member.name.count("/") == 1]
+                      if len(candidates) != 1:
+                          raise SystemExit(f"{path.name}: expected exactly one PKG-INFO")
+                      handle = archive.extractfile(candidates[0])
+                      if handle is None:
+                          raise SystemExit(f"{path.name}: could not read PKG-INFO")
+                      return handle.read()
+              raise SystemExit(f"unsupported distribution archive: {path.name}")
+
+          expected_version = re.sub(r"-(alpha|beta)([0-9]+)$", lambda m: {"alpha": "a", "beta": "b"}[m.group(1)] + m.group(2), os.environ["RELEASE_TAG"])
+          identities = set()
+          for path in archives:
+              metadata = email.parser.BytesParser().parsebytes(core_metadata(path))
+              name, version = metadata.get("Name"), metadata.get("Version")
+              if not name or not version:
+                  raise SystemExit(f"{path.name}: core metadata is missing Name or Version")
+              identities.add((name, version))
+          if len(identities) != 1:
+              raise SystemExit(f"distribution archives disagree on name/version: {sorted(identities)}")
+          name, version = identities.pop()
+          if version != expected_version:
+              raise SystemExit(f"package version {version!r} does not match release tag {os.environ['RELEASE_TAG']!r} (expected {expected_version!r})")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"distribution-name={name}", file=output)
+              print(f"package-version={version}", file=output)
+          PY
+      - name: Verify distribution metadata
+        shell: bash
+        env:
+          TWINE_VERSION: 6.2.0
+          PACKAGES_DIR: dist
+        run: |
+          # §11.3: pin the pip-installed tool to an exact version (not a floating latest).
+          python -m pip install --quiet "twine==${TWINE_VERSION}"
+          python -m twine check "${PACKAGES_DIR}"/*
+      - name: Dependency vulnerability scan (gate)
+        shell: bash
+        env:
+          PACKAGES_DIR: dist
+          PIP_AUDIT_VERSION: 2.10.1
+        run: |
+          set -euo pipefail
+          # AUDIT-SCOPE: scan EXACTLY the project's resolved dependency closure — nothing more.
+          # Two live publish failures proved environment-mode auditing gates the publish on
+          # things that never ship: on 0.2.0 the project ITSELF (absent from the index on a
+          # first publish, its "could not be audited" skip is fatal under --strict, so a first
+          # publish could never pass its own gate); on 0.2.1 the venv's runner-seeded pip
+          # 25.0.1 (PYSEC-2026-196 et al.) — venv tooling, not a project dependency. So:
+          #  - /tmp/project-venv holds the built wheel + its resolved deps (what ships);
+          #  - /tmp/audit-venv holds the pip-audit scanner, so the scanner's own dependencies
+          #    are never co-audited (or co-resolved) with the project's;
+          #  - the audited set is `pip freeze` of the project venv (freeze omits venv tooling —
+          #    pip/setuptools/wheel — by design) minus the project's own distribution(s),
+          #    excluded by name: wheel filename fields are hyphen-separated with the name part
+          #    underscore-normalized, so the first `-` field is exactly the distribution name.
+          python -m venv /tmp/audit-venv
+          python -m venv /tmp/project-venv
+          # §11.3: pin the pip-installed scanner to an exact version (not a floating latest).
+          /tmp/audit-venv/bin/python -m pip install --quiet "pip-audit==${PIP_AUDIT_VERSION}"
+          # Install the built wheel so the project's dependency closure resolves exactly as shipped.
+          /tmp/project-venv/bin/python -m pip install --quiet "${PACKAGES_DIR}"/*.whl
+          exclude_args=()
+          for wheel in "${PACKAGES_DIR}"/*.whl; do
+            exclude_args+=(--exclude "$(basename "${wheel}" | cut -d- -f1)")
+          done
+          /tmp/project-venv/bin/python -m pip freeze "${exclude_args[@]}" > /tmp/project-reqs.txt
+          # R7-1-PIPAUDIT-NOOP: REVERT to `--strict` (the prior fail-closed posture). The R6-2-PIPAUDIT
+          # attempt at a "HIGH/CRITICAL only" gate (mirroring the GHCR `trivy --severity ...` pattern)
+          # was structurally a NO-OP — pip-audit's OSV/PyPA service does NOT emit per-vuln severity in
+          # its --format json output (each vuln carries only id/fix_versions/aliases/description),
+          # verified empirically against jinja2==2.10 (10 known HIGH-severity CVEs, all gating-checked
+          # to "no severity"). So substring-matching "critical"/"high" against aliases (which are
+          # GHSA/CVE/PYSEC identifiers) never fires regardless of actual severity, and a previously
+          # fail-closed control silently became fail-open. The pessimistic-but-correct posture is
+          # `--strict` — any reported finding blocks the publish — until/unless we switch to a scanner
+          # that does expose severity (e.g. osv-scanner, or a separate OSV/NVD lookup). See §11.7/§2.13.
+          # `--no-deps` because the freeze output already IS the fully-pinned closure — no
+          # resolution wanted; pip-audit warns about unhashed pins, which is acceptable here
+          # (the set is generated in-job from the wheel install, not operator-supplied).
+          /tmp/audit-venv/bin/python -m pip_audit --strict --no-deps --progress-spinner off -r /tmp/project-reqs.txt || {
+            echo "::error::pip-audit found vulnerabilities in the project's dependencies (gating publish, §11.7/§2.13).";
+            exit 1;
+          }
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: ${{ '.' }}/sbom.cyclonedx.json
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: aviato-pypi-dist
+          path: |
+            ${{ '.' }}/${{ 'dist' }}/
+            ${{ '.' }}/sbom.cyclonedx.json
+          if-no-files-found: error
+          retention-days: 1
+  pypi:
+    name: pypi (aggregate)
+    if: ${{ always() && (always() && needs.release-gate.result == 'success' && needs.security.result == 'success' && (github.ref_type == 'tag' || needs.release.outputs.released == 'true')) }}
+    needs:
+      - pypi--require-consumer-publisher
+      - pypi--build
+      - release
+      - release-gate
+      - security
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      resolved-tag: ${{ needs.pypi--build.outputs.resolved-tag }}
+      artifact-name: ${{ needs.pypi--build.outputs.artifact-name }}
+      distribution-name: ${{ needs.pypi--build.outputs.distribution-name }}
+      package-version: ${{ needs.pypi--build.outputs.package-version }}
+    env:
+      RESULT_0: ${{ needs.pypi--require-consumer-publisher.result }}
+      RESULT_1: ${{ needs.pypi--build.result }}
+    steps:
+      - name: Aggregate pypi
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Aggregate the inlined pypi job graph: fail if any hoisted job
+          # failed or was cancelled (a skipped job — e.g. a PR-only path on a tag run — is fine),
+          # so downstream `needs.pypi.result` matches the reusable-call semantics.
+          for r in "${RESULT_0}" "${RESULT_1}"; do
+            case "${r}" in
+              failure|cancelled) echo "::error::inlined pypi job did not succeed (${r})."; exit 1 ;;
+            esac
+          done
+          echo "pypi: all inlined jobs succeeded or were skipped."
   pypi-publish:
     name: Publish Python package
-    needs: [release-gate, pypi]
+    needs:
+      - release-gate
+      - pypi
     if: ${{ always() && needs.release-gate.result == 'success' && needs.pypi.result == 'success' }}
     runs-on: ubuntu-latest
     environment: pypi
@@ -147,7 +1511,6 @@ jobs:
         with:
           name: ${{ needs.pypi.outputs.artifact-name }}
           path: .
-
       - name: Verify fresh remote tag after artifact download
         shell: bash
         env:
@@ -165,18 +1528,15 @@ jobs:
             echo "::error::Fresh remote tag ${RELEASE_TAG} does not peel to gated commit ${GATED_SHA} (type=${object_type}, sha=${actual})."
             exit 1
           fi
-
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: "dist/*"
-
+          subject-path: dist/*
       - name: Attest SBOM
         uses: actions/attest-sbom@v4
         with:
-          subject-path: "dist/*"
-          sbom-path: "sbom.cyclonedx.json"
-
+          subject-path: dist/*
+          sbom-path: sbom.cyclonedx.json
       - name: Resolve simple index endpoint
         id: index
         shell: bash
@@ -220,7 +1580,6 @@ jobs:
           PY
           )"
           echo "simple-index-url=${resolved}" >> "${GITHUB_OUTPUT}"
-
       - name: Final fresh remote tag verification
         shell: bash
         env:
@@ -238,20 +1597,17 @@ jobs:
             echo "::error::Fresh remote tag ${RELEASE_TAG} does not peel to gated commit ${GATED_SHA} (type=${object_type}, sha=${actual})."
             exit 1
           fi
-
       - name: Publish distributions
         if: ${{ vars.PYPI_REPOSITORY_URL == '' }}
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247
         with:
           packages-dir: dist
-
       - name: Publish distributions to alternate repository
         if: ${{ vars.PYPI_REPOSITORY_URL != '' }}
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247
         with:
           packages-dir: dist
           repository-url: ${{ vars.PYPI_REPOSITORY_URL }}
-
       - name: Confirm published artifacts
         shell: bash
         env:

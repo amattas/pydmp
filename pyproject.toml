@@ -48,7 +48,7 @@ cli = [
     "rich==15.0.0",
 ]
 docs = [
-    "zensical==0.0.50",
+    "zensical==0.0.51",
     "pydoc-markdown==4.8.2",
 ]
 

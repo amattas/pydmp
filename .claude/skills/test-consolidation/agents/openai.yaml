@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=2.2.0
+# aviato:managed profile=python-library version=2.3.1
 # aviato:hash=305183850530b63d1529ea974a4a2b675d3497efd6f21d180c416e325195bebc
 # aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 interface:

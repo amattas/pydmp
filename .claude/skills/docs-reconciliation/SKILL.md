@@ -1,5 +1,5 @@
 ---
-# aviato:managed profile=python-library version=2.1.1
+# aviato:managed profile=python-library version=2.2.0
 # aviato:hash=c9de8d2fe5934a264a599ce55f50471ad73c954f8480c69768619c0a2182a675
 # aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: docs-reconciliation

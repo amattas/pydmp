@@ -1,5 +1,5 @@
-# aviato:managed profile=python-library version=2.1.1
-# aviato:hash=5274ee04f2af805f3f45c8ee2fd17e63847d215af5a915d94f6053d291b95981
+# aviato:managed profile=python-library version=2.2.0
+# aviato:hash=ebbb1246b3608919830ce0b1d882143b7d3b9610ae5c4f126833c09a86b92530
 # aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: Aviato Python Library
 on:
@@ -224,6 +224,7 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:
+          category: aviato-codeql
           ref: ${{ needs.security--resolve-target.outputs.canonical-ref }}
           sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
           wait-for-processing: true
@@ -657,7 +658,7 @@ jobs:
     steps:
       - name: Publish Python CI status
         env:
-          STATUS_CONTEXT: ci / Python CI
+          STATUS_CONTEXT: Python CI
           STATUS_STATE: ${{ needs.ci.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail
@@ -667,7 +668,7 @@ jobs:
             -f context="${STATUS_CONTEXT}"
       - name: Publish security baseline status
         env:
-          STATUS_CONTEXT: security / Security baseline heartbeat
+          STATUS_CONTEXT: Security baseline heartbeat
           STATUS_STATE: ${{ needs.security.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail
@@ -677,7 +678,7 @@ jobs:
             -f context="${STATUS_CONTEXT}"
       - name: Publish common lint status
         env:
-          STATUS_CONTEXT: common-lint / Common lint
+          STATUS_CONTEXT: Common lint
           STATUS_STATE: ${{ needs.common-lint.result == 'success' && 'success' || 'failure' }}
         run: |
           set -euo pipefail

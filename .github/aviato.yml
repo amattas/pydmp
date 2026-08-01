@@ -1,5 +1,5 @@
 profile: python-library
-version: 2.3.1
+version: 2.4.0
 docs: true
 profile-identity: aviato-profile/python-library/v1
 variables:

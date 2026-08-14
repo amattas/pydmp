@@ -1,5 +1,5 @@
 ---
-# aviato:managed profile=python-library version=2.3.1
+# aviato:managed profile=python-library version=2.7.0
 # aviato:hash=16bdbe2b5665ca7374795f734b49734618157b30430faaaaf11f4436938ed518
 # aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: docs-structure

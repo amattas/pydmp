@@ -1,4 +1,4 @@
-# aviato:managed profile=python-library version=2.3.1
+# aviato:managed profile=python-library version=2.7.0
 # aviato:hash=ebbb1246b3608919830ce0b1d882143b7d3b9610ae5c4f126833c09a86b92530
 # aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: Aviato Python Library

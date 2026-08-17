@@ -135,7 +135,7 @@ jobs:
             exit 1
           fi
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install docs toolchain (exact pins, §11.3)
@@ -732,7 +732,7 @@ jobs:
           sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
           wait-for-processing: true
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Gate CodeQL high/critical alerts
@@ -1090,7 +1090,7 @@ jobs:
             exit 1
           fi
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install docs toolchain (exact pins, §11.3)

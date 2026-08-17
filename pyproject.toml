@@ -38,12 +38,12 @@ dev = [
     # CI installs .[dev] only and the test suite imports pydmp.cli — the cli deps must
     # ride along. Inlined (not a pydmp[cli] self-reference) because the §11.3 pin-form
     # gate doesn't yet recognize self-referential extras; keep in sync with [cli].
-    "click==8.4.1",
+    "click==8.4.2",
     "pyyaml==6.0.3",
     "rich==15.0.0",
 ]
 cli = [
-    "click==8.4.1",
+    "click==8.4.2",
     "pyyaml==6.0.3",
     "rich==15.0.0",
 ]

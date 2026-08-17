@@ -71,7 +71,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
@@ -229,7 +229,7 @@ jobs:
           sha: ${{ needs.security--resolve-target.outputs.analyzed-sha }}
           wait-for-processing: true
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Gate CodeQL high/critical alerts
@@ -512,7 +512,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install lint toolchain (hash-pinned, §11.3)
@@ -713,7 +713,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Verify managed release helpers
@@ -840,7 +840,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Verify managed release helpers
@@ -1316,7 +1316,7 @@ jobs:
             exit 1
           fi
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install build tools

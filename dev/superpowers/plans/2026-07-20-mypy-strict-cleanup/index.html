@@ -761,11 +761,11 @@
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydmp.transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">DMPTransport</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">"T"</span><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">cast_transport</span><span class="p">(</span><span class="n">fake</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DMPTransport</span><span class="p">:</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Cast a structurally compatible test transport at an injection boundary.&quot;&quot;&quot;</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="sd">"""Cast a structurally compatible test transport at an injection boundary."""</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">DMPTransport</span><span class="p">,</span> <span class="n">fake</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Move the existing reusable reader, writer, panel-connection, config factory support, and minimal CLI panel classes from <code>tests/conftest.py</code> into this module. Keep their behavior identical while replacing bare containers such as <code>list[tuple[str, dict]]</code> with <code>list[tuple[str, dict[str, Any]]]</code>.</p>
@@ -776,15 +776,15 @@
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">cli_cfg</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_make</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">top_level</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2011</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="n">path</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;cfg.yaml&quot;</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">top_level</span> <span class="k">else</span> <span class="s2">&quot;panel:</span><span class="se">\n</span><span class="s2">  &quot;</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">separator</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">top_level</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  &quot;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="n">path</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">"cfg.yaml"</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">prefix</span> <span class="o">=</span> <span class="s2">""</span> <span class="k">if</span> <span class="n">top_level</span> <span class="k">else</span> <span class="s2">"panel:</span><span class="se">\n</span><span class="s2">  "</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">separator</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">top_level</span> <span class="k">else</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">  "</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>            <span class="n">prefix</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>            <span class="o">+</span> <span class="n">separator</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                <span class="p">(</span><span class="s2">&quot;host: h&quot;</span><span class="p">,</span> <span class="s2">&quot;account: &#39;1&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;remote_key: &#39;K&#39;&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;port: </span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;timeout: </span><span class="si">{</span><span class="n">timeout</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                <span class="p">(</span><span class="s2">"host: h"</span><span class="p">,</span> <span class="s2">"account: '1'"</span><span class="p">,</span> <span class="s2">"remote_key: 'K'"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"port: </span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"timeout: </span><span class="si">{</span><span class="n">timeout</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>            <span class="p">)</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>            <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="p">)</span>
 </span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">return</span> <span class="n">path</span>
 </span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
@@ -805,7 +805,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 6: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/fakes.py<span class="w"> </span>tests/conftest.py<span class="w"> </span>tests/test_status_server.py<span class="w"> </span>tests/test_panel_status.py
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: add typed shared fakes&quot;</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"test: add typed shared fakes"</span>
 </span></code></pre></div>
 <h3 id="task-2-protocol-crypto-and-parser-tests">Task 2: Protocol, Crypto, and Parser Tests<a class="headerlink" href="#task-2-protocol-crypto-and-parser-tests" title="Permanent link">&para;</a></h3>
 <p><strong>Files:</strong>
@@ -834,7 +834,7 @@
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">encoded</span> <span class="o">=</span> <span class="n">_prot</span><span class="p">()</span><span class="o">.</span><span class="n">encode_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">assert</span> <span class="n">encoded</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">assert</span> <span class="n">encoded</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
 </span></code></pre></div>
 <p>Use <code>pytest.MonkeyPatch</code>, <code>pytest.LogCaptureFixture</code>, and <code>object</code> or the exact protocol response type for parametrized inputs instead of leaving parameters untyped.</p>
 <ul class="task-list">
@@ -856,7 +856,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 5: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/test_command_lengths.py<span class="w"> </span>tests/test_crypto.py<span class="w"> </span>tests/test_crypto_edges.py<span class="w"> </span>tests/test_protocol.py<span class="w"> </span>tests/test_protocol_edges.py<span class="w"> </span>tests/test_status_parser.py<span class="w"> </span>tests/test_users_profiles.py
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: type protocol and parser coverage&quot;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"test: type protocol and parser coverage"</span>
 </span></code></pre></div>
 <h3 id="task-3-transport-and-panel-tests">Task 3: Transport and Panel Tests<a class="headerlink" href="#task-3-transport-and-panel-tests" title="Permanent link">&para;</a></h3>
 <p><strong>Files:</strong>
@@ -883,10 +883,10 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 3: Remove optional method monkeypatching</strong></li>
 </ul>
 <p>Create a typed fake before assigning it, keep a direct local reference, and assert or script through that reference:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">connection</span> <span class="o">=</span> <span class="n">FakePanelConnection</span><span class="p">([</span><span class="s2">&quot;ACK&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">connection</span> <span class="o">=</span> <span class="n">FakePanelConnection</span><span class="p">([</span><span class="s2">"ACK"</span><span class="p">])</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">panel</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">cast_transport</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">assert</span> <span class="k">await</span> <span class="n">panel</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="s2">&quot;!H&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;ACK&quot;</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">assert</span> <span class="n">connection</span><span class="o">.</span><span class="n">calls</span> <span class="o">==</span> <span class="p">[(</span><span class="s2">&quot;!H&quot;</span><span class="p">,</span> <span class="p">{})]</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">assert</span> <span class="k">await</span> <span class="n">panel</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="s2">"!H"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"ACK"</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">assert</span> <span class="n">connection</span><span class="o">.</span><span class="n">calls</span> <span class="o">==</span> <span class="p">[(</span><span class="s2">"!H"</span><span class="p">,</span> <span class="p">{})]</span>
 </span></code></pre></div>
 <p>Do not assign a replacement method through <code>panel._connection</code>, whose declared type is optional.</p>
 <ul class="task-list">
@@ -904,7 +904,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 6: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/fakes.py<span class="w"> </span>tests/test_transport.py<span class="w"> </span>tests/test_transport_sync.py<span class="w"> </span>tests/test_panel_connection.py<span class="w"> </span>tests/test_panel_integration.py<span class="w"> </span>tests/test_panel_arming.py<span class="w"> </span>tests/test_panel_outputs.py<span class="w"> </span>tests/test_panel_sync.py
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: type transport and panel coverage&quot;</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"test: type transport and panel coverage"</span>
 </span></code></pre></div>
 <h3 id="task-4-entity-tests">Task 4: Entity Tests<a class="headerlink" href="#task-4-entity-tests" title="Permanent link">&para;</a></h3>
 <p><strong>Files:</strong>
@@ -921,7 +921,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 2: Type the fake panel boundary</strong></li>
 </ul>
 <p>Annotate call records as <code>list[tuple[str, dict[str, Any]]]</code>, coroutine methods as <code>-&gt; str</code>, and the sync runner with a generic return type:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">"T"</span><span class="p">)</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">_SyncPanel</span><span class="p">:</span>
@@ -943,7 +943,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 5: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/test_entities.py
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: type entity coverage&quot;</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"test: type entity coverage"</span>
 </span></code></pre></div>
 <h3 id="task-5-cli-tests">Task 5: CLI Tests<a class="headerlink" href="#task-5-cli-tests" title="Permanent link">&para;</a></h3>
 <p><strong>Files:</strong>
@@ -975,7 +975,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 4: Remove invalid-call ignores deliberately</strong></li>
 </ul>
 <p>For the <code>_fmt_ddmmyy(None)</code> negative test, retain only the exact strict diagnostic required to exercise the invalid runtime input:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">assert</span> <span class="n">cli</span><span class="o">.</span><span class="n">_fmt_ddmmyy</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># type: ignore[arg-type]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">assert</span> <span class="n">cli</span><span class="o">.</span><span class="n">_fmt_ddmmyy</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">""</span>  <span class="c1"># type: ignore[arg-type]</span>
 </span></code></pre></div>
 <p>If mypy 2.3.0 reports that ignore as unused because the helper now accepts <code>None</code>, remove it.</p>
 <ul class="task-list">
@@ -989,7 +989,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 6: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git<span class="w"> </span>add<span class="w"> </span>tests/test_cli_helpers.py<span class="w"> </span>tests/test_cli_json.py<span class="w"> </span>tests/test_cli_listen.py<span class="w"> </span>tests/test_cli_panel_wiring.py<span class="w"> </span>tests/test_cli_text_and_config.py<span class="w"> </span>tests/test_cli_text_tables.py<span class="w"> </span>tests/test_cli_version.py<span class="w"> </span>tests/test_cli_zones_outputs.py
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test: type CLI coverage&quot;</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"test: type CLI coverage"</span>
 </span></code></pre></div>
 <h3 id="task-6-repository-wide-strict-gate">Task 6: Repository-Wide Strict Gate<a class="headerlink" href="#task-6-repository-wide-strict-gate" title="Permanent link">&para;</a></h3>
 <p><strong>Files:</strong>
@@ -1010,7 +1010,7 @@
 </ul>
 <p>Change <code>.github/aviato.yml</code> exactly:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w">  </span><span class="nt">typecheck-command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python -m mypy --strict .</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">run-typecheck</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;true&#39;</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">run-typecheck</span><span class="p">:</span><span class="w"> </span><span class="s">'true'</span>
 </span></code></pre></div>
 <p>Run the pinned Aviato 0.6.1 <code>sync</code> command against the worktree. Confirm the rendered <code>.github/workflows/aviato-ci.yml</code> contains <code>run-typecheck: true</code> and all managed artifact input hashes are refreshed together.</p>
 <ul class="task-list">
@@ -1035,7 +1035,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Step 5: Commit</strong></li>
 </ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>git<span class="w"> </span>add<span class="w"> </span>.github/aviato.yml<span class="w"> </span>.github/workflows/aviato-ci.yml<span class="w"> </span>.github/workflows/aviato-docs.yml<span class="w"> </span>.github/workflows/aviato-drift.yml<span class="w"> </span>.editorconfig<span class="w"> </span>mypy.ini<span class="w"> </span>requirements-docs.txt<span class="w"> </span>ruff.toml<span class="w"> </span>docs/superpowers/plans/2026-07-20-mypy-strict-cleanup.md<span class="w"> </span>docs/superpowers/specs/2026-07-20-mypy-strict-cleanup-design.md
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;ci: enforce repository-wide strict typing&quot;</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"ci: enforce repository-wide strict typing"</span>
 </span></code></pre></div>
 
 

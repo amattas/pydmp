@@ -4,8 +4,11 @@
   (`feat:`, `fix:`, `chore:`, …; mark breaking changes with `!` or a
   `BREAKING CHANGE:` footer).
 - **Changes land via pull request** into `main`. The CI gates (ruff lint and
-  format, mypy strict, tests, build, CodeQL) must be green and the branch up to
-  date before merge.
+  format, actionlint, mypy strict, tests, build, dependency review/audit,
+  CodeQL) must be green and the branch up to date before merge.
+- **CI runs only after maintainer approval.** Each run (and each automatic
+  docs deploy from `main`) waits on the `approval` environment; a maintainer
+  clicks "Review deployments" → Approve to start it.
 - **Releases are tag-driven.** Bump `[project].version` in `pyproject.toml`
   and merge it to `main`, then push a matching tag:
 

@@ -1,12 +1,22 @@
-# CI — every PR and push to main.
-# Keep the job name "Python CI": the default-branch ruleset requires that check.
+# CI — pull requests to main (plus manual runs).
+#
+# Every run waits for a manual approval before any real work starts: the
+# `approve` job targets the `approval` environment, which has a required
+# reviewer. Approve from the run page ("Review deployments") or the PR checks
+# list. Pending runs consume no runner minutes; a newer push to the same PR
+# cancels the older pending run.
+#
+# main is not re-verified on push: the ruleset requires these checks and
+# up-to-date branches, so every merge was already verified at its final SHA.
+#
+# Required checks (default-branch ruleset): "Python CI" and "Security".
+# CodeQL is enforced separately by the ruleset's code-scanning rule.
 name: CI
 
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,8 +26,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  approve:
+    name: Approve CI run
+    runs-on: ubuntu-latest
+    environment: approval
+    steps:
+      - run: echo "CI approved by ${GITHUB_TRIGGERING_ACTOR}"
+
   ci:
     name: Python CI
+    needs: [approve]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,21 +44,47 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install
         run: python -m pip install --quiet -e ".[dev]"
       - name: Lint
         run: |
           ruff check .
           ruff format --check .
+      - name: Lint workflows
+        run: docker run --rm -v "${PWD}:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color
       - name: Type-check
         run: python -m mypy --strict .
       - name: Test
-        run: python -m pytest -q
+        run: python -m pytest -q --no-cov
       - name: Build
         run: python -m build
 
+  security:
+    name: Security
+    needs: [approve]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Dependency review (vulnerable deps introduced by this PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install --quiet -e ".[dev]" pip-audit==2.10.1
+      - name: Audit installed dependencies (known vulnerabilities)
+        run: pip-audit --strict --skip-editable
+
   codeql:
     name: CodeQL
+    needs: [approve]
     runs-on: ubuntu-latest
     permissions:
       contents: read

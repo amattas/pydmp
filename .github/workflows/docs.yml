@@ -29,8 +29,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The automatic "dev" deploy on push waits for a manual approval (`approval`
+  # environment, required reviewer). Release and manual runs are already
+  # deliberate actions, so they skip the gate.
+  approve:
+    name: Approve docs deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: approval
+    steps:
+      - run: echo "Docs deploy approved by ${GITHUB_TRIGGERING_ACTOR}"
+
   build:
     name: Build docs
+    needs: [approve]
+    if: ${{ !cancelled() && (needs.approve.result == 'success' || needs.approve.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write # mike commits versions to the gh-pages branch

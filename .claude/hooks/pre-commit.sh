@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code pre-commit hook — mirrors the aviato-managed CI verify (ruff owns
+# Claude Code pre-commit hook — mirrors the CI lint gate (ruff owns
 # formatting, linting, and the bandit-family security rules via ruff.toml).
 
 # Parse tool input to check if this is a git commit command

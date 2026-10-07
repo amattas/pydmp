@@ -1,0 +1,112 @@
+# Release — fires when a SemVer tag is pushed. Releasing is:
+#   1. bump [project].version in pyproject.toml and merge it to main
+#   2. git tag X.Y.Z && git push origin X.Y.Z   (or X.Y.Z-alphaN / -betaN)
+# The workflow refuses a tag that is not on main or does not match the built
+# version. Publishing runs in the `pypi` environment (required reviewer gate);
+# PyPI trusted publishing must be registered for workflow `release.yml` +
+# environment `pypi`. The GitHub release is created last, after a successful
+# publish, and its `published` event triggers the versioned docs deploy.
+name: Release
+
+on:
+  push:
+    # Digit-initiated tags only: version-shaped tags trigger (malformed ones
+    # fail validation loudly); v-prefixed or non-version tags do not.
+    tags: ["[0-9]*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate tag format
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s\n' "${TAG}" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$'; then
+            echo "::error::Tag '${TAG}' is not X.Y.Z (optionally -alphaN/-betaN)"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify tag is on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::Tag '${TAG}' (${GITHUB_SHA}) is not reachable from main"
+            exit 1
+          fi
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --quiet -e ".[dev]" twine==6.2.0
+      - name: Test
+        run: python -m pytest -q --no-cov
+      - name: Build and check
+        run: |
+          python -m build
+          python -m twine check dist/*
+      - name: Verify tag matches the built version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - "${TAG}" dist/*.whl <<'PY'
+          import sys
+          from pathlib import Path
+          from packaging.version import Version
+
+          tag, wheel = sys.argv[1], Path(sys.argv[2]).name
+          built = Version(wheel.split("-")[1])
+          if Version(tag) != built:
+              sys.exit(f"::error::built version {built} != tag {tag} - bump pyproject.toml first")
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: pypi # must match the PyPI trusted publisher registration
+    concurrency:
+      group: pypi-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # PyPI trusted publishing (OIDC)
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: "dist/*"
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
+        with:
+          packages-dir: dist
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          args=(--repo "${GITHUB_REPOSITORY}" --generate-notes --verify-tag)
+          case "${TAG}" in *-alpha*|*-beta*) args+=(--prerelease) ;; esac
+          gh release create "${TAG}" "${args[@]}" dist/*.whl dist/*.tar.gz

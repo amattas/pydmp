@@ -44,9 +44,9 @@ from .zone import Zone, ZoneSync
 
 
 def _runtime_version() -> str:
-    """pyproject's static version is the single source of truth (the aviato release
-    automation writes it); derive from installed metadata, falling back to reading
-    pyproject directly for uninstalled source checkouts."""
+    """pyproject's static version is the single source of truth (bumped by hand
+    before tagging a release); derive from installed metadata, falling back to
+    reading pyproject directly for uninstalled source checkouts."""
     try:
         return _dist_version("pydmp")
     except PackageNotFoundError:

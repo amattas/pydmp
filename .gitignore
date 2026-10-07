@@ -1,6 +1,3 @@
-# aviato:managed profile=python-library version=2.7.1
-# aviato:hash=e6bfaca6d068571a42850f5f2d09cb82776f4dce5ba0277abb907db6c891a5c2
-# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 # OS / editor
 .DS_Store
 *.swp
@@ -25,3 +22,17 @@ coverage/
 # Xcode
 xcuserdata/
 DerivedData/
+htmlcov/
+coverage.xml
+*.py[cod]
+.env
+
+# Local config (may contain the panel remote key) and reference material
+config.yaml
+*.pdf
+*.lua
+
+# Zensical docs: built site, cache, and generated API reference
+/site
+.cache/
+docs/api/reference.md

@@ -1,7 +1,4 @@
 ---
-# aviato:managed profile=python-library version=2.7.1
-# aviato:hash=f2a2fbde5b3809da345a0854a7722dc3eb0fe7e4ce05fc9da2958e9b90e620c6
-# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: test-consolidation
 description: Use when a project's test suite has accumulated redundant or near-duplicate tests, when the suite has grown slow or repetitive, when many tests share copy-pasted setup, or when the user asks to consolidate, dedupe, prune, or clean up tests.
 ---

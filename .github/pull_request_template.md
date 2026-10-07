@@ -9,4 +9,4 @@
 
 - [ ] Tests cover the change (or an explanation of why not)
 - [ ] CI gates are green (lint, format, type-check, tests, security)
-- [ ] No hand-edits to `aviato:managed` files or version sources
+- [ ] Version in `pyproject.toml` untouched unless this PR cuts a release

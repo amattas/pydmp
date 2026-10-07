@@ -1,16 +1,19 @@
 # Contributing
 
-This repository is managed by [Aviato](https://github.com/amattas/aviato)
-conventions; CI, releases, and protections are automated.
-
 - **Commits follow [Conventional Commits](https://www.conventionalcommits.org/)**
   (`feat:`, `fix:`, `chore:`, …; mark breaking changes with `!` or a
-  `BREAKING CHANGE:` footer). Release versions are derived from them.
-- **Changes land via pull request** into the default branch. The verify gates
-  (lint, format, type-check, tests, security baseline) must be green and the
-  branch up to date before merge.
-- **Releases are tag-only and automated.** Do not hand-edit version files or push
-  release tags — merging the automated `chore(release): X.Y.Z` PR cuts the
-  release and runs the deploys in the same run.
-- Files carrying an `aviato:managed` marker are re-rendered by automation; edit
-  the corresponding Aviato template instead of the file itself.
+  `BREAKING CHANGE:` footer).
+- **Changes land via pull request** into `main`. The CI gates (ruff lint and
+  format, mypy strict, tests, build, CodeQL) must be green and the branch up to
+  date before merge.
+- **Releases are tag-driven.** Bump `[project].version` in `pyproject.toml`
+  and merge it to `main`, then push a matching tag:
+
+  ```bash
+  git tag 1.2.3 && git push origin 1.2.3
+  ```
+
+  Pre-releases use `X.Y.Z-alphaN` / `X.Y.Z-betaN`. The release workflow
+  verifies the tag is on `main` and matches the built version, publishes to
+  PyPI (trusted publishing, gated by the `pypi` environment), creates the
+  GitHub release, and then deploys the versioned docs.

@@ -1,6 +1,3 @@
-# aviato:managed profile=python-library version=2.7.1
-# aviato:hash=f45b8ee3ab4336c87eb0d142f81dd2088b415f3ebafbe8a5ff015dfbf29dfada
-# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 line-length = 120
 target-version = "py312"
 
@@ -11,3 +8,5 @@ select = ["E", "F", "I", "B", "UP", "SIM", "S"]
 # family drowns adopted test suites in S101 (first live adoption: 293 findings).
 [lint.per-file-ignores]
 "tests/**" = ["S101"]
+# Docs publishing scripts run git/mike/pydoc-markdown with fixed argv lists.
+"scripts/**" = ["S603", "S607"]

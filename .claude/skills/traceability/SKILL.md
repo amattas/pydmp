@@ -1,7 +1,4 @@
 ---
-# aviato:managed profile=python-library version=2.7.1
-# aviato:hash=7888ff1ed87863639bc7a0ec11c7a3c1493278635145a80974f3266ee9b04f38
-# aviato:inputs=fc765bd1af8b69911f2d2f19fa83781590b443d64723218e325418c024d742fc
 name: traceability
 description: Use when creating, auditing, or updating a requirements traceability matrix; reconciling requirement or threat states; or checking implementation and verification evidence before declaring work complete.
 ---

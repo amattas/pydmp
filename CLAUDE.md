@@ -282,30 +282,37 @@ pydmp = "pydmp.cli:main"
 
 ## Documentation (Zensical + mike)
 
-Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, content: `docs/`) and versioned with the [Zensical fork of mike](https://github.com/squidfunk/mike) at `https://amattas.github.io/pydmp/`. The mike fork is not on PyPI — CI installs it from GitHub pinned by commit (see `.github/workflows/docs.yml`).
+Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, content: `docs/`) and versioned with the [Zensical fork of mike](https://github.com/squidfunk/mike) at `https://amattas.github.io/pydmp/`. The mike fork is not on PyPI — `requirements-docs.txt` pins it by commit.
 
-### Version Mapping (handled by `docs.yml`)
+`scripts/publish_versioned_docs.py` (selection logic in `scripts/docs_versioning.py`, tests in `tests/docs/`) rebuilds the whole `gh-pages` branch on every run from `main` plus the git tags, then force-pushes it. `docs.yml` always checks out `main` (full history + tags), whatever ref its caller ran on.
 
-| Trigger | Version | Alias |
-|---------|---------|-------|
-| Push to `main` | `dev` | none |
-| Release published (stable) | `X.Y.Z` | `latest` (default) |
-| Release published (alpha/beta) | `X.Y.Z` | none |
-| `workflow_dispatch` with `version` input | as given | `latest` |
+### Version Mapping (handled by `scripts/publish_versioned_docs.py`)
 
-mike commits each built version to the `gh-pages` branch, which GitHub Pages serves directly (Pages source = `gh-pages` branch, classic mike setup).
+| Version | Built from | Alias |
+|---------|------------|-------|
+| `dev` | `main` | none |
+| `X.Y` (one per minor line) | newest stable `X.Y.Z` tag of that line (pre-release tags are never published) | the source tag itself (e.g. `1.1.0`, so old full-version URLs keep resolving), plus `latest` on the highest stable line — the site default (`dev` is the default until a release exists) |
+
+| Trigger | Effect |
+|---------|--------|
+| CI run on `main` (after CI passes; calls `docs.yml`) | republish all versions |
+| Release run from an `X.Y.Z` tag (after the GitHub release; calls `docs.yml`) | republish all versions, now including the new tag |
+| Manual Docs run | republish all versions |
+
+The API reference (`docs/api/reference.md`, gitignored) is generated with pydoc-markdown for `main` and for each published tag at build time. mike commits every version to the `gh-pages` branch, which GitHub Pages serves directly (Pages source = `gh-pages` branch). Pages serves `gh-pages` only for public repos; private repos build `gh-pages` but keep Pages disabled.
 
 ### Local Testing
 ```bash
-pip install -e ".[docs]"
+pip install -e ".[docs]" -r requirements-docs.txt
 pydoc-markdown -I src -p pydmp > docs/api/reference.md  # generated, gitignored
 zensical serve  # http://127.0.0.1:8000/
+python scripts/publish_versioned_docs.py --list  # versions a publish would build
 ```
 
 ### Troubleshooting
 - Docs not updating: check [GitHub Actions](https://github.com/amattas/pydmp/actions) and that the `gh-pages` branch exists
 - Version selector missing: ensure `zensical.toml` has `[project.extra.version]` with `provider = "mike"` and `default = "latest"`
-- Wrong default: `mike set-default --push latest`
+- Wrong versions or default: run `python scripts/publish_versioned_docs.py --list` and check the tags; a manual Docs run rebuilds everything
 
 ## License
 

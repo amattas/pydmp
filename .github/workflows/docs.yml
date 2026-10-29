@@ -1,0 +1,54 @@
+# Docs — Zensical + mike (versioned), published to the gh-pages branch by
+# scripts/publish_versioned_docs.py, which rebuilds every version from main's
+# checkout and the repo's tags:
+#   dev    = main
+#   X.Y    = newest patch tag of each documented minor line (pre-release tags
+#            are never published)
+#   latest = alias of the highest stable release; the site default
+# Pages serves gh-pages only for public repos; private repos build gh-pages but keep Pages disabled.
+# Triggers:
+#   ci.yml (workflow_call) after CI passes on main
+#   release.yml (workflow_call) after the GitHub release is created
+#   manual run (workflow_dispatch)
+# Always checks out main (full history + tags), whatever ref the caller ran on.
+# The API reference is generated from docstrings at build time (pydoc-markdown)
+# for main and for every published tag.
+name: Docs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write # mike commits versions to the gh-pages branch
+
+concurrency:
+  group: docs-gh-pages # must differ from every caller's group (ci-<ref>, pypi-<repo>)
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    name: Publish docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # every release tag is rebuilt from its own sources
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install docs tooling
+        run: python -m pip install --quiet -e ".[docs]" -r requirements-docs.txt
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Configure publish credentials
+        env:
+          GH_PAGES_TOKEN: ${{ github.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_PAGES_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+      - name: Publish
+        run: python scripts/publish_versioned_docs.py --push

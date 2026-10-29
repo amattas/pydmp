@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   release:
-    uses: mattas-net/.github/.github/workflows/create-release.yml@main
+    uses: amattas/.github/.github/workflows/create-release.yml@main
     permissions:
       contents: write
       actions: read

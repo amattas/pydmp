@@ -1,52 +1,45 @@
-# Release — manual-only. Releasing is:
-#   1. bump [project].version in pyproject.toml and merge it to main
-#   2. git tag X.Y.Z && git push origin X.Y.Z   (or X.Y.Z-alphaN / -betaN)
-#   3. Actions → Release → Run workflow, choosing the tag in "Use workflow from"
-# The workflow refuses a tag that is not on main or does not match the built
-# version. Publishing runs in the `pypi` environment (required reviewer gate);
+# Release: bump [project].version in pyproject.toml, merge to main, then
+# Actions -> Release -> Run workflow -> enter that version (bare semver, e.g. 1.2.0
+# or 1.2.0-beta1). create-release.yml verifies the manifest and the passing CI run
+# on main HEAD, then tags main and creates the GitHub release; the build then runs
+# from that tag. Publishing runs in the `pypi` environment (required reviewer gate);
 # PyPI trusted publishing must be registered for workflow `release.yml` +
-# environment `pypi`. The GitHub release is created last, after a successful
-# publish; the final `docs` job then calls docs.yml, which rebuilds the versioned
-# docs from main + tags (the new tag's X.Y line; "latest" = highest stable).
+# environment `pypi`. The built files are attached to the existing release after a
+# successful publish; the final `docs` job then rebuilds the versioned docs.
 name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (bare semver, e.g. 1.4.2)
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
+  release:
+    uses: mattas-net/.github/.github/workflows/create-release.yml@main
+    permissions:
+      contents: write
+      actions: read
+    with:
+      version: ${{ inputs.version }}
+      manifest: pyproject.toml
+      require-workflow: CI
+
   build:
     name: Build and verify
+    needs: [release]
     runs-on: ubuntu-latest
     steps:
-      - name: Validate tag format
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
-            echo "::error::Run this workflow from a tag, not a branch (got ${GITHUB_REF})"
-            exit 1
-          fi
-          if ! printf '%s\n' "${TAG}" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$'; then
-            echo "::error::Tag '${TAG}' is not X.Y.Z (optionally -alphaN/-betaN)"
-            exit 1
-          fi
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Verify tag is on main
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
-            echo "::error::Tag '${TAG}' (${GITHUB_SHA}) is not reachable from main"
-            exit 1
-          fi
+          ref: ${{ inputs.version }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -60,7 +53,7 @@ jobs:
           python -m twine check dist/*
       - name: Verify tag matches the built version
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.version }}
         run: |
           set -euo pipefail
           python - "${TAG}" dist/*.whl <<'PY'
@@ -88,7 +81,7 @@ jobs:
       group: pypi-${{ github.repository }}
       cancel-in-progress: false
     permissions:
-      contents: write # create the GitHub release
+      contents: write # attach files to the GitHub release
       id-token: write # PyPI trusted publishing (OIDC)
       attestations: write
     steps:
@@ -104,15 +97,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1 (v1.14.1)
         with:
           packages-dir: dist
-      - name: Create the GitHub release
+      - name: Attach the build to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          args=(--repo "${GITHUB_REPOSITORY}" --generate-notes --verify-tag)
-          case "${TAG}" in *-alpha*|*-beta*) args+=(--prerelease) ;; esac
-          gh release create "${TAG}" "${args[@]}" dist/*.whl dist/*.tar.gz
+          gh release upload "${TAG}" dist/*.whl dist/*.tar.gz --repo "${GITHUB_REPOSITORY}"
 
   docs:
     name: Docs

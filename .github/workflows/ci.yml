@@ -1,13 +1,6 @@
-# CI — manual-only (Actions tab → Run workflow on the branch to verify).
-#
-# Every run waits for a manual approval before any real work starts: the
-# `approve` job targets the `approval` environment, which has a required
-# reviewer. Approve from the run page ("Review deployments") or the PR checks
-# list. Pending runs consume no runner minutes; a newer run on the same ref
-# cancels the older pending run.
-#
-# Nothing runs automatically: the ruleset's required checks are satisfied by a
-# manual run on the PR branch's head commit.
+# CI — runs automatically on every push to main; run it manually (Actions tab →
+# Run workflow) to verify any other branch. The Release workflow requires a
+# successful run of this workflow on main HEAD.
 #
 # When run on main and all gating jobs pass, the final `docs` job calls docs.yml
 # to republish the versioned docs ("dev" = main). A newer CI run on main cancels
@@ -30,16 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  approve:
-    name: Approve CI run
-    runs-on: ubuntu-latest
-    environment: approval
-    steps:
-      - run: echo "CI approved by ${GITHUB_TRIGGERING_ACTOR}"
-
   ci:
     name: Python CI
-    needs: [approve]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -66,7 +51,6 @@ jobs:
 
   security:
     name: Security
-    needs: [approve]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -89,7 +73,6 @@ jobs:
 
   codeql:
     name: CodeQL
-    needs: [approve]
     runs-on: ubuntu-latest
     permissions:
       contents: read

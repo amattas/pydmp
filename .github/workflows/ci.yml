@@ -1,21 +1,23 @@
-# CI — pull requests to main (plus manual runs).
+# CI — manual-only (Actions tab → Run workflow on the branch to verify).
 #
 # Every run waits for a manual approval before any real work starts: the
 # `approve` job targets the `approval` environment, which has a required
 # reviewer. Approve from the run page ("Review deployments") or the PR checks
-# list. Pending runs consume no runner minutes; a newer push to the same PR
+# list. Pending runs consume no runner minutes; a newer run on the same ref
 # cancels the older pending run.
 #
-# main is not re-verified on push: the ruleset requires these checks and
-# up-to-date branches, so every merge was already verified at its final SHA.
+# Nothing runs automatically: the ruleset's required checks are satisfied by a
+# manual run on the PR branch's head commit.
+#
+# When run on main and all gating jobs pass, the final `docs` job calls docs.yml
+# to republish the versioned docs ("dev" = main). A newer CI run on main cancels
+# this run (incl. an in-flight docs call); its own docs job then republishes.
 #
 # Required checks (default-branch ruleset): "Python CI" and "Security".
 # CodeQL is enforced separately by the ruleset's code-scanning rule.
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -68,10 +70,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Dependency review (vulnerable deps introduced by this PR)
-        if: github.event_name == 'pull_request'
+      - name: Dependency review (vulnerable deps introduced vs main)
         uses: actions/dependency-review-action@v5
         with:
+          base-ref: main
+          head-ref: ${{ github.sha }}
           fail-on-severity: high
       - uses: actions/setup-python@v6
         with:
@@ -97,3 +100,11 @@ jobs:
         with:
           languages: python
       - uses: github/codeql-action/analyze@v4
+
+  docs:
+    name: Docs
+    needs: [ci, security, codeql]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write # docs.yml: mike pushes the gh-pages branch
+    uses: ./.github/workflows/docs.yml

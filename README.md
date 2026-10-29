@@ -387,12 +387,12 @@ Hosted: https://amattas.github.io/pydmp/
 - Build locally:
 
 ```bash
-pip install -e ".[docs]"
+pip install -e ".[docs]" -r requirements-docs.txt
 pydoc-markdown -I src -p pydmp > docs/api/reference.md
 zensical serve
 ```
 
-- CI deploys versioned docs to GitHub Pages: every push to main updates `dev`, every release publishes its version and updates `latest`.
+- Versioned docs are rebuilt from `main` and the release tags and pushed to the `gh-pages` branch (served by GitHub Pages) after CI passes on `main` and after each release: `dev` tracks `main`, each `X.Y` shows the newest stable `X.Y.Z` release, and `latest` (the default) points at the highest stable release.
 
 ## Testing
 

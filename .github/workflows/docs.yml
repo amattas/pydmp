@@ -1,133 +1,54 @@
-# Docs — Zensical + mike (versioned), deployed to GitHub Pages.
-#   push to main        → deploys the "dev" version
-#   release published   → deploys "X.Y.Z"; moves the "latest" alias only when
-#                         X.Y.Z is the highest release tag (so alpha/beta and
-#                         re-releases of older lines never move it)
-#   workflow_dispatch   → deploys an explicit version (one-time seeding/fixups)
-# mike commits every built version to the gh-pages branch; that branch is then
-# uploaded as the Pages artifact and deployed (Pages source = GitHub Actions).
-# The API reference is generated from docstrings at build time (pydoc-markdown).
+# Docs — Zensical + mike (versioned), published to the gh-pages branch by
+# scripts/publish_versioned_docs.py, which rebuilds every version from main's
+# checkout and the repo's tags:
+#   dev    = main
+#   X.Y    = newest patch tag of each documented minor line (pre-release tags
+#            are never published)
+#   latest = alias of the highest stable release; the site default
+# Pages serves gh-pages only for public repos; private repos build gh-pages but keep Pages disabled.
+# Triggers:
+#   ci.yml (workflow_call) after CI passes on main
+#   release.yml (workflow_call) after the GitHub release is created
+#   manual run (workflow_dispatch)
+# Always checks out main (full history + tags), whatever ref the caller ran on.
+# The API reference is generated from docstrings at build time (pydoc-markdown)
+# for main and for every published tag.
 name: Docs
 
 on:
-  push:
-    branches: [main]
-  release:
-    types: [published]
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to deploy (e.g. 1.0.1); aliases it as latest. Empty = dev."
-        required: false
-        default: ""
+  workflow_call:
 
 permissions:
-  contents: read
+  contents: write # mike commits versions to the gh-pages branch
 
 concurrency:
-  group: pages
+  group: docs-gh-pages # must differ from every caller's group (ci-<ref>, pypi-<repo>)
   cancel-in-progress: false
 
 jobs:
-  # The automatic "dev" deploy on push waits for a manual approval (`approval`
-  # environment, required reviewer). Release and manual runs are already
-  # deliberate actions, so they skip the gate.
-  approve:
-    name: Approve docs deploy
-    if: github.event_name == 'push'
+  docs:
+    name: Publish docs
     runs-on: ubuntu-latest
-    environment: approval
-    steps:
-      - run: echo "Docs deploy approved by ${GITHUB_TRIGGERING_ACTOR}"
-
-  build:
-    name: Build docs
-    needs: [approve]
-    if: ${{ !cancelled() && (needs.approve.result == 'success' || needs.approve.result == 'skipped') }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # mike commits versions to the gh-pages branch
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # mike needs the gh-pages branch history
+          fetch-depth: 0 # every release tag is rebuilt from its own sources
+          ref: main
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install docs tooling
         run: python -m pip install --quiet -e ".[docs]" -r requirements-docs.txt
-      - name: Generate API reference from docstrings
+      - name: Configure Git author
         run: |
-          mkdir -p docs/api # holds only this gitignored file, so absent in a fresh checkout
-          {
-            printf -- '---\ntitle: API Reference\n---\n\n'
-            pydoc-markdown -I src -p pydmp
-          } > docs/api/reference.md
-      - name: Deploy version with mike
-        env:
-          EVENT: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          case "${EVENT}" in
-            release) VERSION="${RELEASE_TAG}" ;;
-            workflow_dispatch) VERSION="${INPUT_VERSION}" ;;
-            *) VERSION="" ;;
-          esac
-          if [ -z "${VERSION}" ]; then
-            mike deploy --push dev
-            exit 0
-          fi
-          # "latest" moves only when VERSION is the highest release tag (pre-releases
-          # rank below their final); re-releasing an older line never regresses it.
-          git tag --list '[0-9]*.[0-9]*.[0-9]*' > "${RUNNER_TEMP}/tags.txt"
-          highest="$(python3 - "${VERSION}" "${RUNNER_TEMP}/tags.txt" <<'PY'
-          import re, sys
-          rel = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)(\d+))?$")
-          rank = {None: 2, "beta": 1, "alpha": 0}
-          def key(t):
-              m = rel.match(t.strip())
-              return (int(m[1]), int(m[2]), int(m[3]), rank[m[4]], int(m[5] or 0)) if m else None
-          cand = key(sys.argv[1])
-          if cand is None:
-              sys.exit(f"::error::{sys.argv[1]!r} is not a release version")
-          with open(sys.argv[2], encoding="utf-8") as tags:
-              keys = [k for k in map(key, tags) if k]
-          print("true" if max(keys + [cand]) == cand else "false")
-          PY
-          )"
-          if [ "${highest}" = "true" ]; then
-            mike deploy --push --update-aliases "${VERSION}" latest
-            mike set-default --push latest
-          else
-            echo "::warning::${VERSION} is not the highest release; deploying without moving latest."
-            mike deploy --push "${VERSION}"
-          fi
-      - name: Export gh-pages tree for the Pages artifact
+      - name: Configure publish credentials
+        env:
+          GH_PAGES_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          rm -rf site && mkdir site
-          git archive refs/remotes/origin/gh-pages | tar -x -C site
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-          # v4+ drops dotfiles by default; keep .nojekyll and friends.
-          include-hidden-files: true
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+          git remote set-url origin "https://x-access-token:${GH_PAGES_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+      - name: Publish
+        run: python scripts/publish_versioned_docs.py --push

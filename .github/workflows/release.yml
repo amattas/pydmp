@@ -1,18 +1,17 @@
-# Release — fires when a SemVer tag is pushed. Releasing is:
+# Release — manual-only. Releasing is:
 #   1. bump [project].version in pyproject.toml and merge it to main
 #   2. git tag X.Y.Z && git push origin X.Y.Z   (or X.Y.Z-alphaN / -betaN)
+#   3. Actions → Release → Run workflow, choosing the tag in "Use workflow from"
 # The workflow refuses a tag that is not on main or does not match the built
 # version. Publishing runs in the `pypi` environment (required reviewer gate);
 # PyPI trusted publishing must be registered for workflow `release.yml` +
 # environment `pypi`. The GitHub release is created last, after a successful
-# publish, and its `published` event triggers the versioned docs deploy.
+# publish; the final `docs` job then calls docs.yml, which rebuilds the versioned
+# docs from main + tags (the new tag's X.Y line; "latest" = highest stable).
 name: Release
 
 on:
-  push:
-    # Digit-initiated tags only: version-shaped tags trigger (malformed ones
-    # fail validation loudly); v-prefixed or non-version tags do not.
-    tags: ["[0-9]*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,6 +26,10 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            echo "::error::Run this workflow from a tag, not a branch (got ${GITHUB_REF})"
+            exit 1
+          fi
           if ! printf '%s\n' "${TAG}" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)[0-9]+)?$'; then
             echo "::error::Tag '${TAG}' is not X.Y.Z (optionally -alphaN/-betaN)"
             exit 1
@@ -110,3 +113,10 @@ jobs:
           args=(--repo "${GITHUB_REPOSITORY}" --generate-notes --verify-tag)
           case "${TAG}" in *-alpha*|*-beta*) args+=(--prerelease) ;; esac
           gh release create "${TAG}" "${args[@]}" dist/*.whl dist/*.tar.gz
+
+  docs:
+    name: Docs
+    needs: [publish]
+    permissions:
+      contents: write # docs.yml: mike pushes the gh-pages branch
+    uses: ./.github/workflows/docs.yml

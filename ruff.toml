@@ -8,3 +8,5 @@ select = ["E", "F", "I", "B", "UP", "SIM", "S"]
 # family drowns adopted test suites in S101 (first live adoption: 293 findings).
 [lint.per-file-ignores]
 "tests/**" = ["S101"]
+# Docs publishing scripts run git/mike/pydoc-markdown with fixed argv lists.
+"scripts/**" = ["S603", "S607"]

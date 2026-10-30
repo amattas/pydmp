@@ -7,8 +7,8 @@
 #   latest = alias of the highest stable release; the site default
 # Pages serves gh-pages only for public repos; private repos build gh-pages but keep Pages disabled.
 # Triggers:
-#   ci.yml (workflow_call) after CI passes on main
-#   release.yml (workflow_call) after the GitHub release is created
+#   checks.yml (workflow_call) after the checks pass on main
+#   release.yml (workflow_call) after the PyPI publish
 #   manual run (workflow_dispatch)
 # Always checks out main (full history + tags), whatever ref the caller ran on.
 # The API reference is generated from docstrings at build time (pydoc-markdown)
@@ -23,20 +23,20 @@ permissions:
   contents: write # mike commits versions to the gh-pages branch
 
 concurrency:
-  group: docs-gh-pages # must differ from every caller's group (ci-<ref>, pypi-<repo>)
+  group: docs-gh-pages # must differ from every caller's group (checks-<ref>)
   cancel-in-progress: false
 
 jobs:
   docs:
     name: Publish docs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # every release tag is rebuilt from its own sources
           ref: main
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Install docs tooling

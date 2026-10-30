@@ -19,9 +19,9 @@ panel = DMPPanel()
 await panel.connect(host="192.168.1.100", account="00001", remote_key="YOURKEY")
 await panel.update_status()  # connect() is side-effect free; call explicit updates as needed
 
-areas = await panel.get_areas()   # List[Area]
-zones = await panel.get_zones()   # List[Zone]
-outs  = await panel.get_outputs()  # List[Output] (1..4 are created on demand)
+areas = await panel.get_areas()  # List[Area]
+zones = await panel.get_zones()  # List[Zone]
+outs = await panel.get_outputs()  # List[Output] (1..4 are created on demand)
 ```
 
 ## Arm/Disarm
@@ -40,7 +40,8 @@ await panel.disarm_areas([1, 2])
 
 ```python
 z = await panel.get_zone(1)
-await z.bypass(); await z.restore()
+await z.bypass()
+await z.restore()
 
 o = await panel.get_output(1)
 await o.pulse()

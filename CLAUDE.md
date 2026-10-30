@@ -25,6 +25,7 @@ import asyncio
 from pydmp import DMPPanel
 from pydmp.const import AreaState, ZoneType
 
+
 async def main():
     panel = DMPPanel()
     await panel.connect("192.168.1.100", "00001", "YOUR_KEY")
@@ -45,6 +46,7 @@ async def main():
             print(f"Fire alarm: Zone {zone.number}")
 
     await panel.disconnect()
+
 
 asyncio.run(main())
 ```
@@ -273,7 +275,7 @@ description = "Python library for controlling DMP alarm systems"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-asyncio>=0.21", "black>=23.7", "mypy>=1.5"]
+dev = ["pytest>=7.4", "pytest-asyncio>=0.21", "ruff>=0.17", "mypy>=1.5"]
 cli = ["click>=8.1", "pyyaml>=6.0", "rich>=13.0"]
 
 [project.scripts]
@@ -295,7 +297,7 @@ Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, c
 
 | Trigger | Effect |
 |---------|--------|
-| CI run on `main` (after CI passes; calls `docs.yml`) | republish all versions |
+| Checks run on `main` (after the checks pass; calls `docs.yml`) | republish all versions |
 | Release run from an `X.Y.Z` tag (after the GitHub release; calls `docs.yml`) | republish all versions, now including the new tag |
 | Manual Docs run | republish all versions |
 

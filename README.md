@@ -2,7 +2,7 @@
 
 **Python library for controlling DMP (Digital Monitoring Products) alarm systems**
 
-[![CI](https://github.com/amattas/pydmp/actions/workflows/ci.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/ci.yml)
+[![Checks](https://github.com/amattas/pydmp/actions/workflows/checks.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/checks.yml)
 [![Docs Workflow](https://github.com/amattas/pydmp/actions/workflows/docs.yml/badge.svg)](https://github.com/amattas/pydmp/actions/workflows/docs.yml)
 [![Pages](https://img.shields.io/badge/docs-GitHub%20Pages-0A7ACC)](https://amattas.github.io/pydmp/)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -78,15 +78,15 @@ PyDMP includes a CLI for common operations. See the [full guide](https://amattas
 
 ## Development: Formatting with pre-commit
 
-This repository uses Black for code formatting. To avoid formatting failures in CI, install and enable pre‑commit hooks:
+This repository uses Ruff for linting and formatting (`ruff check` + `ruff format`). To avoid formatting failures in CI, install and enable pre‑commit hooks:
 
 ```bash
-pip install -e ".[dev]"           # installs black and pre-commit
+pip install -e ".[dev]"           # installs ruff and pre-commit
 pre-commit install                 # installs the git hook
 pre-commit run -a                  # optional: format all files once
 ```
 
-Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-version = py310`).
+Ruff reads its configuration from `ruff.toml` (`line-length = 120`, `target-version = "py312"`).
 
 ## Quick Start
 
@@ -95,6 +95,7 @@ Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-ve
 ```python
 import asyncio
 from pydmp import DMPPanel
+
 
 async def main():
     panel = DMPPanel()
@@ -107,7 +108,7 @@ async def main():
 
     # Check status (raw codes: A/D/S)
     state = await areas[0].get_state()
-    if state == 'A':
+    if state == "A":
         print("Armed (Away)")
 
     # Check zones (raw codes: N/O/S/X/L/M)
@@ -117,6 +118,7 @@ async def main():
             print(f"Open zone: {zone.number} - {zone.name}")
 
     await panel.disconnect()
+
 
 asyncio.run(main())
 ```
@@ -133,7 +135,7 @@ areas = panel.get_areas()
 areas[0].arm_sync()
 
 state = areas[0].get_state_sync()
-if state == 'A':
+if state == "A":
     print("Armed (Away)")
 
 panel.disconnect()
@@ -333,15 +335,15 @@ PyDMP provides a comprehensive exception hierarchy:
 
 ```python
 from pydmp.exceptions import (
-    DMPError,                # Base exception
-    DMPConnectionError,      # Connection issues
+    DMPError,  # Base exception
+    DMPConnectionError,  # Connection issues
     DMPAuthenticationError,  # Auth failed
-    DMPTimeoutError,         # Operation timeout
-    DMPProtocolError,        # Protocol errors
-    DMPCommandNAKError,      # Command rejected
-    DMPAreaError,            # Area-specific errors
-    DMPZoneError,            # Zone-specific errors
-    DMPOutputError,          # Output-specific errors
+    DMPTimeoutError,  # Operation timeout
+    DMPProtocolError,  # Protocol errors
+    DMPCommandNAKError,  # Command rejected
+    DMPAreaError,  # Area-specific errors
+    DMPZoneError,  # Zone-specific errors
+    DMPOutputError,  # Output-specific errors
 )
 ```
 
@@ -370,13 +372,13 @@ pytest
 pytest --cov=pydmp --cov-report=html
 
 # Format code
-black src/ tests/
+ruff format .
 
 # Type checking
 mypy src/
 
 # Linting
-ruff check src/ tests/
+ruff check .
 ```
 
 ## Documentation

@@ -297,7 +297,7 @@ Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, c
 
 | Trigger | Effect |
 |---------|--------|
-| CI run on `main` (after CI passes; calls `docs.yml`) | republish all versions |
+| Checks run on `main` (after the checks pass; calls `docs.yml`) | republish all versions |
 | Release run from an `X.Y.Z` tag (after the GitHub release; calls `docs.yml`) | republish all versions, now including the new tag |
 | Manual Docs run | republish all versions |
 

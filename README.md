@@ -368,14 +368,13 @@ pip install -e ".[dev]"
 # Run tests
 pytest
 
-# Run tests with coverage
-pytest --cov=pydmp --cov-report=html
+# Coverage: every pytest run reports it and enforces fail_under from pyproject.toml
 
 # Format code
 ruff format .
 
 # Type checking
-mypy src/
+python -m mypy
 
 # Linting
 ruff check .
@@ -394,7 +393,7 @@ pydoc-markdown -I src -p pydmp > docs/api/reference.md
 zensical serve
 ```
 
-- Versioned docs are rebuilt from `main` and the release tags and pushed to the `gh-pages` branch (served by GitHub Pages) after CI passes on `main` and after each release: `dev` tracks `main`, each `X.Y` shows the newest stable `X.Y.Z` release, and `latest` (the default) points at the highest stable release.
+- Versioned docs are rebuilt from `main` and the release tags and pushed to the `gh-pages` branch (served by GitHub Pages) on every push to `main` and after each release: `dev` tracks `main`, each `X.Y` shows the newest stable `X.Y.Z` release, and `latest` (the default) points at the highest stable release.
 
 ## Testing
 
@@ -407,8 +406,8 @@ pytest
 # Run specific test file
 pytest tests/test_protocol.py
 
-# Run with coverage
-pytest --cov=pydmp --cov-report=term-missing
+# Skip the coverage gate for a partial run
+pytest --no-cov tests/test_protocol.py
 ```
 
 ## Contributing

@@ -286,7 +286,7 @@ pydmp = "pydmp.cli:main"
 
 Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, content: `docs/`) and versioned with the [Zensical fork of mike](https://github.com/squidfunk/mike) at `https://amattas.github.io/pydmp/`. The mike fork is not on PyPI — `requirements-docs.txt` pins it by commit.
 
-`scripts/publish_versioned_docs.py` (selection logic in `scripts/docs_versioning.py`, tests in `tests/docs/`) rebuilds the whole `gh-pages` branch on every run from `main` plus the git tags, then force-pushes it. `docs.yml` always checks out `main` (full history + tags), whatever ref its caller ran on.
+`scripts/publish_versioned_docs.py` (selection logic in `scripts/docs_versioning.py`, tests in `tests/docs/`) rebuilds the whole `gh-pages` branch on every run from `main` plus the git tags, then force-pushes it. `docs.yml` is a thin caller of the shared `mattas-net/.github` docs workflow, which always checks out `main` (full history + tags), whatever ref triggered it.
 
 ### Version Mapping (handled by `scripts/publish_versioned_docs.py`)
 
@@ -297,7 +297,7 @@ Docs are built with [Zensical](https://zensical.org) (config: `zensical.toml`, c
 
 | Trigger | Effect |
 |---------|--------|
-| Checks run on `main` (after the checks pass; calls `docs.yml`) | republish all versions |
+| Push to `main` (`docs.yml`) | republish all versions |
 | Release run from an `X.Y.Z` tag (after the GitHub release; calls `docs.yml`) | republish all versions, now including the new tag |
 | Manual Docs run | republish all versions |
 

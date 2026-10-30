@@ -41,6 +41,7 @@ dev = [
     "click==8.5.0",
     "pyyaml==6.0.3",
     "rich==15.0.0",
+    "types-PyYAML==6.0.12.20260906",
 ]
 cli = [
     "click==8.5.0",
@@ -52,6 +53,10 @@ docs = [
     "pydoc-markdown==4.8.2",
 ]
 
+[project.urls]
+Documentation = "https://amattas.github.io/pydmp/"
+Source = "https://github.com/amattas/pydmp"
+
 [project.scripts]
 pydmp = "pydmp.cli:main"
 
@@ -61,7 +66,22 @@ packages = ["src/pydmp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--cov --cov-report=term-missing --cov-report=html"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--cov --cov-report=term-missing:skip-covered"
 
 [tool.coverage.run]
 source = ["src/pydmp"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 88
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]
+
+[tool.mypy]
+# Pinned to the project Python floor so results don't drift with the runner's interpreter.
+python_version = "3.12"
+files = ["src", "tests", "scripts"]
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true

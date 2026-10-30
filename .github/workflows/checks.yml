@@ -39,6 +39,7 @@ jobs:
       contents: read
     with:
       python-versions: '["3.12", "3.13", "3.14"]'
+      extra-lint: bandit -q -r src
       typecheck: python -m mypy --strict .
       test: python -m pytest -q --no-cov
       audit: strict
@@ -50,11 +51,3 @@ jobs:
     permissions:
       contents: write # docs.yml: mike pushes the gh-pages branch
     uses: ./.github/workflows/docs.yml
-
-  codeql:
-    needs: approve
-    if: always() && needs.approve.result != 'failure' && needs.approve.result != 'cancelled'
-    uses: mattas-net/.github/.github/workflows/codeql.yml@main
-    permissions:
-      contents: read
-      security-events: write

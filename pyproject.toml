@@ -31,6 +31,7 @@ dev = [
     "pytest-cov==7.1.0",
     "mypy==2.3.0",
     "ruff==0.17.2",
+    "bandit==1.9.4",
     "pre-commit==4.7.0",
     # The verify's build job runs `python -m build` from the dev install.
     "build==1.6.1",

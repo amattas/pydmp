@@ -96,6 +96,7 @@ Ruff reads its configuration from `ruff.toml` (`line-length = 120`, `target-vers
 import asyncio
 from pydmp import DMPPanel
 
+
 async def main():
     panel = DMPPanel()
     await panel.connect("192.168.1.100", "00001", "YOUR_KEY")
@@ -107,7 +108,7 @@ async def main():
 
     # Check status (raw codes: A/D/S)
     state = await areas[0].get_state()
-    if state == 'A':
+    if state == "A":
         print("Armed (Away)")
 
     # Check zones (raw codes: N/O/S/X/L/M)
@@ -117,6 +118,7 @@ async def main():
             print(f"Open zone: {zone.number} - {zone.name}")
 
     await panel.disconnect()
+
 
 asyncio.run(main())
 ```
@@ -133,7 +135,7 @@ areas = panel.get_areas()
 areas[0].arm_sync()
 
 state = areas[0].get_state_sync()
-if state == 'A':
+if state == "A":
     print("Armed (Away)")
 
 panel.disconnect()
@@ -333,15 +335,15 @@ PyDMP provides a comprehensive exception hierarchy:
 
 ```python
 from pydmp.exceptions import (
-    DMPError,                # Base exception
-    DMPConnectionError,      # Connection issues
+    DMPError,  # Base exception
+    DMPConnectionError,  # Connection issues
     DMPAuthenticationError,  # Auth failed
-    DMPTimeoutError,         # Operation timeout
-    DMPProtocolError,        # Protocol errors
-    DMPCommandNAKError,      # Command rejected
-    DMPAreaError,            # Area-specific errors
-    DMPZoneError,            # Zone-specific errors
-    DMPOutputError,          # Output-specific errors
+    DMPTimeoutError,  # Operation timeout
+    DMPProtocolError,  # Protocol errors
+    DMPCommandNAKError,  # Command rejected
+    DMPAreaError,  # Area-specific errors
+    DMPZoneError,  # Zone-specific errors
+    DMPOutputError,  # Output-specific errors
 )
 ```
 

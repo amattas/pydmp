@@ -16,7 +16,7 @@ PyDMP uses remote-link mixing when a remote key is supplied and hex-parsable; ot
 ## Fetching Users & Profiles
 
 ```python
-users = await panel.get_user_codes()      # Decrypts *P= replies into UserCode objects
+users = await panel.get_user_codes()  # Decrypts *P= replies into UserCode objects
 profiles = await panel.get_user_profiles()  # Parses *U replies into UserProfile objects
 ```
 

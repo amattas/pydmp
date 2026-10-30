@@ -8,6 +8,7 @@ PyDMP can run a lightweight TCP server that accepts Serial 3 (S3) Z-messages pus
 import asyncio
 from pydmp import DMPStatusServer, parse_s3_message
 
+
 async def on_start():
     server = DMPStatusServer(host="127.0.0.1", port=5001)
 
@@ -17,6 +18,7 @@ async def on_start():
 
     server.register_callback(on_event)
     await server.start()
+
 
 asyncio.run(on_start())
 ```

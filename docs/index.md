@@ -54,6 +54,7 @@ pip install pydmp[docs]
 import asyncio
 from pydmp import DMPPanel
 
+
 async def main():
     panel = DMPPanel()
     await panel.connect("192.168.1.100", "00001", "YOURKEY")
@@ -73,6 +74,7 @@ async def main():
 
     await panel.disconnect()
 
+
 asyncio.run(main())
 ```
 
@@ -82,11 +84,13 @@ asyncio.run(main())
 import asyncio
 from pydmp import DMPStatusServer, parse_s3_message
 
+
 async def run():
     server = DMPStatusServer(host="127.0.0.1", port=5001)
     server.register_callback(lambda msg: print(parse_s3_message(msg)))
     await server.start()
     await asyncio.sleep(3600)
+
 
 asyncio.run(run())
 ```

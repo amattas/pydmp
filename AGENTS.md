@@ -25,6 +25,7 @@ import asyncio
 from pydmp import DMPPanel
 from pydmp.const import AreaState, ZoneType
 
+
 async def main():
     panel = DMPPanel()
     await panel.connect("192.168.1.100", "00001", "YOUR_KEY")
@@ -45,6 +46,7 @@ async def main():
             print(f"Fire alarm: Zone {zone.number}")
 
     await panel.disconnect()
+
 
 asyncio.run(main())
 ```

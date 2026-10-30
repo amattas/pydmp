@@ -68,9 +68,7 @@ def cli_cfg(tmp_path: Path) -> Callable[..., Path]:
         separator = "\n" if top_level else "\n  "
         path.write_text(
             prefix
-            + separator.join(
-                ("host: h", "account: '1'", "remote_key: 'K'", f"port: {port}", f"timeout: {timeout}")
-            )
+            + separator.join(("host: h", "account: '1'", "remote_key: 'K'", f"port: {port}", f"timeout: {timeout}"))
             + "\n"
         )
         return path

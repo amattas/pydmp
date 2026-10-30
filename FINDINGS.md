@@ -292,30 +292,22 @@ class DMPServiceUserEvent(StrEnum):
 src/pydmp/panel_sync.py:54-154 (`DMPPanelSync`'s complete public surface — only connection lifecycle
 and entity getters are forwarded; no arm/disarm/output/user/keepalive/status-server methods)
 ```python
-    def connect(self, host: str, account: str, remote_key: str) -> None:
-        ...
-    def disconnect(self) -> None:
-        ...
-    def update_status(self) -> None:
-        ...
-    def get_areas(self) -> list[AreaSync]:
-        ...
-    def get_area(self, number: int) -> AreaSync:
-        ...
-    def get_zones(self) -> list[ZoneSync]:
-        ...
-    def get_zone(self, number: int) -> ZoneSync:
-        ...
-    def get_outputs(self) -> list[OutputSync]:
-        ...
-    def get_output(self, number: int) -> OutputSync:
-        ...
+def connect(self, host: str, account: str, remote_key: str) -> None: ...
+def disconnect(self) -> None: ...
+def update_status(self) -> None: ...
+def get_areas(self) -> list[AreaSync]: ...
+def get_area(self, number: int) -> AreaSync: ...
+def get_zones(self) -> list[ZoneSync]: ...
+def get_zone(self, number: int) -> ZoneSync: ...
+def get_outputs(self) -> list[OutputSync]: ...
+def get_output(self, number: int) -> OutputSync: ...
 
-    # Emergency trigger helpers were previously wired to non-existent async methods.
-    # If needed in the future, map to configured output pulses instead.
 
-    def _wrap_area(self, area: Area) -> AreaSync:
-        ...
+# Emergency trigger helpers were previously wired to non-existent async methods.
+# If needed in the future, map to configured output pulses instead.
+
+
+def _wrap_area(self, area: Area) -> AreaSync: ...
 ```
 
 src/pydmp/area.py:212-214 (`AreaSync.arm_sync` drops the `instant` flag)
@@ -391,18 +383,21 @@ actual 2nd-flag meaning against a real panel before committing, since the only l
 
 src/pydmp/const/commands.py:36
 ```python
-    ARM = "!C{area},{bypass}{force}{instant}"   # third flag unsupported by either reference
+ARM = "!C{area},{bypass}{force}{instant}"  # third flag unsupported by either reference
 ```
 
 src/pydmp/panel.py:600-609 (defaults send `!C..,NNY` for instant; `force` occupies the 2nd flag)
 ```python
-        bypass = "Y" if bypass_faulted else "N"
-        force = "Y" if force_arm else "N"
-        instant_flag = "Y" if instant is True else ("N" if instant is False else "")
-        resp = await self._send_command(
-            DMPCommand.ARM.value, area=areas_concat,
-            bypass=bypass, force=force, instant=instant_flag,
-        )
+bypass = "Y" if bypass_faulted else "N"
+force = "Y" if force_arm else "N"
+instant_flag = "Y" if instant is True else ("N" if instant is False else "")
+resp = await self._send_command(
+    DMPCommand.ARM.value,
+    area=areas_concat,
+    bypass=bypass,
+    force=force,
+    instant=instant_flag,
+)
 ```
 
 dmp.lua:2069-2075 (two flags; 2nd labeled FORCEBADZONES — suspected mislabel of "instant"):

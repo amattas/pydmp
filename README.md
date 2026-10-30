@@ -78,15 +78,15 @@ PyDMP includes a CLI for common operations. See the [full guide](https://amattas
 
 ## Development: Formatting with pre-commit
 
-This repository uses Black for code formatting. To avoid formatting failures in CI, install and enable pre‑commit hooks:
+This repository uses Ruff for linting and formatting (`ruff check` + `ruff format`). To avoid formatting failures in CI, install and enable pre‑commit hooks:
 
 ```bash
-pip install -e ".[dev]"           # installs black and pre-commit
+pip install -e ".[dev]"           # installs ruff and pre-commit
 pre-commit install                 # installs the git hook
 pre-commit run -a                  # optional: format all files once
 ```
 
-Black reads configuration from `pyproject.toml` (`line-length = 100`, `target-version = py310`).
+Ruff reads its configuration from `ruff.toml` (`line-length = 120`, `target-version = "py312"`).
 
 ## Quick Start
 
@@ -370,13 +370,13 @@ pytest
 pytest --cov=pydmp --cov-report=html
 
 # Format code
-black src/ tests/
+ruff format .
 
 # Type checking
 mypy src/
 
 # Linting
-ruff check src/ tests/
+ruff check .
 ```
 
 ## Documentation

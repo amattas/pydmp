@@ -273,7 +273,7 @@ description = "Python library for controlling DMP alarm systems"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-asyncio>=0.21", "black>=23.7", "mypy>=1.5"]
+dev = ["pytest>=7.4", "pytest-asyncio>=0.21", "ruff>=0.17", "mypy>=1.5"]
 cli = ["click>=8.1", "pyyaml>=6.0", "rich>=13.0"]
 
 [project.scripts]

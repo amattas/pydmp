@@ -1,3 +1,4 @@
+# Release procedure and the create-release checks: see mattas-net/.github STANDARD.md (Release).
 # Release: bump [project].version in pyproject.toml, merge to main, then
 # Actions -> Release -> Run workflow -> enter that version (bare semver, e.g. 1.2.0
 # or 1.2.0-beta1). create-release.yml verifies the manifest and the passing Checks

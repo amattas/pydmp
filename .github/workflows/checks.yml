@@ -2,8 +2,9 @@
 # `approve` job until a reviewer approves it in the `approval` environment. The
 # Release workflow requires a successful run of this workflow on main HEAD.
 #
-# Required checks (default-branch ruleset): "python / checks (<python>)" and
-# "python / security".
+# Required checks (default-branch ruleset): "checks" and "security" (alias jobs below).
+# Until the ruleset flips (WP-1 pass 2) it still requires "python / checks (<python>)" and
+# "python / security", which the `python` job keeps producing. See mattas-net/.github STANDARD.md.
 name: Checks
 
 on:
@@ -23,6 +24,7 @@ jobs:
   approve:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     environment: approval
     steps:
       - run: echo "Checks approved by ${GITHUB_TRIGGERING_ACTOR}"
@@ -37,3 +39,25 @@ jobs:
       python-versions: '["3.12", "3.13", "3.14"]'
       extra-lint: bandit -q -r src
       audit: strict
+
+  checks:
+    needs: python
+    if: always() # a skipped required check counts as passing, so always run and assert
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require the shared checks job
+        env:
+          RESULT: ${{ needs.python.outputs.checks-result }}
+        run: test "$RESULT" = success
+
+  security:
+    needs: python
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require the shared security job
+        env:
+          RESULT: ${{ needs.python.outputs.security-result }}
+        run: test "$RESULT" = success

@@ -26,5 +26,5 @@ jobs:
       contents: write # the publish script pushes the gh-pages branch
     with:
       version: ${{ inputs.version }}
-      python-version: "3.12"
+      python-version: "3.13"
       install: python -m pip install --disable-pip-version-check -e ".[docs]" -r requirements-docs.txt

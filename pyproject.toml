@@ -29,7 +29,7 @@ dev = [
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
-    "mypy==2.3.0",
+    "mypy==2.4.0",
     "ruff==0.17.2",
     "bandit==1.9.4",
     "pre-commit==4.7.0",
@@ -49,7 +49,7 @@ cli = [
     "rich==15.0.0",
 ]
 docs = [
-    "zensical==0.0.50",
+    "zensical==0.0.72",
     "pydoc-markdown==4.8.2",
 ]
 

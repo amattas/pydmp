@@ -1,0 +1,2282 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Archived documentation for PyDMP 1.0.1.">
+      
+      
+      
+        <link rel="canonical" href="https://amattas.github.io/pydmp/1.0/api/reference/">
+      
+      
+        <link rel="prev" href="../../compatibility/">
+      
+      
+        <link rel="next" href="../../guide/cli/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.50">
+    
+    
+      
+        <title>API Reference - PyDMP 1.0.1</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.62c9b9cc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pydmp" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PyDMP 1.0.1" class="md-header__button md-logo" aria-label="PyDMP 1.0.1" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PyDMP 1.0.1
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/amattas/pydmp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amattas/pydmp
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PyDMP 1.0.1" class="md-nav__button md-logo" aria-label="PyDMP 1.0.1" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    PyDMP 1.0.1
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/amattas/pydmp" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amattas/pydmp
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  PyDMP 1.0.1
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Panel Compatibility
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Api
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Api
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guide
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Guide
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Command-Line Interface (CLI)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption &amp; User Data
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting Started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Migration Guide
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/realtime-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Realtime Status (Serial 3)
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<p><a id="pydmp"></a></p>
+<h1 id="pydmp">pydmp</h1>
+<p>PyDMP - Python library for controlling DMP alarm systems.</p>
+<p>Platform-agnostic library for interfacing with DMP (Digital Monitoring Products)
+alarm panels via TCP/IP.</p>
+<p>Example (Async):
+    &gt;&gt;&gt; import asyncio
+    &gt;&gt;&gt; from pydmp import DMPPanel
+    &gt;&gt;&gt;
+    &gt;&gt;&gt; async def main():
+    ...     panel = DMPPanel()
+    ...     await panel.connect("192.168.1.100", "00001", "YOUR_KEY")
+    ...     areas = await panel.get_areas()
+    ...     await areas[0].arm()
+    ...     await panel.disconnect()
+    &gt;&gt;&gt;
+    &gt;&gt;&gt; asyncio.run(main())</p>
+<p>Example (Sync):
+    &gt;&gt;&gt; from pydmp import DMPPanelSync
+    &gt;&gt;&gt;
+    &gt;&gt;&gt; panel = DMPPanelSync()
+    &gt;&gt;&gt; panel.connect("192.168.1.100", "00001", "YOUR_KEY")
+    &gt;&gt;&gt; areas = panel.get_areas()
+    &gt;&gt;&gt; areas[0].arm_sync()
+    &gt;&gt;&gt; panel.disconnect()</p>
+<p><a id="pydmp.panel_sync"></a></p>
+<h1 id="pydmppanel_sync">pydmp.panel_sync</h1>
+<p>High-level synchronous panel controller.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync"></a></p>
+<h2 id="dmppanelsync-objects">DMPPanelSync Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPPanelSync</span><span class="p">()</span>
+</code></pre></div>
+<p>High-level synchronous interface to DMP panel.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.__init__"></a></p>
+<h4 id="__init__">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize sync panel.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>port</code> - TCP port (default: 2011)</li>
+<li><code>timeout</code> - Connection timeout in seconds</li>
+</ul>
+<p><a id="pydmp.panel_sync.DMPPanelSync.is_connected"></a></p>
+<h4 id="is_connected">is_connected</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_connected</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if connected to panel.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.connect"></a></p>
+<h4 id="connect">connect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">account</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">remote_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Connect to panel and authenticate.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>host</code> - Panel IP address or hostname</li>
+<li><code>account</code> - 5-digit account number</li>
+<li><code>remote_key</code> - Remote key for authentication</li>
+</ul>
+<p><a id="pydmp.panel_sync.DMPPanelSync.disconnect"></a></p>
+<h4 id="disconnect">disconnect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">disconnect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disconnect from panel.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.update_status"></a></p>
+<h4 id="update_status">update_status</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_status</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Update status of all areas and zones from panel.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_areas"></a></p>
+<h4 id="get_areas">get_areas</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_areas</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">AreaSync</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all areas.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of AreaSync objects</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_area"></a></p>
+<h4 id="get_area">get_area</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_area</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AreaSync</span>
+</code></pre></div>
+<p>Get specific area by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Area number (1-8)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>AreaSync object</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_zones"></a></p>
+<h4 id="get_zones">get_zones</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_zones</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ZoneSync</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all zones.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of ZoneSync objects</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_zone"></a></p>
+<h4 id="get_zone">get_zone</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_zone</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZoneSync</span>
+</code></pre></div>
+<p>Get specific zone by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Zone number (1-999)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>ZoneSync object</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_outputs"></a></p>
+<h4 id="get_outputs">get_outputs</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_outputs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">OutputSync</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all outputs.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of OutputSync objects</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.get_output"></a></p>
+<h4 id="get_output">get_output</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_output</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OutputSync</span>
+</code></pre></div>
+<p>Get specific output by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Output number (1-4)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>OutputSync object</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.__enter__"></a></p>
+<h4 id="__enter__">__enter__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s2">"DMPPanelSync"</span>
+</code></pre></div>
+<p>Context manager entry.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.__exit__"></a></p>
+<h4 id="__exit__">__exit__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Context manager exit.</p>
+<p><a id="pydmp.panel_sync.DMPPanelSync.__repr__"></a></p>
+<h4 id="__repr__">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.exceptions"></a></p>
+<h1 id="pydmpexceptions">pydmp.exceptions</h1>
+<p>Exceptions for PyDMP.</p>
+<p><a id="pydmp.exceptions.DMPError"></a></p>
+<h2 id="dmperror-objects">DMPError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">)</span>
+</code></pre></div>
+<p>Base exception for DMP errors.</p>
+<p><a id="pydmp.exceptions.DMPConnectionError"></a></p>
+<h2 id="dmpconnectionerror-objects">DMPConnectionError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPConnectionError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Connection-related errors.</p>
+<p><a id="pydmp.exceptions.DMPAuthenticationError"></a></p>
+<h2 id="dmpauthenticationerror-objects">DMPAuthenticationError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPAuthenticationError</span><span class="p">(</span><span class="n">DMPConnectionError</span><span class="p">)</span>
+</code></pre></div>
+<p>Authentication failed.</p>
+<p><a id="pydmp.exceptions.DMPTimeoutError"></a></p>
+<h2 id="dmptimeouterror-objects">DMPTimeoutError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPTimeoutError</span><span class="p">(</span><span class="n">DMPConnectionError</span><span class="p">)</span>
+</code></pre></div>
+<p>Operation timed out.</p>
+<p><a id="pydmp.exceptions.DMPProtocolError"></a></p>
+<h2 id="dmpprotocolerror-objects">DMPProtocolError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPProtocolError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Protocol-level errors.</p>
+<p><a id="pydmp.exceptions.DMPInvalidResponseError"></a></p>
+<h2 id="dmpinvalidresponseerror-objects">DMPInvalidResponseError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPInvalidResponseError</span><span class="p">(</span><span class="n">DMPProtocolError</span><span class="p">)</span>
+</code></pre></div>
+<p>Invalid or unexpected response from panel.</p>
+<p><a id="pydmp.exceptions.DMPCommandError"></a></p>
+<h2 id="dmpcommanderror-objects">DMPCommandError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPCommandError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Command execution errors.</p>
+<p><a id="pydmp.exceptions.DMPCommandNAKError"></a></p>
+<h2 id="dmpcommandnakerror-objects">DMPCommandNAKError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPCommandNAKError</span><span class="p">(</span><span class="n">DMPCommandError</span><span class="p">)</span>
+</code></pre></div>
+<p>Command was rejected by panel (NAK response).</p>
+<p><a id="pydmp.exceptions.DMPInvalidParameterError"></a></p>
+<h2 id="dmpinvalidparametererror-objects">DMPInvalidParameterError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPInvalidParameterError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Invalid parameter provided.</p>
+<p><a id="pydmp.exceptions.DMPAreaError"></a></p>
+<h2 id="dmpareaerror-objects">DMPAreaError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPAreaError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Area-related errors.</p>
+<p><a id="pydmp.exceptions.DMPZoneError"></a></p>
+<h2 id="dmpzoneerror-objects">DMPZoneError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPZoneError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Zone-related errors.</p>
+<p><a id="pydmp.exceptions.DMPOutputError"></a></p>
+<h2 id="dmpoutputerror-objects">DMPOutputError Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPOutputError</span><span class="p">(</span><span class="n">DMPError</span><span class="p">)</span>
+</code></pre></div>
+<p>Output-related errors.</p>
+<p><a id="pydmp.user"></a></p>
+<h1 id="pydmpuser">pydmp.user</h1>
+<p><a id="pydmp.user.UserCode"></a></p>
+<h2 id="usercode-objects">UserCode Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserCode</span><span class="p">()</span>
+</code></pre></div>
+<p>Decrypted user code record.</p>
+<p><a id="pydmp.user.UserCode.temp_date"></a></p>
+<h4 id="temp_date">temp_date</h4>
+<p>legacy 6-digit field; same as end_date (DDMMYY)</p>
+<p><a id="pydmp.user.UserCode.exp_date"></a></p>
+<h4 id="exp_date">exp_date</h4>
+<p>legacy 4-char field; often '----' on observed panels</p>
+<p><a id="pydmp.user.UserCode.start_date"></a></p>
+<h4 id="start_date">start_date</h4>
+<p>6 digits DDMMYY; start of access</p>
+<p><a id="pydmp.user.UserCode.end_date"></a></p>
+<h4 id="end_date">end_date</h4>
+<p>6 digits DDMMYY; end of access</p>
+<p><a id="pydmp.user.UserCode.flags"></a></p>
+<h4 id="flags">flags</h4>
+<p>3 chars (e.g., 'YNN')</p>
+<p><a id="pydmp.user.UserCode.active"></a></p>
+<h4 id="active">active</h4>
+<p>First Y/N flag: user active</p>
+<p><a id="pydmp.user.UserCode.temporary"></a></p>
+<h4 id="temporary">temporary</h4>
+<p>Third Y/N flag: temporary user</p>
+<p><a id="pydmp.transport_sync"></a></p>
+<h1 id="pydmptransport_sync">pydmp.transport_sync</h1>
+<p>Synchronous wrapper for DMP transport + protocol (bytes + codec).</p>
+<p><a id="pydmp.transport_sync.DMPTransportSync"></a></p>
+<h2 id="dmptransportsync-objects">DMPTransportSync Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPTransportSync</span><span class="p">()</span>
+</code></pre></div>
+<p>Synchronous wrapper combining DMPTransport and DMPProtocol.</p>
+<p><a id="pydmp.transport_sync.DMPTransportSync.__init__"></a></p>
+<h4 id="__init___1">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">account</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">remote_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span>
+             <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize sync transport.</p>
+<p><a id="pydmp.transport_sync.DMPTransportSync.connect"></a></p>
+<h4 id="connect_1">connect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Establish connection and authenticate.</p>
+<p><a id="pydmp.transport_sync.DMPTransportSync.disconnect"></a></p>
+<h4 id="disconnect_1">disconnect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">disconnect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disconnect gracefully.</p>
+<p><a id="pydmp.transport_sync.DMPTransportSync.send_command"></a></p>
+<h4 id="send_command">send_command</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">send_command</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">encrypt_user_code</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">user_code</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">StatusResponse</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Send a protocol command and return decoded response.</p>
+<p><a id="pydmp.panel"></a></p>
+<h1 id="pydmppanel">pydmp.panel</h1>
+<p>High-level async panel controller.</p>
+<p><a id="pydmp.panel.DMPPanel"></a></p>
+<h2 id="dmppanel-objects">DMPPanel Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPPanel</span><span class="p">()</span>
+</code></pre></div>
+<p>High-level async interface to DMP panel.</p>
+<p><a id="pydmp.panel.DMPPanel.__init__"></a></p>
+<h4 id="__init___2">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize panel.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>port</code> - TCP port (default: 2011)</li>
+<li><code>timeout</code> - Connection timeout in seconds</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.is_connected"></a></p>
+<h4 id="is_connected_1">is_connected</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_connected</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if connected to panel.</p>
+<p><a id="pydmp.panel.DMPPanel.connect"></a></p>
+<h4 id="connect_2">connect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">account</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">remote_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Connect to panel and authenticate.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>host</code> - Panel IP address or hostname</li>
+<li><code>account</code> - 5-digit account number</li>
+<li><code>remote_key</code> - Remote key for authentication</li>
+</ul>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If connection fails</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.disconnect"></a></p>
+<h4 id="disconnect_2">disconnect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">disconnect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disconnect from panel.</p>
+<p><a id="pydmp.panel.DMPPanel.update_status"></a></p>
+<h4 id="update_status_1">update_status</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_status</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Update status of all areas and zones from panel.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If not connected or update fails</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.get_areas"></a></p>
+<h4 id="get_areas_1">get_areas</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_areas</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Area</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all areas.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of Area objects</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If not connected</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.get_area"></a></p>
+<h4 id="get_area_1">get_area</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_area</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Area</span>
+</code></pre></div>
+<p>Get specific area by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Area number (1-8)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Area object</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If not connected</li>
+<li><code>KeyError</code> - If area not found</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.get_zones"></a></p>
+<h4 id="get_zones_1">get_zones</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_zones</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Zone</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all zones.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of Zone objects</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If not connected</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.get_zone"></a></p>
+<h4 id="get_zone_1">get_zone</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_zone</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Zone</span>
+</code></pre></div>
+<p>Get specific zone by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Zone number (1-999)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Zone object</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPConnectionError</code> - If not connected</li>
+<li><code>KeyError</code> - If zone not found</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.get_outputs"></a></p>
+<h4 id="get_outputs_1">get_outputs</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_outputs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Output</span><span class="p">]</span>
+</code></pre></div>
+<p>Get all outputs.</p>
+<p>Note: Outputs are created on-demand; prefer calling update_output_status()
+first to populate real states from the panel.</p>
+<p><strong>Returns</strong>:</p>
+<p>List of Output objects</p>
+<p><a id="pydmp.panel.DMPPanel.get_output"></a></p>
+<h4 id="get_output_1">get_output</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_output</span><span class="p">(</span><span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Output</span>
+</code></pre></div>
+<p>Get specific output by number.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>number</code> - Output number (1-999)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Output object</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>KeyError</code> - If output number invalid</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.update_output_status"></a></p>
+<h4 id="update_output_status">update_output_status</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_output_status</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Fetch output status from panel (*WQ) and update known outputs.</p>
+<p>The panel returns a stream of output entries in frames. We request
+the initial page for output 001, then continue with '?WQ' a few times
+to collect subsequent chunks.</p>
+<p>Note: Many residential installations only use outputs 1-4.</p>
+<p><a id="pydmp.panel.DMPPanel.sensor_reset"></a></p>
+<h4 id="sensor_reset">sensor_reset</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">sensor_reset</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Send sensor reset command to the panel (!E001).</p>
+<p><a id="pydmp.panel.DMPPanel.get_user_codes"></a></p>
+<h4 id="get_user_codes">get_user_codes</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_codes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserCode</span><span class="p">]</span>
+</code></pre></div>
+<p>Retrieve all user codes from the panel (decrypting entries).</p>
+<p><a id="pydmp.panel.DMPPanel.get_user_profiles"></a></p>
+<h4 id="get_user_profiles">get_user_profiles</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_profiles</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserProfile</span><span class="p">]</span>
+</code></pre></div>
+<p>Retrieve all user profiles from the panel.</p>
+<p><a id="pydmp.panel.DMPPanel.check_code"></a></p>
+<h4 id="check_code">check_code</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_code</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                     <span class="o">*</span><span class="p">,</span>
+                     <span class="n">include_pin</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                     <span class="n">refresh_if_missing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserCode</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Check if a user code (or PIN) exists in the panel.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>code</code> - The code/PIN string to validate</li>
+<li><code>include_pin</code> - If True, also match against PIN codes</li>
+<li><code>refresh_if_missing</code> - If True, refresh cache on miss and retry once</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Matching UserCode or None if not found</p>
+<p><a id="pydmp.panel.DMPPanel.attach_status_server"></a></p>
+<h4 id="attach_status_server">attach_status_server</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach_status_server</span><span class="p">(</span><span class="n">server</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Attach a DMPStatusServer to auto-refresh user cache on Zu events.</p>
+<p>When the server receives a User Codes (Zu) event, the panel will refresh
+its user cache in the background. Call detach_status_server to remove.</p>
+<p><a id="pydmp.panel.DMPPanel.detach_status_server"></a></p>
+<h4 id="detach_status_server">detach_status_server</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach_status_server</span><span class="p">(</span><span class="n">server</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Detach a previously attached DMPStatusServer.</p>
+<p><a id="pydmp.panel.DMPPanel.start_keepalive"></a></p>
+<h4 id="start_keepalive">start_keepalive</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start_keepalive</span><span class="p">(</span><span class="n">interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Start periodic keep-alive (!H) while connected.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>interval</code> - Seconds between keep-alive messages (default: 10)</li>
+</ul>
+<p><a id="pydmp.panel.DMPPanel.stop_keepalive"></a></p>
+<h4 id="stop_keepalive">stop_keepalive</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_keepalive</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Stop periodic keep-alive if running.</p>
+<p><a id="pydmp.panel.DMPPanel.arm_areas"></a></p>
+<h4 id="arm_areas">arm_areas</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">arm_areas</span><span class="p">(</span><span class="n">area_numbers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+                    <span class="n">bypass_faulted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="n">force_arm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="n">instant</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Arm one or more areas in a single command.</p>
+<p>Concatenates two-digit area numbers per DMP format and sends
+!C{areas},{bypass}{force}.</p>
+<p><a id="pydmp.panel.DMPPanel.disarm_areas"></a></p>
+<h4 id="disarm_areas">disarm_areas</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">disarm_areas</span><span class="p">(</span><span class="n">area_numbers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disarm one or more areas in a single command: !O{areas}.</p>
+<p><a id="pydmp.panel.DMPPanel.__aenter__"></a></p>
+<h4 id="__aenter__">__aenter__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aenter__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s2">"DMPPanel"</span>
+</code></pre></div>
+<p>Async context manager entry.</p>
+<p><a id="pydmp.panel.DMPPanel.__aexit__"></a></p>
+<h4 id="__aexit__">__aexit__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aexit__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Async context manager exit.</p>
+<p><a id="pydmp.panel.DMPPanel.__repr__"></a></p>
+<h4 id="__repr___1">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.cli"></a></p>
+<h1 id="pydmpcli">pydmp.cli</h1>
+<p>Command-line interface for PyDMP.</p>
+<p><a id="pydmp.cli.SectionedGroup"></a></p>
+<h2 id="sectionedgroup-objects">SectionedGroup Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SectionedGroup</span><span class="p">(</span><span class="n">click</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span>
+</code></pre></div>
+<p>Click Group that renders commands in named sections for --help.</p>
+<p><a id="pydmp.cli.load_config"></a></p>
+<h4 id="load_config">load_config</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+</code></pre></div>
+<p>Load configuration from YAML file.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>config_path</code> - Path to config file</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Configuration dictionary</p>
+<p><a id="pydmp.cli.cli"></a></p>
+<h4 id="cli">cli</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span>
+    <span class="bp">cls</span><span class="o">=</span><span class="n">SectionedGroup</span><span class="p">,</span>
+    <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]},</span>
+    <span class="n">sections</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">(</span><span class="s2">"Panel Control"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"arm"</span><span class="p">,</span> <span class="s2">"disarm"</span><span class="p">,</span> <span class="s2">"sensor-reset"</span><span class="p">]),</span>
+        <span class="p">(</span>
+            <span class="s2">"Status &amp; Query"</span><span class="p">,</span>
+            <span class="p">[</span>
+                <span class="s2">"get-areas"</span><span class="p">,</span> <span class="s2">"get-zones"</span><span class="p">,</span> <span class="s2">"get-outputs"</span><span class="p">,</span> <span class="s2">"get-users"</span><span class="p">,</span>
+                <span class="s2">"get-profiles"</span><span class="p">,</span> <span class="s2">"check-code"</span>
+            <span class="p">],</span>
+        <span class="p">),</span>
+        <span class="p">(</span><span class="s2">"Zones"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"set-zone-bypass"</span><span class="p">,</span> <span class="s2">"set-zone-restore"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"Outputs"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"output"</span><span class="p">,</span> <span class="s2">"set-output"</span><span class="p">]),</span>
+        <span class="p">(</span><span class="s2">"Realtime"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"listen"</span><span class="p">]),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">version_option</span><span class="p">(</span><span class="n">__version__</span><span class="p">,</span> <span class="s2">"-v"</span><span class="p">,</span> <span class="s2">"--version"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">"--config"</span><span class="p">,</span>
+    <span class="s2">"-c"</span><span class="p">,</span>
+    <span class="c1"># Do not require the file to exist so commands like 'listen'</span>
+    <span class="c1"># can run without a config present (tests/CI environments).</span>
+    <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">"config.yaml"</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">"Configuration file path"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--quiet"</span><span class="p">,</span> <span class="s2">"-q"</span><span class="p">,</span> <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Reduce output (WARNING)"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--debug"</span><span class="p">,</span>
+              <span class="s2">"-d"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Enable debug logging (overrides other flags)"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cli</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>PyDMP - Control DMP alarm panels from command line.</p>
+<p><a id="pydmp.cli.arm_cmd"></a></p>
+<h4 id="arm_cmd">arm_cmd</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"arm"</span><span class="p">,</span> <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"areas"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--bypass-faulted"</span><span class="p">,</span>
+              <span class="s2">"-b"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Bypass faulted zones"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--force-arm"</span><span class="p">,</span> <span class="s2">"-f"</span><span class="p">,</span> <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Force arm bad zones"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"-i"</span><span class="p">,</span>
+              <span class="s2">"--instant/--no-instant"</span><span class="p">,</span>
+              <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Remove entry/exit delays"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">arm_cmd</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">areas</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bypass_faulted</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+            <span class="n">force_arm</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Arm one or more areas, e.g. "1,2,3".</p>
+<p><a id="pydmp.cli.disarm"></a></p>
+<h4 id="disarm">disarm</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"area"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">disarm</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">area</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disarm area.</p>
+<p><a id="pydmp.cli.set_zone_bypass"></a></p>
+<h4 id="set_zone_bypass">set_zone_bypass</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"set-zone-bypass"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"zone"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_zone_bypass</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">zone</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Bypass a zone.</p>
+<p><a id="pydmp.cli.set_zone_restore"></a></p>
+<h4 id="set_zone_restore">set_zone_restore</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"set-zone-restore"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"zone"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_zone_restore</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">zone</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Restore (un-bypass) a zone.</p>
+<p><a id="pydmp.cli.output"></a></p>
+<h4 id="output">output</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"output"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"action"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Choice</span><span class="p">([</span><span class="s2">"on"</span><span class="p">,</span> <span class="s2">"off"</span><span class="p">,</span> <span class="s2">"pulse"</span><span class="p">,</span> <span class="s2">"toggle"</span><span class="p">]))</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">output</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+           <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Control an output.</p>
+<p><a id="pydmp.cli.list_users"></a></p>
+<h4 id="list_users">list_users</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"get-users"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>List panel user codes (decrypted).</p>
+<p><a id="pydmp.cli.list_profiles"></a></p>
+<h4 id="list_profiles">list_profiles</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"get-profiles"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_profiles</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>List user profiles.</p>
+<p><a id="pydmp.cli.list_outputs"></a></p>
+<h4 id="list_outputs">list_outputs</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"get-outputs"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_outputs</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>List outputs (1-4) and last-known state.</p>
+<p><a id="pydmp.cli.sensor_reset"></a></p>
+<h4 id="sensor_reset_1">sensor_reset</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"sensor-reset"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sensor_reset</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Send sensor reset (!E001).</p>
+<p><a id="pydmp.cli.check_code_cmd"></a></p>
+<h4 id="check_code_cmd">check_code_cmd</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"check-code"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"code"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">"-p"</span><span class="p">,</span>
+    <span class="s2">"--include-pin/--no-include-pin"</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">"Match PIN as well as code"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_code_cmd</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">include_pin</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+                   <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Check if a code or PIN exists in the panel.</p>
+<p><a id="pydmp.cli.listen"></a></p>
+<h4 id="listen">listen</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"listen"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--host"</span><span class="p">,</span>
+              <span class="s2">"-H"</span><span class="p">,</span>
+              <span class="n">default</span><span class="o">=</span><span class="s2">"127.0.0.1"</span><span class="p">,</span>
+              <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Listen host"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--port"</span><span class="p">,</span>
+              <span class="s2">"-p"</span><span class="p">,</span>
+              <span class="n">default</span><span class="o">=</span><span class="mi">5001</span><span class="p">,</span>
+              <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Listen port"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--duration"</span><span class="p">,</span>
+              <span class="s2">"-t"</span><span class="p">,</span>
+              <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+              <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Seconds to run (0=until Ctrl+C)"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output events as JSON (NDJSON)"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">listen</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Run realtime S3 status server and print parsed events.</p>
+<p><a id="pydmp.cli.get_areas_cmd"></a></p>
+<h4 id="get_areas_cmd">get_areas_cmd</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"get-areas"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_areas_cmd</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>List areas and their state.</p>
+<p><a id="pydmp.cli.get_zones_cmd"></a></p>
+<h4 id="get_zones_cmd">get_zones_cmd</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"get-zones"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">"--json"</span><span class="p">,</span>
+              <span class="s2">"-j"</span><span class="p">,</span>
+              <span class="s2">"as_json"</span><span class="p">,</span>
+              <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">help</span><span class="o">=</span><span class="s2">"Output JSON instead of text"</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_zones_cmd</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">as_json</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>List zones and their state.</p>
+<p><a id="pydmp.cli.set_output"></a></p>
+<h4 id="set_output">set_output</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"set-output"</span><span class="p">,</span>
+             <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">"help_option_names"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"-h"</span><span class="p">,</span> <span class="s2">"--help"</span><span class="p">]})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"output"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">"action"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Choice</span><span class="p">([</span><span class="s2">"on"</span><span class="p">,</span> <span class="s2">"off"</span><span class="p">,</span> <span class="s2">"pulse"</span><span class="p">,</span> <span class="s2">"toggle"</span><span class="p">]))</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_output</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Control an output.</p>
+<p><a id="pydmp.cli.main"></a></p>
+<h4 id="main">main</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>CLI entry point.</p>
+<p><a id="pydmp.const.protocol"></a></p>
+<h1 id="pydmpconstprotocol">pydmp.const.protocol</h1>
+<p>Protocol-level constants for the DMP transport and framing.</p>
+<p><a id="pydmp.const"></a></p>
+<h1 id="pydmpconst">pydmp.const</h1>
+<p>Constants for DMP protocol.</p>
+<p><a id="pydmp.const.strings"></a></p>
+<h1 id="pydmpconststrings">pydmp.const.strings</h1>
+<p>Human‑readable strings for statuses and system messages.</p>
+<p>This module centralizes user‑facing strings to make future
+internationalization (i18n) straightforward. By default, it
+exposes English strings. A future enhancement could expose
+per‑locale mappings and a simple selection mechanism.</p>
+<p><a id="pydmp.const.commands"></a></p>
+<h1 id="pydmpconstcommands">pydmp.const.commands</h1>
+<p>DMP protocol commands.</p>
+<p><a id="pydmp.const.commands.DMPCommand"></a></p>
+<h2 id="dmpcommand-objects">DMPCommand Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPCommand</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">)</span>
+</code></pre></div>
+<p>DMP panel commands.</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_USER_CODES"></a></p>
+<h4 id="get_user_codes_1">GET_USER_CODES</h4>
+<p>Format: ?P=0000 for all, ?P=0001 for user 1</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_USER_PROFILES"></a></p>
+<h4 id="get_user_profiles_1">GET_USER_PROFILES</h4>
+<p>Format: ?U000 for all, ?U001 for profile 1</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_AREA_STATUS"></a></p>
+<h4 id="get_area_status">GET_AREA_STATUS</h4>
+<p>Format: ?WA01 for area 1, ?WA for continuation</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_AREA_STATUS_CONT"></a></p>
+<h4 id="get_area_status_cont">GET_AREA_STATUS_CONT</h4>
+<p>Continuation (no params)</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_OUTPUT_STATUS"></a></p>
+<h4 id="get_output_status">GET_OUTPUT_STATUS</h4>
+<p>Format: ?WQ001 for output 1, ?WQ for continuation</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_OUTPUT_STATUS_CONT"></a></p>
+<h4 id="get_output_status_cont">GET_OUTPUT_STATUS_CONT</h4>
+<p>Continuation (no params)</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_ZONE_STATUS"></a></p>
+<h4 id="get_zone_status">GET_ZONE_STATUS</h4>
+<p>Format: ?WB**Y001 for initial query</p>
+<p><a id="pydmp.const.commands.DMPCommand.GET_ZONE_STATUS_CONT"></a></p>
+<h4 id="get_zone_status_cont">GET_ZONE_STATUS_CONT</h4>
+<p>Continuation (no params)</p>
+<p><a id="pydmp.const.events"></a></p>
+<h1 id="pydmpconstevents">pydmp.const.events</h1>
+<p>DMP event types and codes.</p>
+<p>Derived from DMP LT-1959 "SCS‑VR Reference Guide: Panel Messages".
+This file defines:
+- Event categories (Zx "Event Definition" field)
+- Event type codes (tXX "Event Type" field), grouped by category</p>
+<p>Note: Some codes (e.g., AD, IN, PR) are reused across categories by the
+protocol. To avoid ambiguity in Python Enums, category-specific enums are
+provided below. The legacy DMPEvent enum remains for common codes but is
+not exhaustive. Prefer category enums for precise handling.</p>
+<p><a id="pydmp.const.events.DMPEventType"></a></p>
+<h2 id="dmpeventtype-objects">DMPEventType Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPEventType</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">)</span>
+</code></pre></div>
+<p>Event Definition categories (Zx).</p>
+<p><a id="pydmp.const.events.DMPEventType.REAL_TIME_STATUS"></a></p>
+<h4 id="real_time_status">REAL_TIME_STATUS</h4>
+<p>Entré/real-time status</p>
+<p><a id="pydmp.const.events.DMPEvent"></a></p>
+<h2 id="dmpevent-objects">DMPEvent Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPEvent</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">)</span>
+</code></pre></div>
+<p>Common event type codes (legacy/unscoped).</p>
+<p>Prefer the category-specific enums below for full coverage and to avoid
+ambiguity where the same code is reused across categories.</p>
+<p><a id="pydmp.const.responses"></a></p>
+<h1 id="pydmpconstresponses">pydmp.const.responses</h1>
+<p>DMP protocol response prefixes and status text maps.</p>
+<p>Includes:
+- Command acknowledgments ("+"/"-")
+- Convenience text mapping for common status characters seen in status replies
+  (mirrors the mapping used by hass-dmp's StatusResponse).</p>
+<p><a id="pydmp.const.responses.DMPResponse"></a></p>
+<h2 id="dmpresponse-objects">DMPResponse Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPResponse</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">)</span>
+</code></pre></div>
+<p>DMP panel response message prefixes.</p>
+<p><a id="pydmp.protocol"></a></p>
+<h1 id="pydmpprotocol">pydmp.protocol</h1>
+<p>DMP protocol encoder and decoder.</p>
+<p><a id="pydmp.protocol.AreaStatus"></a></p>
+<h2 id="areastatus-objects">AreaStatus Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AreaStatus</span><span class="p">()</span>
+</code></pre></div>
+<p>Area status from panel.</p>
+<p><a id="pydmp.protocol.AreaStatus.state"></a></p>
+<h4 id="state">state</h4>
+<p>'A','D','S' (or 'unknown')</p>
+<p><a id="pydmp.protocol.ZoneStatus"></a></p>
+<h2 id="zonestatus-objects">ZoneStatus Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ZoneStatus</span><span class="p">()</span>
+</code></pre></div>
+<p>Zone status from panel.</p>
+<p><a id="pydmp.protocol.ZoneStatus.state"></a></p>
+<h4 id="state_1">state</h4>
+<p>'N','O','S','X','L','M' (or 'unknown')</p>
+<p><a id="pydmp.protocol.StatusResponse"></a></p>
+<h2 id="statusresponse-objects">StatusResponse Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StatusResponse</span><span class="p">()</span>
+</code></pre></div>
+<p>Combined status response from panel.</p>
+<p><a id="pydmp.protocol.OutputStatus"></a></p>
+<h2 id="outputstatus-objects">OutputStatus Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OutputStatus</span><span class="p">()</span>
+</code></pre></div>
+<p>Output status from panel (*WQ).</p>
+<p><a id="pydmp.protocol.OutputStatus.mode"></a></p>
+<h4 id="mode">mode</h4>
+<p>'O','P','S','T','W','a','t'</p>
+<p><a id="pydmp.protocol.DMPProtocol"></a></p>
+<h2 id="dmpprotocol-objects">DMPProtocol Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPProtocol</span><span class="p">()</span>
+</code></pre></div>
+<p>DMP protocol encoder/decoder.</p>
+<p><a id="pydmp.protocol.DMPProtocol.__init__"></a></p>
+<h4 id="__init___3">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">account_number</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">remote_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize protocol handler.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>account_number</code> - 5-digit account number (left-padded with spaces or zeros)</li>
+<li><code>remote_key</code> - Remote key for authentication</li>
+</ul>
+<p><a id="pydmp.protocol.DMPProtocol.encode_command"></a></p>
+<h4 id="encode_command">encode_command</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">encode_command</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
+</code></pre></div>
+<p>Encode a command for transmission to panel.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>command</code> - Command template (e.g., "!C{area},{bypass}{force}")</li>
+<li><code>**kwargs</code> - Parameters to substitute into command template</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Encoded command as bytes</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPProtocolError</code> - If command cannot be encoded</li>
+</ul>
+<p><a id="pydmp.protocol.DMPProtocol.decode_response"></a></p>
+<h4 id="decode_response">decode_response</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">decode_response</span><span class="p">(</span>
+    <span class="n">response</span><span class="p">:</span> <span class="nb">bytes</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">StatusResponse</span> <span class="o">|</span> <span class="n">UserCodesResponse</span> <span class="o">|</span> <span class="n">UserProfilesResponse</span> <span class="o">|</span> <span class="n">OutputsResponse</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Decode response from panel.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>response</code> - Raw bytes from panel</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<ul>
+<li>ACK/NAK string for command acknowledgments</li>
+<li>StatusResponse for status queries</li>
+<li>None for empty/auth responses</li>
+</ul>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPInvalidResponseError</code> - If response cannot be decoded</li>
+</ul>
+<p><a id="pydmp.area"></a></p>
+<h1 id="pydmparea">pydmp.area</h1>
+<p>Area abstraction.</p>
+<p><a id="pydmp.area.Area"></a></p>
+<h2 id="area-objects">Area Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Area</span><span class="p">()</span>
+</code></pre></div>
+<p>Represents a DMP area.</p>
+<p><a id="pydmp.area.Area.__init__"></a></p>
+<h4 id="__init___4">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">panel</span><span class="p">:</span> <span class="s2">"DMPPanel"</span><span class="p">,</span>
+             <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+             <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+             <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"unknown"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize area.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>panel</code> - Parent panel instance</li>
+<li><code>number</code> - Area number (1-8)</li>
+<li><code>name</code> - Area name</li>
+<li><code>state</code> - Current area state</li>
+</ul>
+<p><a id="pydmp.area.Area.state"></a></p>
+<h4 id="state_2">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.area.Area.update_state"></a></p>
+<h4 id="update_state">update_state</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_state</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Update area state from status response.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>state</code> - New state</li>
+<li><code>name</code> - Updated name (optional)</li>
+</ul>
+<p><a id="pydmp.area.Area.is_armed"></a></p>
+<h4 id="is_armed">is_armed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_armed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if area is armed (any armed state).</p>
+<p><a id="pydmp.area.Area.is_disarmed"></a></p>
+<h4 id="is_disarmed">is_disarmed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_disarmed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if area is disarmed.</p>
+<p><a id="pydmp.area.Area.arm"></a></p>
+<h4 id="arm">arm</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">arm</span><span class="p">(</span><span class="n">bypass_faulted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+              <span class="n">force_arm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+              <span class="n">instant</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Arm area.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>bypass_faulted</code> - Bypass faulted zones (default: False)</li>
+<li><code>force_arm</code> - Force arm bad zones (default: False)</li>
+<li><code>instant</code> - Remove entry/exit delays (Y/N). If None, omit third flag.</li>
+</ul>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPAreaError</code> - If arm fails</li>
+</ul>
+<p><a id="pydmp.area.Area.disarm"></a></p>
+<h4 id="disarm_1">disarm</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">disarm</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disarm area.</p>
+<p>Note: User code validation is typically done at the application level,
+not sent to the panel in the protocol.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPAreaError</code> - If disarm fails</li>
+</ul>
+<p><a id="pydmp.area.Area.get_state"></a></p>
+<h4 id="get_state">get_state</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state from panel.</p>
+<p><strong>Returns</strong>:</p>
+<p>Current area state</p>
+<p><a id="pydmp.area.Area.__repr__"></a></p>
+<h4 id="__repr___2">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.area.Area.to_dict"></a></p>
+<h4 id="to_dict">to_dict</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+</code></pre></div>
+<p>Return a JSON-serializable representation of the area.</p>
+<p><a id="pydmp.area.AreaSync"></a></p>
+<h2 id="areasync-objects">AreaSync Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AreaSync</span><span class="p">()</span>
+</code></pre></div>
+<p>Synchronous wrapper for Area.</p>
+<p><a id="pydmp.area.AreaSync.__init__"></a></p>
+<h4 id="__init___5">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">area</span><span class="p">:</span> <span class="n">Area</span><span class="p">,</span> <span class="n">panel_sync</span><span class="p">:</span> <span class="s2">"DMPPanelSync"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize sync area.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>area</code> - Async Area instance</li>
+<li><code>panel_sync</code> - Sync panel instance</li>
+</ul>
+<p><a id="pydmp.area.AreaSync.number"></a></p>
+<h4 id="number">number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span>
+</code></pre></div>
+<p>Get area number.</p>
+<p><a id="pydmp.area.AreaSync.name"></a></p>
+<h4 id="name">name</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get area name.</p>
+<p><a id="pydmp.area.AreaSync.state"></a></p>
+<h4 id="state_3">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.area.AreaSync.is_armed"></a></p>
+<h4 id="is_armed_1">is_armed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_armed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if area is armed.</p>
+<p><a id="pydmp.area.AreaSync.is_disarmed"></a></p>
+<h4 id="is_disarmed_1">is_disarmed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_disarmed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if area is disarmed.</p>
+<p><a id="pydmp.area.AreaSync.arm_sync"></a></p>
+<h4 id="arm_sync">arm_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">arm_sync</span><span class="p">(</span><span class="n">bypass_faulted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">force_arm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Arm area (sync).</p>
+<p><a id="pydmp.area.AreaSync.disarm_sync"></a></p>
+<h4 id="disarm_sync">disarm_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">disarm_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Disarm area (sync).</p>
+<p><a id="pydmp.area.AreaSync.get_state_sync"></a></p>
+<h4 id="get_state_sync">get_state_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_state_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state from panel (sync).</p>
+<p><a id="pydmp.area.AreaSync.__repr__"></a></p>
+<h4 id="__repr___3">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.transport"></a></p>
+<h1 id="pydmptransport">pydmp.transport</h1>
+<p>Async TCP transport to DMP panel (raw bytes I/O only).</p>
+<p><a id="pydmp.transport.DMPTransport"></a></p>
+<h2 id="dmptransport-objects">DMPTransport Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPTransport</span><span class="p">()</span>
+</code></pre></div>
+<p>Async TCP transport to DMP panel.</p>
+<p>This class is responsible only for socket lifecycle, rate limiting, and
+sending/receiving raw bytes. No protocol encoding/decoding occurs here.</p>
+<p><a id="pydmp.transport.DMPTransport.connect"></a></p>
+<h4 id="connect_3">connect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Establish TCP connection.</p>
+<p><a id="pydmp.transport.DMPTransport.disconnect"></a></p>
+<h4 id="disconnect_3">disconnect</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">disconnect</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Close TCP connection.</p>
+<p><a id="pydmp.transport.DMPTransport.send_and_receive"></a></p>
+<h4 id="send_and_receive">send_and_receive</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_and_receive</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
+</code></pre></div>
+<p>Send raw bytes and return accumulated response bytes.</p>
+<p><a id="pydmp.output"></a></p>
+<h1 id="pydmpoutput">pydmp.output</h1>
+<p>Output abstraction.</p>
+<p><a id="pydmp.output.Output"></a></p>
+<h2 id="output-objects">Output Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Output</span><span class="p">()</span>
+</code></pre></div>
+<p>Represents a DMP output.</p>
+<p><a id="pydmp.output.Output.__init__"></a></p>
+<h4 id="__init___6">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">panel</span><span class="p">:</span> <span class="s2">"DMPPanel"</span><span class="p">,</span>
+             <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+             <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+             <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"unknown"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize output.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>panel</code> - Parent panel instance</li>
+<li><code>number</code> - Output number (1-4)</li>
+<li><code>name</code> - Output name</li>
+<li><code>state</code> - Current output state</li>
+</ul>
+<p><a id="pydmp.output.Output.state"></a></p>
+<h4 id="state_4">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.output.Output.update_state"></a></p>
+<h4 id="update_state_1">update_state</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_state</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Update output state.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>state</code> - New state</li>
+<li><code>name</code> - Updated name (optional)</li>
+</ul>
+<p><a id="pydmp.output.Output.is_on"></a></p>
+<h4 id="is_on">is_on</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_on</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if output is on.</p>
+<p><a id="pydmp.output.Output.is_off"></a></p>
+<h4 id="is_off">is_off</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_off</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if output is off.</p>
+<p><a id="pydmp.output.Output.formatted_number"></a></p>
+<h4 id="formatted_number">formatted_number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">formatted_number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get zero-padded 3-digit output number.</p>
+<p><a id="pydmp.output.Output.set_mode"></a></p>
+<h4 id="set_mode">set_mode</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">set_mode</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Set output mode.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>mode</code> - Output mode ('O'=Off, 'P'=Pulse, 'S'=Steady, 'M'=Momentary)</li>
+</ul>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPOutputError</code> - If command fails</li>
+</ul>
+<p><a id="pydmp.output.Output.turn_on"></a></p>
+<h4 id="turn_on">turn_on</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">turn_on</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Turn output on (steady mode).</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPOutputError</code> - If command fails</li>
+</ul>
+<p><a id="pydmp.output.Output.turn_off"></a></p>
+<h4 id="turn_off">turn_off</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">turn_off</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Turn output off.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPOutputError</code> - If command fails</li>
+</ul>
+<p><a id="pydmp.output.Output.pulse"></a></p>
+<h4 id="pulse">pulse</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pulse</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Pulse output (momentary activation).</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPOutputError</code> - If command fails</li>
+</ul>
+<p><a id="pydmp.output.Output.toggle"></a></p>
+<h4 id="toggle">toggle</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">toggle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Toggle output state.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPOutputError</code> - If command fails</li>
+</ul>
+<p><a id="pydmp.output.Output.__repr__"></a></p>
+<h4 id="__repr___4">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.output.Output.to_dict"></a></p>
+<h4 id="to_dict_1">to_dict</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+</code></pre></div>
+<p>Return a JSON-serializable representation of the output.</p>
+<p><a id="pydmp.output.OutputSync"></a></p>
+<h2 id="outputsync-objects">OutputSync Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OutputSync</span><span class="p">()</span>
+</code></pre></div>
+<p>Synchronous wrapper for Output.</p>
+<p><a id="pydmp.output.OutputSync.__init__"></a></p>
+<h4 id="__init___7">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="n">Output</span><span class="p">,</span> <span class="n">panel_sync</span><span class="p">:</span> <span class="s2">"DMPPanelSync"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize sync output.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>output</code> - Async Output instance</li>
+<li><code>panel_sync</code> - Sync panel instance</li>
+</ul>
+<p><a id="pydmp.output.OutputSync.number"></a></p>
+<h4 id="number_1">number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span>
+</code></pre></div>
+<p>Get output number.</p>
+<p><a id="pydmp.output.OutputSync.name"></a></p>
+<h4 id="name_1">name</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get output name.</p>
+<p><a id="pydmp.output.OutputSync.state"></a></p>
+<h4 id="state_5">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.output.OutputSync.is_on"></a></p>
+<h4 id="is_on_1">is_on</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_on</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if output is on.</p>
+<p><a id="pydmp.output.OutputSync.is_off"></a></p>
+<h4 id="is_off_1">is_off</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_off</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if output is off.</p>
+<p><a id="pydmp.output.OutputSync.turn_on_sync"></a></p>
+<h4 id="turn_on_sync">turn_on_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">turn_on_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Turn output on (sync).</p>
+<p><a id="pydmp.output.OutputSync.turn_off_sync"></a></p>
+<h4 id="turn_off_sync">turn_off_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">turn_off_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Turn output off (sync).</p>
+<p><a id="pydmp.output.OutputSync.pulse_sync"></a></p>
+<h4 id="pulse_sync">pulse_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pulse_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Pulse output (sync).</p>
+<p><a id="pydmp.output.OutputSync.toggle_sync"></a></p>
+<h4 id="toggle_sync">toggle_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">toggle_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Toggle output (sync).</p>
+<p><a id="pydmp.output.OutputSync.__repr__"></a></p>
+<h4 id="__repr___5">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.crypto"></a></p>
+<h1 id="pydmpcrypto">pydmp.crypto</h1>
+<p>LFSR-based encryption for DMP user codes.</p>
+<p>DMP uses a Linear Feedback Shift Register (LFSR) algorithm for encrypting
+user codes in certain commands. The algorithm is symmetric (encrypt = decrypt).</p>
+<p><a id="pydmp.crypto.DMPCrypto"></a></p>
+<h2 id="dmpcrypto-objects">DMPCrypto Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPCrypto</span><span class="p">()</span>
+</code></pre></div>
+<p>LFSR encryption for DMP user codes.</p>
+<p><a id="pydmp.crypto.DMPCrypto.__init__"></a></p>
+<h4 id="__init___8">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">account_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">remote_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize crypto with account number and optional remote key.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>account_number</code> - 5-digit account number (1-99999)</li>
+<li><code>remote_key</code> - Remote key for authentication (not used for Entree connections)</li>
+</ul>
+<p><a id="pydmp.crypto.DMPCrypto.encrypt_string"></a></p>
+<h4 id="encrypt_string">encrypt_string</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">encrypt_string</span><span class="p">(</span><span class="n">string_to_encrypt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Encrypt a string using LFSR algorithm.</p>
+<p>The control string determines which positions are encrypted:
+- '-': Skip (no encryption)
+- '2': Encrypt 2-char hex value
+- '3': Encrypt 3-digit decimal value</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>string_to_encrypt</code> - String to encrypt (typically user code + data)</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Encrypted string</p>
+<p><a id="pydmp.crypto.DMPCrypto.decrypt_string"></a></p>
+<h4 id="decrypt_string">decrypt_string</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">decrypt_string</span><span class="p">(</span><span class="n">string_to_decrypt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Decrypt a string using LFSR algorithm.</p>
+<p>Since LFSR XOR is symmetric, decryption is identical to encryption.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>string_to_decrypt</code> - String to decrypt</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Decrypted string</p>
+<p><a id="pydmp.crypto.DMPCrypto.encrypt_user_code"></a></p>
+<h4 id="encrypt_user_code">encrypt_user_code</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">encrypt_user_code</span><span class="p">(</span><span class="n">user_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Encrypt a user code for use in disarm commands.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>user_code</code> - 4-6 digit user code</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Encrypted user code</p>
+<p><a id="pydmp.zone"></a></p>
+<h1 id="pydmpzone">pydmp.zone</h1>
+<p>Zone abstraction.</p>
+<p><a id="pydmp.zone.Zone"></a></p>
+<h2 id="zone-objects">Zone Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Zone</span><span class="p">()</span>
+</code></pre></div>
+<p>Represents a DMP zone.</p>
+<p><a id="pydmp.zone.Zone.__init__"></a></p>
+<h4 id="__init___9">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">panel</span><span class="p">:</span> <span class="s2">"DMPPanel"</span><span class="p">,</span>
+             <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+             <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+             <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"unknown"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize zone.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>panel</code> - Parent panel instance</li>
+<li><code>number</code> - Zone number (1-999)</li>
+<li><code>name</code> - Zone name</li>
+<li><code>state</code> - Current zone state</li>
+</ul>
+<p><a id="pydmp.zone.Zone.state"></a></p>
+<h4 id="state_6">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.zone.Zone.update_state"></a></p>
+<h4 id="update_state_2">update_state</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update_state</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Update zone state from status response.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>state</code> - New state</li>
+<li><code>name</code> - Updated name (optional)</li>
+</ul>
+<p><a id="pydmp.zone.Zone.is_open"></a></p>
+<h4 id="is_open">is_open</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_open</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is open/tripped.</p>
+<p><a id="pydmp.zone.Zone.is_normal"></a></p>
+<h4 id="is_normal">is_normal</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_normal</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is normal (closed).</p>
+<p><a id="pydmp.zone.Zone.is_bypassed"></a></p>
+<h4 id="is_bypassed">is_bypassed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_bypassed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is bypassed.</p>
+<p><a id="pydmp.zone.Zone.has_fault"></a></p>
+<h4 id="has_fault">has_fault</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_fault</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone has a fault.</p>
+<p><a id="pydmp.zone.Zone.formatted_number"></a></p>
+<h4 id="formatted_number_1">formatted_number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">formatted_number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get zero-padded 3-digit zone number.</p>
+<p><a id="pydmp.zone.Zone.bypass"></a></p>
+<h4 id="bypass">bypass</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bypass</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Bypass this zone.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPZoneError</code> - If bypass fails</li>
+</ul>
+<p><a id="pydmp.zone.Zone.restore"></a></p>
+<h4 id="restore">restore</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Restore (un-bypass) this zone.</p>
+<p><strong>Raises</strong>:</p>
+<ul>
+<li><code>DMPZoneError</code> - If restore fails</li>
+</ul>
+<p><a id="pydmp.zone.Zone.get_state"></a></p>
+<h4 id="get_state_1">get_state</h4>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state from panel.</p>
+<p><strong>Returns</strong>:</p>
+<p>Current zone state</p>
+<p><a id="pydmp.zone.Zone.__repr__"></a></p>
+<h4 id="__repr___6">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.zone.Zone.to_dict"></a></p>
+<h4 id="to_dict_2">to_dict</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+</code></pre></div>
+<p>Return a JSON-serializable representation of the zone.</p>
+<p><a id="pydmp.zone.ZoneSync"></a></p>
+<h2 id="zonesync-objects">ZoneSync Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ZoneSync</span><span class="p">()</span>
+</code></pre></div>
+<p>Synchronous wrapper for Zone.</p>
+<p><a id="pydmp.zone.ZoneSync.__init__"></a></p>
+<h4 id="__init___10">__init__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="n">zone</span><span class="p">:</span> <span class="n">Zone</span><span class="p">,</span> <span class="n">panel_sync</span><span class="p">:</span> <span class="s2">"DMPPanelSync"</span><span class="p">)</span>
+</code></pre></div>
+<p>Initialize sync zone.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>zone</code> - Async Zone instance</li>
+<li><code>panel_sync</code> - Sync panel instance</li>
+</ul>
+<p><a id="pydmp.zone.ZoneSync.number"></a></p>
+<h4 id="number_2">number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span>
+</code></pre></div>
+<p>Get zone number.</p>
+<p><a id="pydmp.zone.ZoneSync.name"></a></p>
+<h4 id="name_2">name</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get zone name.</p>
+<p><a id="pydmp.zone.ZoneSync.state"></a></p>
+<h4 id="state_7">state</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state.</p>
+<p><a id="pydmp.zone.ZoneSync.is_open"></a></p>
+<h4 id="is_open_1">is_open</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_open</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is open.</p>
+<p><a id="pydmp.zone.ZoneSync.is_normal"></a></p>
+<h4 id="is_normal_1">is_normal</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_normal</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is normal.</p>
+<p><a id="pydmp.zone.ZoneSync.is_bypassed"></a></p>
+<h4 id="is_bypassed_1">is_bypassed</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_bypassed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone is bypassed.</p>
+<p><a id="pydmp.zone.ZoneSync.has_fault"></a></p>
+<h4 id="has_fault_1">has_fault</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_fault</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
+</code></pre></div>
+<p>Check if zone has fault.</p>
+<p><a id="pydmp.zone.ZoneSync.formatted_number"></a></p>
+<h4 id="formatted_number_2">formatted_number</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">formatted_number</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get formatted number.</p>
+<p><a id="pydmp.zone.ZoneSync.bypass_sync"></a></p>
+<h4 id="bypass_sync">bypass_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">bypass_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Bypass zone (sync).</p>
+<p><a id="pydmp.zone.ZoneSync.restore_sync"></a></p>
+<h4 id="restore_sync">restore_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">restore_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Restore zone (sync).</p>
+<p><a id="pydmp.zone.ZoneSync.get_state_sync"></a></p>
+<h4 id="get_state_sync_1">get_state_sync</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_state_sync</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Get current state from panel (sync).</p>
+<p><a id="pydmp.zone.ZoneSync.__repr__"></a></p>
+<h4 id="__repr___7">__repr__</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>String representation.</p>
+<p><a id="pydmp.status_parser"></a></p>
+<h1 id="pydmpstatus_parser">pydmp.status_parser</h1>
+<p>Helper to convert Serial 3 (S3) messages into structured, typed events.</p>
+<p>This module maps a low-level S3Message (from status_server) to enums and
+fields from pydmp.const, making it easier to act on realtime events.</p>
+<p><a id="pydmp.status_parser.ParsedEvent"></a></p>
+<h2 id="parsedevent-objects">ParsedEvent Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParsedEvent</span><span class="p">()</span>
+</code></pre></div>
+<p>Structured representation of a realtime SCS‑VR Z-message.</p>
+<p>Fields may be None if not applicable for the message category.</p>
+<p><a id="pydmp.status_parser.ParsedEvent.code_enum"></a></p>
+<h4 id="code_enum">code_enum</h4>
+<p>one of the DMP*Event enums above, when applicable</p>
+<p><a id="pydmp.status_parser.parse_s3_message"></a></p>
+<h4 id="parse_s3_message">parse_s3_message</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_s3_message</span><span class="p">(</span><span class="n">msg</span><span class="p">:</span> <span class="n">S3Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedEvent</span>
+</code></pre></div>
+<p>Convert a Serial 3 (S3) message to a structured ParsedEvent with enums.</p>
+<p>This function does not mutate any panel state; it only interprets the
+incoming message. Use it inside your DMPStatusServer callbacks.</p>
+<p><a id="pydmp.profile"></a></p>
+<h1 id="pydmpprofile">pydmp.profile</h1>
+<p><a id="pydmp.profile.UserProfile"></a></p>
+<h2 id="userprofile-objects">UserProfile Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserProfile</span><span class="p">()</span>
+</code></pre></div>
+<p>User profile record (not encrypted).</p>
+<p><a id="pydmp.status_server"></a></p>
+<h1 id="pydmpstatus_server">pydmp.status_server</h1>
+<p>Async Serial 3 (S3) realtime status server for DMP panels.</p>
+<p>This server listens for Serial 3 (Z-frames) pushed by the panel and
+invokes registered callbacks with parsed messages.</p>
+<p><strong>Notes</strong>:</p>
+<ul>
+<li>Configure your DMP panel to connect to this machine/port for realtime
+  S3 status (Z-frames). Only one connection is expected.</li>
+<li>The server sends an ACK per message: STX + [5-byte account] + 0x06 + CR.</li>
+</ul>
+<p><a id="pydmp.status_server.S3Message"></a></p>
+<h2 id="s3message-objects">S3Message Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3Message</span><span class="p">()</span>
+</code></pre></div>
+<p>Parsed Serial 3 Z-frame.</p>
+<p><a id="pydmp.status_server.S3Message.definition"></a></p>
+<h4 id="definition">definition</h4>
+<p>e.g., 'Za', 'Zq', 'Zc'</p>
+<p><a id="pydmp.status_server.S3Message.type_code"></a></p>
+<h4 id="type_code">type_code</h4>
+<p>e.g., 'BU', 'OP', 'ON', etc.</p>
+<p><a id="pydmp.status_server.S3Message.fields"></a></p>
+<h4 id="fields">fields</h4>
+<p>raw fields split on '\'</p>
+<p><a id="pydmp.status_server.S3Message.raw"></a></p>
+<h4 id="raw">raw</h4>
+<p>full raw line (ASCII)</p>
+<p><a id="pydmp.status_server.DMPStatusServer"></a></p>
+<h2 id="dmpstatusserver-objects">DMPStatusServer Objects</h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DMPStatusServer</span><span class="p">()</span>
+</code></pre></div>
+<p>Async TCP server for DMP Serial 3 realtime status (Z-frames).</p>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.code.copy","navigation.indexes","navigation.top","search.highlight"],"search":"../../assets/javascripts/workers/search.b6b7e04f.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"default":"latest","provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7f30b55.min.js"></script>
+      
+    
+  </body>
+</html>

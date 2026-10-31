@@ -64,5 +64,7 @@ jobs:
   docs:
     needs: publish
     permissions:
-      contents: write # docs.yml: mike pushes the gh-pages branch
+      contents: write # docs.yml: the publish script pushes the gh-pages branch
     uses: ./.github/workflows/docs.yml
+    with:
+      version: ${{ inputs.version }}

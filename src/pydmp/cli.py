@@ -9,7 +9,7 @@ from typing import Any
 
 try:
     import click
-    import yaml  # type: ignore[import-untyped]
+    import yaml
     from rich.console import Console
     from rich.table import Table
 except ImportError:

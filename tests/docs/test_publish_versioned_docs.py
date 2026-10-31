@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -260,26 +260,25 @@ def test_rejects_pushing_a_preview_branch() -> None:
         publish_versioned_docs.publish("docs-version-preview", "origin", push=True)
 
 
-def test_docs_workflow_publishes_gh_pages_branch_from_main() -> None:
+def test_docs_workflow_calls_the_shared_publisher() -> None:
     workflow_path = REPO_ROOT / ".github" / "workflows" / "docs.yml"
     text = workflow_path.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
-    steps = workflow["jobs"]["docs"]["steps"]
-    checkout = next(s for s in steps if "actions/checkout@" in s.get("uses", ""))
-    publish = next(s for s in steps if s.get("name") == "Publish")
+    job = workflow["jobs"]["docs"]
 
     # PyYAML reads the bare `on:` key as boolean True.
-    assert set(workflow[True]) == {"workflow_dispatch", "workflow_call"}
-    assert workflow["permissions"] == {"contents": "write"}
-    assert workflow["concurrency"] == {
-        "group": "docs-gh-pages",
-        "cancel-in-progress": False,
-    }
-    assert checkout["with"]["fetch-depth"] == 0
-    assert checkout["with"]["ref"] == "main"
-    assert "scripts/publish_versioned_docs.py --push" in publish["run"]
+    triggers = workflow[True]
+    assert set(triggers) == {"push", "workflow_dispatch", "workflow_call"}
+    assert triggers["push"] == {"branches": ["main"]}
+    assert workflow["permissions"] == {"contents": "read"}
+    # The shared workflow checks out main with full history and runs this repo's
+    # scripts/publish_versioned_docs.py --push under the docs-gh-pages concurrency group.
+    assert job["uses"] == "mattas-net/.github/.github/workflows/docs.yml@main"
+    assert job["permissions"] == {"contents": "write"}
+    assert job["with"]["version"] == "${{ inputs.version }}"
+    assert (REPO_ROOT / "scripts" / "publish_versioned_docs.py").is_file()
     # gh-pages is served directly; no Pages artifact/deployment pipeline.
     retired = ("configure-pages", "upload-pages-artifact", "deploy-pages")
     for action in (*retired, "github-pages"):
         assert action not in text
-    assert "Pages serves gh-pages only for public repos" in text
+    assert "private repos build gh-pages and keep Pages disabled" in text

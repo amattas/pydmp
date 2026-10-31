@@ -2,10 +2,6 @@
 # `approve` job until a reviewer approves it in the `approval` environment. The
 # Release workflow requires a successful run of this workflow on main HEAD.
 #
-# On main, once the checks pass, the `docs` job calls docs.yml to republish the
-# versioned docs ("dev" = main). A newer run on main cancels this one (incl. an
-# in-flight docs call); its own docs job then republishes.
-#
 # Required checks (default-branch ruleset): "python / checks (<python>)" and
 # "python / security".
 name: Checks
@@ -39,22 +35,5 @@ jobs:
       contents: read
     with:
       python-versions: '["3.12", "3.13", "3.14"]'
-      typecheck: python -m mypy --strict .
-      test: python -m pytest -q --no-cov
+      extra-lint: bandit -q -r src
       audit: strict
-
-  docs:
-    needs: python
-    # always(): `approve` is skipped on push, and a skipped ancestor would otherwise skip this job.
-    if: always() && github.ref == 'refs/heads/main' && needs.python.result == 'success'
-    permissions:
-      contents: write # docs.yml: mike pushes the gh-pages branch
-    uses: ./.github/workflows/docs.yml
-
-  codeql:
-    needs: approve
-    if: always() && needs.approve.result != 'failure' && needs.approve.result != 'cancelled'
-    uses: mattas-net/.github/.github/workflows/codeql.yml@main
-    permissions:
-      contents: read
-      security-events: write

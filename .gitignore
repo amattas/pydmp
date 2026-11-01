@@ -36,3 +36,7 @@ config.yaml
 /site
 .cache/
 docs/api/reference.md
+
+# Local agent tooling
+.claude/
+.codex/

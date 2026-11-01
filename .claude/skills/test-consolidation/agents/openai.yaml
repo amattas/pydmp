@@ -1,4 +1,0 @@
-interface:
-  display_name: "Test Consolidation"
-  short_description: "Consolidate redundant tests without coverage loss"
-  default_prompt: "Use $test-consolidation to reduce redundant tests while preserving behavior."

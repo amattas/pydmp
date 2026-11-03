@@ -29,6 +29,9 @@ dev = [
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
+    # Property tests for the line parsers (tests/test_fuzz.py); the atheris targets in fuzz/
+    # run only in the ClusterFuzzLite image, so atheris is not a dev dependency.
+    "hypothesis==6.170.12",
     "mypy==2.3.0",
     "ruff==0.17.2",
     "bandit==1.9.4",

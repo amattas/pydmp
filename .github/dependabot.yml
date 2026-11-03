@@ -23,3 +23,14 @@ updates:
     github-actions:
       patterns:
       - '*'
+
+- package-ecosystem: docker
+  directory: /.clusterfuzzlite
+  schedule:
+    interval: monthly
+  cooldown:
+    default-days: 7
+  groups:
+    docker:
+      patterns:
+      - '*'

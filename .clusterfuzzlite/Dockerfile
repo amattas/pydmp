@@ -1,8 +1,6 @@
-FROM gcr.io/oss-fuzz-base/base-builder-python
+FROM gcr.io/oss-fuzz-base/base-builder-python:v1@sha256:21f6fab17ace4dc76e1c56de91ee95d3d03da021df94b41056ba036f6c6f55e9
 
-# Fleet-standard fuzz toolchain (same as ics-combiner): pydmp requires Python >=3.12; the base image
-# ships 3.11. Put a pinned python-build-standalone 3.14 first on PATH so
-# compile_python_fuzzer's pyinstaller and the fuzz target run on it.
+# Base image ships Python 3.11; install pinned CPython 3.14 so the package imports under the fleet's newest supported Python.
 ARG PYTHON_URL=https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.14.8%2B20261013-x86_64-unknown-linux-gnu-install_only.tar.gz
 ARG PYTHON_SHA256=322271a761140ffb3f522431048f701831e412c8f64770103d2b881ee2bbaed0
 RUN curl -fsSL -o /tmp/python.tar.gz "$PYTHON_URL" \

@@ -1,6 +1,6 @@
-# Fuzz: dispatch-only deep run of the ClusterFuzzLite targets (batch mode, 3600 s per target).
-# PR fuzzing runs inside Checks (python-ci `fuzz: true`). See the fleet standard
-# (mattas-net/standards, private; ci-cd/fuzzing) for finding handling.
+# Fuzz: dispatch-only deep run of the ClusterFuzzLite targets (batch mode,
+# 3600 s per target, total clamped to 19800 s). PR fuzzing runs inside Checks
+# (`fuzz: true`). Finding handling: mattas-net/standards ci-cd/fuzzing.
 name: Fuzz
 
 on:

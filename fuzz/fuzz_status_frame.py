@@ -31,7 +31,7 @@ _MESSAGES: list[S3Message] = []
 _SERVER.register_callback(_MESSAGES.append)
 
 
-def TestOneInput(data: bytes) -> None:  # noqa: N802 - atheris entry-point name
+def test_one_input(data: bytes) -> None:
     _MESSAGES.clear()
     buf = data
     while b"\r" in buf:
@@ -46,7 +46,7 @@ def main() -> None:
     import atheris
 
     atheris.instrument_all()
-    atheris.Setup(sys.argv, TestOneInput)
+    atheris.Setup(sys.argv, test_one_input)
     atheris.Fuzz()
 
 

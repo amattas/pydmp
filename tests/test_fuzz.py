@@ -2,7 +2,7 @@
 
 The atheris targets in ``fuzz/`` cover the byte/framing paths; every PR replays their
 seed corpus (and any fixed crash inputs) here without the fuzz engine. Each target's
-``TestOneInput`` raises only the exception types documented for that entry point, so the
+``test_one_input`` raises only the exception types documented for that entry point, so the
 replay asserts the same contract the fuzzer enforces. The line parsers are covered by
 Hypothesis properties below.
 """
@@ -58,8 +58,8 @@ def test_every_target_has_seeds() -> None:
 
 @pytest.mark.parametrize("path", CORPUS, ids=lambda p: f"{p.parent.name}/{p.name}")
 def test_corpus_replay(path: Path) -> None:
-    # TestOneInput lets only documented exceptions through; anything else fails here.
-    _load_target(path.parent.name).TestOneInput(path.read_bytes())
+    # test_one_input lets only documented exceptions through; anything else fails here.
+    _load_target(path.parent.name).test_one_input(path.read_bytes())
 
 
 AREA_STATES = {

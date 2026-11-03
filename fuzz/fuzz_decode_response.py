@@ -14,7 +14,7 @@ from pydmp.protocol import DMPProtocol
 _PROTOCOL = DMPProtocol("1", "0123456789ABCDEF")
 
 
-def TestOneInput(data: bytes) -> None:  # noqa: N802 - atheris entry-point name
+def test_one_input(data: bytes) -> None:
     with contextlib.suppress(DMPInvalidResponseError):
         _PROTOCOL.decode_response(data)
 
@@ -23,7 +23,7 @@ def main() -> None:
     import atheris
 
     atheris.instrument_all()
-    atheris.Setup(sys.argv, TestOneInput)
+    atheris.Setup(sys.argv, test_one_input)
     atheris.Fuzz()
 
 

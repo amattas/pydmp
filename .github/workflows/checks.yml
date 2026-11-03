@@ -4,7 +4,7 @@
 #
 # Required checks (default-branch ruleset): "checks" and "security" (alias jobs below).
 # Until the ruleset flips (WP-1 pass 2) it still requires "python / checks (<python>)" and
-# "python / security", which the `python` job keeps producing. See mattas-net/.github STANDARD.md.
+# "python / security", which the `python` job keeps producing. See the fleet standard (mattas-net/standards, private; ci-cd/ci-workflows).
 name: Checks
 
 on:

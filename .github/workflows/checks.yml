@@ -35,12 +35,10 @@ jobs:
     uses: mattas-net/.github/.github/workflows/python-ci.yml@main
     permissions:
       contents: read
-      actions: read
     with:
       python-versions: '["3.12", "3.13", "3.14"]'
       extra-lint: bandit -q -r src
       audit: strict
-      fuzz: true
 
   checks:
     needs: python

@@ -2,13 +2,14 @@
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from .area import Area
 from .const.commands import DMPCommand
 from .const.events import DMPEventType
 from .const.protocol import DEFAULT_PORT
-from .exceptions import DMPConnectionError
+from .exceptions import DMPAuthenticationError, DMPConnectionError
 from .output import Output
 from .profile import UserProfile
 from .protocol import (
@@ -27,6 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # Active connection guard: one connection per (host, port, account)
 _ACTIVE_CONNECTIONS: set[tuple[str, int, str]] = set()
+
+# The panel answers a rejected login (!V2<key>) with a NAK frame such as
+# "@    1-V2<key>" (see commands.md, "Login"); a successful login is "+V2<key>".
+_AUTH_NAK_RE = re.compile(rb"@[ 0-9]*-V2")
 
 
 class DMPPanel:
@@ -77,7 +82,9 @@ class DMPPanel:
             remote_key: Remote key for authentication
 
         Raises:
+            DMPAuthenticationError: If the panel rejects the remote key
             DMPConnectionError: If connection fails
+            DMPTimeoutError: If the connection attempt times out
         """
         if self.is_connected:
             _LOGGER.warning("Already connected")
@@ -103,7 +110,13 @@ class DMPPanel:
         # Authenticate via protocol
         _LOGGER.info("Authenticating panel session")
         auth_cmd = self._protocol.encode_command(DMPCommand.AUTH.value, key=remote_key)
-        await self._connection.send_and_receive(auth_cmd)
+        response = await self._connection.send_and_receive(auth_cmd)
+        if _AUTH_NAK_RE.search(response):
+            # Release the socket so a retry (e.g. after a reauth) can reconnect.
+            _LOGGER.error("Panel rejected remote key for account %s", account)
+            await self._connection.disconnect()
+            self._connection = None
+            raise DMPAuthenticationError(f"Panel rejected the remote key for account {account}")
         _LOGGER.info("Authentication successful")
 
         # Register active connection

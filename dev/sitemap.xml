@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/api/reference/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/compatibility/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/guide/cli/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/guide/encryption/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/guide/getting-started/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/guide/migration/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/guide/realtime-status/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/superpowers/plans/2026-07-20-mypy-strict-cleanup/</loc>
+      </url>
+      <url>
+        <loc>https://amattas.github.io/pydmp/dev/superpowers/specs/2026-07-20-mypy-strict-cleanup-design/</loc>
+      </url>
+</urlset>

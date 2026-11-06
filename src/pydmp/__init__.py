@@ -32,6 +32,7 @@ from importlib.metadata import version as _dist_version
 from . import const, exceptions
 from .area import Area, AreaSync
 from .crypto import DMPCrypto
+from .exceptions import DMPAuthenticationError
 from .output import Output, OutputSync
 from .panel import DMPPanel
 from .panel_sync import DMPPanelSync
@@ -89,6 +90,7 @@ __all__ = [
     "ParsedEvent",
     "parse_s3_message",
     "DMPCrypto",
+    "DMPAuthenticationError",
     # Submodules
     "const",
     "exceptions",

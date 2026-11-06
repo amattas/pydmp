@@ -1,14 +1,17 @@
 """High-level async panel controller."""
 
 import asyncio
+import inspect
 import logging
+import re
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from .area import Area
 from .const.commands import DMPCommand
 from .const.events import DMPEventType
 from .const.protocol import DEFAULT_PORT
-from .exceptions import DMPConnectionError
+from .exceptions import DMPAuthenticationError, DMPConnectionError
 from .output import Output
 from .profile import UserProfile
 from .protocol import (
@@ -27,6 +30,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # Active connection guard: one connection per (host, port, account)
 _ACTIVE_CONNECTIONS: set[tuple[str, int, str]] = set()
+
+# The panel answers a rejected login (!V2<key>) with a NAK frame such as
+# "@    1-V2<key>" (see commands.md, "Login"); a successful login is "+V2<key>".
+_AUTH_NAK_RE = re.compile(rb"@[ 0-9]*-V2")
 
 
 class DMPPanel:
@@ -77,7 +84,9 @@ class DMPPanel:
             remote_key: Remote key for authentication
 
         Raises:
+            DMPAuthenticationError: If the panel rejects the remote key
             DMPConnectionError: If connection fails
+            DMPTimeoutError: If the connection attempt times out
         """
         if self.is_connected:
             _LOGGER.warning("Already connected")
@@ -103,7 +112,13 @@ class DMPPanel:
         # Authenticate via protocol
         _LOGGER.info("Authenticating panel session")
         auth_cmd = self._protocol.encode_command(DMPCommand.AUTH.value, key=remote_key)
-        await self._connection.send_and_receive(auth_cmd)
+        response = await self._connection.send_and_receive(auth_cmd)
+        if _AUTH_NAK_RE.search(response):
+            # Release the socket so a retry (e.g. after a reauth) can reconnect.
+            _LOGGER.error("Panel rejected remote key for account %s", account)
+            await self._connection.disconnect()
+            self._connection = None
+            raise DMPAuthenticationError(f"Panel rejected the remote key for account {account}")
         _LOGGER.info("Authentication successful")
 
         # Register active connection
@@ -526,11 +541,23 @@ class DMPPanel:
         except Exception as e:
             _LOGGER.debug("Failed to remove status callback: %s", e)
 
-    async def start_keepalive(self, interval: float = 10.0) -> None:
+    async def start_keepalive(
+        self,
+        interval: float = 10.0,
+        on_disconnect: Callable[[Exception], Awaitable[None] | None] | None = None,
+    ) -> None:
         """Start periodic keep-alive (!H) while connected.
+
+        If a keep-alive send fails, the panel is disconnected (so
+        ``is_connected`` becomes False and the active-connection guard is
+        released), ``on_disconnect`` is invoked with the exception, and the
+        loop ends.
 
         Args:
             interval: Seconds between keep-alive messages (default: 10)
+            on_disconnect: Optional sync or async callback called with the
+                send error after the panel has been disconnected. Exceptions
+                raised by the callback are logged and swallowed.
         """
         if not self.is_connected or not self._connection:
             raise DMPConnectionError("Not connected to panel")
@@ -547,7 +574,18 @@ class DMPPanel:
                             ka = self._protocol.encode_command(DMPCommand.KEEP_ALIVE.value)
                             await self._connection.send_and_receive(ka)
                     except Exception as e:
-                        _LOGGER.debug("Keep-alive send failed: %s", e)
+                        _LOGGER.warning("Keep-alive send failed, disconnecting: %s", e)
+                        # Detach first so disconnect() does not cancel this task.
+                        self._keepalive_task = None
+                        await self.disconnect()
+                        if on_disconnect is not None:
+                            try:
+                                result = on_disconnect(e)
+                                if inspect.isawaitable(result):
+                                    await result
+                            except Exception:
+                                _LOGGER.exception("Keep-alive on_disconnect callback failed")
+                        return
                     await asyncio.sleep(self._keepalive_interval)
             finally:
                 _LOGGER.debug("Keep-alive loop stopped")

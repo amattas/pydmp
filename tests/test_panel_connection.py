@@ -1,14 +1,19 @@
 """Connect/disconnect/reconnect-guard tests (PYDMP-001)."""
 
+import asyncio
+
 import pytest
 
-from pydmp.exceptions import DMPConnectionError
+from pydmp.exceptions import DMPAuthenticationError, DMPConnectionError
 from pydmp.panel import DMPPanel
 from tests.fakes import cast_protocol, cast_transport, install_fake_transport
 
 
 class _FakeTransport:
     """Minimal stand-in for DMPTransport used by connect()."""
+
+    auth_response = b""
+    send_error: Exception | None = None
 
     def __init__(self, host: str, port: int, timeout: float) -> None:
         self.host = host
@@ -24,7 +29,10 @@ class _FakeTransport:
 
     async def send_and_receive(self, data: bytes) -> bytes:
         del data
-        return b""
+        error = type(self).send_error
+        if error is not None:
+            raise error
+        return type(self).auth_response
 
     async def disconnect(self) -> None:
         self._up = False
@@ -162,3 +170,83 @@ async def test_disconnect_cleanup_and_send_fail(monkeypatch: pytest.MonkeyPatch)
     await p.disconnect()  # should swallow send failure and clear state
     assert p._connection is None and p._protocol is None and p._active_key is None
     assert key not in panel_mod._ACTIVE_CONNECTIONS
+
+
+@pytest.mark.parametrize(
+    ("response", "rejected"),
+    [
+        (b"", False),
+        (b"@    1+V2KEY\r", False),
+        (b"@    1-V2KEY\r", True),
+        (b"@    1+!V0\r@    1-V2KEY\r", True),
+    ],
+)
+@pytest.mark.asyncio
+async def test_connect_auth_rejection(monkeypatch: pytest.MonkeyPatch, response: bytes, rejected: bool) -> None:
+    # A '-V2' NAK means the panel rejected the remote key: connect() raises
+    # DMPAuthenticationError (a DMPConnectionError), tears down the transport,
+    # and leaves no registration behind so a retry can reconnect.
+    import pydmp.panel as panel_mod
+
+    _install(monkeypatch)
+    monkeypatch.setattr(_FakeTransport, "auth_response", response)
+    p = DMPPanel()
+    key = ("1.2.3.4", p.port, "00001")
+
+    if not rejected:
+        await p.connect("1.2.3.4", "00001", "KEY")
+        assert p.is_connected
+        await p.disconnect()
+        return
+
+    with pytest.raises(DMPAuthenticationError) as exc_info:
+        await p.connect("1.2.3.4", "00001", "KEY")
+    assert "KEY" not in str(exc_info.value)
+    assert isinstance(exc_info.value, DMPConnectionError)
+    assert not p.is_connected
+    assert p._connection is None
+    assert key not in panel_mod._ACTIVE_CONNECTIONS
+
+    monkeypatch.setattr(_FakeTransport, "auth_response", b"@    1+V2KEY\r")
+    await p.connect("1.2.3.4", "00001", "KEY")
+    assert p.is_connected
+    await p.disconnect()
+
+
+@pytest.mark.parametrize("mode", ["sync", "async", "none", "raising"])
+@pytest.mark.asyncio
+async def test_keepalive_failure_disconnects_and_notifies(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
+    # A failed keep-alive send must drop the connection (is_connected False,
+    # guard released), notify the optional callback (sync or async; callback
+    # errors are swallowed) and end the loop.
+    import pydmp.panel as panel_mod
+
+    _install(monkeypatch)
+    p = DMPPanel()
+    await p.connect("1.2.3.4", "00001", "KEY")
+    key = ("1.2.3.4", p.port, "00001")
+
+    seen: list[Exception] = []
+    done = asyncio.Event()
+
+    def record(exc: Exception) -> None:
+        seen.append(exc)
+        done.set()
+        if mode == "raising":
+            raise RuntimeError("callback boom")
+
+    async def record_async(exc: Exception) -> None:
+        record(exc)
+
+    callback = {"sync": record, "raising": record, "async": record_async, "none": None}[mode]
+    boom = DMPConnectionError("link down")
+    await p.start_keepalive(1.0, on_disconnect=callback)
+    task = p._keepalive_task
+    assert task is not None
+    monkeypatch.setattr(_FakeTransport, "send_error", boom)
+
+    await asyncio.wait_for(asyncio.shield(task), timeout=5)
+    assert not p.is_connected
+    assert key not in panel_mod._ACTIVE_CONNECTIONS
+    assert task.done() and not task.cancelled()
+    assert seen == ([] if mode == "none" else [boom])

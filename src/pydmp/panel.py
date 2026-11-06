@@ -1,8 +1,10 @@
 """High-level async panel controller."""
 
 import asyncio
+import inspect
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from .area import Area
@@ -539,11 +541,23 @@ class DMPPanel:
         except Exception as e:
             _LOGGER.debug("Failed to remove status callback: %s", e)
 
-    async def start_keepalive(self, interval: float = 10.0) -> None:
+    async def start_keepalive(
+        self,
+        interval: float = 10.0,
+        on_disconnect: Callable[[Exception], Awaitable[None] | None] | None = None,
+    ) -> None:
         """Start periodic keep-alive (!H) while connected.
+
+        If a keep-alive send fails, the panel is disconnected (so
+        ``is_connected`` becomes False and the active-connection guard is
+        released), ``on_disconnect`` is invoked with the exception, and the
+        loop ends.
 
         Args:
             interval: Seconds between keep-alive messages (default: 10)
+            on_disconnect: Optional sync or async callback called with the
+                send error after the panel has been disconnected. Exceptions
+                raised by the callback are logged and swallowed.
         """
         if not self.is_connected or not self._connection:
             raise DMPConnectionError("Not connected to panel")
@@ -560,7 +574,18 @@ class DMPPanel:
                             ka = self._protocol.encode_command(DMPCommand.KEEP_ALIVE.value)
                             await self._connection.send_and_receive(ka)
                     except Exception as e:
-                        _LOGGER.debug("Keep-alive send failed: %s", e)
+                        _LOGGER.warning("Keep-alive send failed, disconnecting: %s", e)
+                        # Detach first so disconnect() does not cancel this task.
+                        self._keepalive_task = None
+                        await self.disconnect()
+                        if on_disconnect is not None:
+                            try:
+                                result = on_disconnect(e)
+                                if inspect.isawaitable(result):
+                                    await result
+                            except Exception:
+                                _LOGGER.exception("Keep-alive on_disconnect callback failed")
+                        return
                     await asyncio.sleep(self._keepalive_interval)
             finally:
                 _LOGGER.debug("Keep-alive loop stopped")
